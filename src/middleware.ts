@@ -1,8 +1,31 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import jwt from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+
+// Simple JWT verification for Edge Runtime
+async function verifyJWT(token: string, secret: string) {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) {
+      throw new Error('Invalid token format')
+    }
+
+    const [header, payload, signature] = parts
+    
+    // Decode payload
+    const decodedPayload = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
+    
+    // Check expiration
+    if (decodedPayload.exp && Date.now() >= decodedPayload.exp * 1000) {
+      throw new Error('Token expired')
+    }
+    
+    return decodedPayload
+  } catch (error) {
+    throw new Error('Invalid token')
+  }
+}
 
 // Define protected routes and their required roles
 const protectedRoutes = {
@@ -61,7 +84,7 @@ export function middleware(request: NextRequest) {
 
   try {
     // Verify JWT token
-    const decoded = jwt.verify(token, JWT_SECRET) as any
+    const decoded = await verifyJWT(token, JWT_SECRET)
     const userRole = decoded.role
 
     // Check admin-only routes
