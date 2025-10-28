@@ -59,7 +59,7 @@ async function seedNotifications() {
     console.log(`✅ Created ${notifications.length * users.length} notifications for ${users.length} users`)
 
     // Create some event-specific notifications
-    const events = await prisma.event.findMany({
+    const events = await prisma.events.findMany({
       take: 3
     })
 
