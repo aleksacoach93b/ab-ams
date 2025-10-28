@@ -33,6 +33,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/favicon.ico') ||
     pathname.startsWith('/icons/') ||
     pathname.startsWith('/uploads/') ||
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js' ||
     pathname === '/'
   ) {
     return NextResponse.next()
@@ -44,11 +46,16 @@ export function middleware(request: NextRequest) {
   // }
 
   // Get token from request headers or cookies
-  const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
-               request.cookies.get('token')?.value
+  const authHeader = request.headers.get('authorization')
+  const tokenFromHeader = authHeader?.replace('Bearer ', '') || null
+  const tokenFromCookie = request.cookies.get('token')?.value || null
+  const token = tokenFromHeader || tokenFromCookie
+
+  console.log('Middleware check:', { pathname, hasToken: !!token, hasCookie: !!tokenFromCookie, hasHeader: !!tokenFromHeader })
 
   if (!token) {
     // Redirect to login if no token
+    console.log('No token found, redirecting to login')
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
