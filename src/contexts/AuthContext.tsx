@@ -50,6 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = async (userData: User, authToken: string) => {
+    console.log('AuthContext login called with:', { userData, authToken })
+    
     // If user is staff, fetch their permissions
     if (userData.role === 'STAFF') {
       try {
@@ -67,10 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     
+    console.log('Setting user and token in AuthContext:', { userData, authToken })
     setUser(userData)
     setToken(authToken)
     localStorage.setItem('user', JSON.stringify(userData))
     localStorage.setItem('token', authToken)
+    console.log('AuthContext login completed')
   }
 
   const logout = () => {
