@@ -71,7 +71,7 @@ export class DailyAnalyticsScheduler {
   private async collectEventAnalytics(date: Date) {
     try {
       // Fetch events for the specified date
-      const events = await prisma.event.findMany({
+      const events = await prisma.events.findMany({
         where: {
           date: {
             gte: date,
