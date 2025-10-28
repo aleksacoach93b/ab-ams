@@ -1,0 +1,492 @@
+{
+  "analysis_id": "analysis_1761362769",
+  "timestamp": "2025-10-25 06:26:09.352375",
+  "original_filename": "20251025_062609_8cd0d73a-2453-4475-9f0a-bad0db023925.JPG",
+  "image_dimensions": {
+    "width": 1170,
+    "height": 1560
+  },
+  "analysis_type": "full",
+  "regions": [
+    {
+      "name": "Gluteus Maximus",
+      "region_type": "gluteus_maximus",
+      "coordinates": [
+        [
+          292,
+          195
+        ],
+        [
+          877,
+          195
+        ],
+        [
+          877,
+          520
+        ],
+        [
+          292,
+          520
+        ]
+      ],
+      "area_pixels": 191036,
+      "average_temperature": 162.85138403232898,
+      "max_temperature": 255.0,
+      "min_temperature": 0.0,
+      "temperature_std": 84.86781794884946,
+      "injury_risk": {
+        "level": "critical",
+        "temperature_difference": 129.85138403232898,
+        "confidence": 0.8,
+        "description": "Severe inflammation or injury risk",
+        "recommendations": [
+          "Immediate medical attention required",
+          "Avoid high-intensity activities",
+          "Apply ice therapy",
+          "Consider imaging studies"
+        ]
+      },
+      "asymmetry_score": null,
+      "muscle_activation": null
+    },
+    {
+      "name": "Gluteus Medius",
+      "region_type": "gluteus_medius",
+      "coordinates": [
+        [
+          195,
+          195
+        ],
+        [
+          390,
+          195
+        ],
+        [
+          390,
+          390
+        ],
+        [
+          195,
+          390
+        ]
+      ],
+      "area_pixels": 38416,
+      "average_temperature": 119.79896397334444,
+      "max_temperature": 255.0,
+      "min_temperature": 14.0,
+      "temperature_std": 87.32517675434852,
+      "injury_risk": {
+        "level": "critical",
+        "temperature_difference": 86.79896397334444,
+        "confidence": 0.8,
+        "description": "Severe inflammation or injury risk",
+        "recommendations": [
+          "Immediate medical attention required",
+          "Avoid high-intensity activities",
+          "Apply ice therapy",
+          "Consider imaging studies"
+        ]
+      },
+      "asymmetry_score": null,
+      "muscle_activation": null
+    },
+    {
+      "name": "Quadriceps",
+      "region_type": "quadriceps",
+      "coordinates": [
+        [
+          292,
+          520
+        ],
+        [
+          877,
+          520
+        ],
+        [
+          877,
+          780
+        ],
+        [
+          292,
+          780
+        ]
+      ],
+      "area_pixels": 152946,
+      "average_temperature": 133.40607142390124,
+      "max_temperature": 255.0,
+      "min_temperature": 0.0,
+      "temperature_std": 77.29571689196578,
+      "injury_risk": {
+        "level": "critical",
+        "temperature_difference": 100.40607142390124,
+        "confidence": 0.8,
+        "description": "Severe inflammation or injury risk",
+        "recommendations": [
+          "Immediate medical attention required",
+          "Avoid high-intensity activities",
+          "Apply ice therapy",
+          "Consider imaging studies"
+        ]
+      },
+      "asymmetry_score": null,
+      "muscle_activation": null
+    },
+    {
+      "name": "Hamstrings",
+      "region_type": "hamstrings",
+      "coordinates": [
+        [
+          292,
+          520
+        ],
+        [
+          877,
+          520
+        ],
+        [
+          877,
+          780
+        ],
+        [
+          292,
+          780
+        ]
+      ],
+      "area_pixels": 152946,
+      "average_temperature": 133.40607142390124,
+      "max_temperature": 255.0,
+      "min_temperature": 0.0,
+      "temperature_std": 77.29571689196578,
+      "injury_risk": {
+        "level": "critical",
+        "temperature_difference": 100.40607142390124,
+        "confidence": 0.8,
+        "description": "Severe inflammation or injury risk",
+        "recommendations": [
+          "Immediate medical attention required",
+          "Avoid high-intensity activities",
+          "Apply ice therapy",
+          "Consider imaging studies",
+          "Include hamstring flexibility work"
+        ]
+      },
+      "asymmetry_score": null,
+      "muscle_activation": null
+    },
+    {
+      "name": "Calves",
+      "region_type": "calves",
+      "coordinates": [
+        [
+          292,
+          780
+        ],
+        [
+          877,
+          780
+        ],
+        [
+          877,
+          1170
+        ],
+        [
+          292,
+          1170
+        ]
+      ],
+      "area_pixels": 229126,
+      "average_temperature": 149.85727067203197,
+      "max_temperature": 255.0,
+      "min_temperature": 14.0,
+      "temperature_std": 76.13446727980016,
+      "injury_risk": {
+        "level": "critical",
+        "temperature_difference": 116.85727067203197,
+        "confidence": 0.8,
+        "description": "Severe inflammation or injury risk",
+        "recommendations": [
+          "Immediate medical attention required",
+          "Avoid high-intensity activities",
+          "Apply ice therapy",
+          "Consider imaging studies"
+        ]
+      },
+      "asymmetry_score": null,
+      "muscle_activation": null
+    },
+    {
+      "name": "Knee Cap",
+      "region_type": "knee_cap",
+      "coordinates": [
+        [
+          390,
+          780
+        ],
+        [
+          780,
+          780
+        ],
+        [
+          780,
+          936
+        ],
+        [
+          390,
+          936
+        ]
+      ],
+      "area_pixels": 61387,
+      "average_temperature": 122.60348282209588,
+      "max_temperature": 255.0,
+      "min_temperature": 14.0,
+      "temperature_std": 83.70959672323183,
+      "injury_risk": {
+        "level": "critical",
+        "temperature_difference": 89.60348282209588,
+        "confidence": 0.8,
+        "description": "Severe inflammation or injury risk",
+        "recommendations": [
+          "Immediate medical attention required",
+          "Avoid high-intensity activities",
+          "Apply ice therapy",
+          "Consider imaging studies",
+          "Focus on knee stability exercises"
+        ]
+      },
+      "asymmetry_score": null,
+      "muscle_activation": null
+    },
+    {
+      "name": "Knee Side",
+      "region_type": "knee_side",
+      "coordinates": [
+        [
+          195,
+          780
+        ],
+        [
+          390,
+          780
+        ],
+        [
+          390,
+          936
+        ],
+        [
+          195,
+          936
+        ]
+      ],
+      "area_pixels": 30772,
+      "average_temperature": 163.7199402053815,
+      "max_temperature": 255.0,
+      "min_temperature": 40.0,
+      "temperature_std": 62.55108361992494,
+      "injury_risk": {
+        "level": "critical",
+        "temperature_difference": 130.7199402053815,
+        "confidence": 0.8,
+        "description": "Severe inflammation or injury risk",
+        "recommendations": [
+          "Immediate medical attention required",
+          "Avoid high-intensity activities",
+          "Apply ice therapy",
+          "Consider imaging studies",
+          "Focus on knee stability exercises"
+        ]
+      },
+      "asymmetry_score": null,
+      "muscle_activation": null
+    },
+    {
+      "name": "Ankle",
+      "region_type": "ankle",
+      "coordinates": [
+        [
+          390,
+          1170
+        ],
+        [
+          780,
+          1170
+        ],
+        [
+          780,
+          1248
+        ],
+        [
+          390,
+          1248
+        ]
+      ],
+      "area_pixels": 30889,
+      "average_temperature": 184.39386189258312,
+      "max_temperature": 255.0,
+      "min_temperature": 28.0,
+      "temperature_std": 47.92579079199223,
+      "injury_risk": {
+        "level": "critical",
+        "temperature_difference": 151.39386189258312,
+        "confidence": 0.8,
+        "description": "Severe inflammation or injury risk",
+        "recommendations": [
+          "Immediate medical attention required",
+          "Avoid high-intensity activities",
+          "Apply ice therapy",
+          "Consider imaging studies"
+        ]
+      },
+      "asymmetry_score": null,
+      "muscle_activation": null
+    },
+    {
+      "name": "Achilles Tendon",
+      "region_type": "achilles",
+      "coordinates": [
+        [
+          390,
+          1170
+        ],
+        [
+          780,
+          1170
+        ],
+        [
+          780,
+          1248
+        ],
+        [
+          390,
+          1248
+        ]
+      ],
+      "area_pixels": 30889,
+      "average_temperature": 184.39386189258312,
+      "max_temperature": 255.0,
+      "min_temperature": 28.0,
+      "temperature_std": 47.92579079199223,
+      "injury_risk": {
+        "level": "critical",
+        "temperature_difference": 151.39386189258312,
+        "confidence": 0.8,
+        "description": "Severe inflammation or injury risk",
+        "recommendations": [
+          "Immediate medical attention required",
+          "Avoid high-intensity activities",
+          "Apply ice therapy",
+          "Consider imaging studies"
+        ]
+      },
+      "asymmetry_score": null,
+      "muscle_activation": null
+    },
+    {
+      "name": "Shin",
+      "region_type": "shin",
+      "coordinates": [
+        [
+          390,
+          780
+        ],
+        [
+          780,
+          780
+        ],
+        [
+          780,
+          1170
+        ],
+        [
+          390,
+          1170
+        ]
+      ],
+      "area_pixels": 152881,
+      "average_temperature": 138.2977413805509,
+      "max_temperature": 255.0,
+      "min_temperature": 14.0,
+      "temperature_std": 79.18572464970397,
+      "injury_risk": {
+        "level": "critical",
+        "temperature_difference": 105.29774138055089,
+        "confidence": 0.8,
+        "description": "Severe inflammation or injury risk",
+        "recommendations": [
+          "Immediate medical attention required",
+          "Avoid high-intensity activities",
+          "Apply ice therapy",
+          "Consider imaging studies"
+        ]
+      },
+      "asymmetry_score": null,
+      "muscle_activation": null
+    },
+    {
+      "name": "Foot",
+      "region_type": "foot",
+      "coordinates": [
+        [
+          390,
+          1248
+        ],
+        [
+          780,
+          1248
+        ],
+        [
+          780,
+          1560
+        ],
+        [
+          390,
+          1560
+        ]
+      ],
+      "area_pixels": 121992,
+      "average_temperature": 157.10800708243164,
+      "max_temperature": 243.0,
+      "min_temperature": 34.0,
+      "temperature_std": 42.02712835179844,
+      "injury_risk": {
+        "level": "critical",
+        "temperature_difference": 124.10800708243164,
+        "confidence": 0.8,
+        "description": "Severe inflammation or injury risk",
+        "recommendations": [
+          "Immediate medical attention required",
+          "Avoid high-intensity activities",
+          "Apply ice therapy",
+          "Consider imaging studies"
+        ]
+      },
+      "asymmetry_score": null,
+      "muscle_activation": null
+    }
+  ],
+  "thermal_metrics": {
+    "overall_average_temp": 149.9851506182849,
+    "overall_max_temp": 184.39386189258312,
+    "overall_min_temp": 119.79896397334444,
+    "temperature_range": 64.59489791923868,
+    "asymmetry_index": 0.0,
+    "hot_spots_count": 5,
+    "cold_spots_count": 5
+  },
+  "total_regions_detected": 11,
+  "high_risk_regions": 11,
+  "critical_risk_regions": 11,
+  "overall_recommendations": [
+    "Consider reducing training intensity",
+    "Implement enhanced recovery protocols",
+    "Multiple hot spots detected - monitor for inflammation",
+    "Regular thermal imaging recommended",
+    "Maintain detailed training logs",
+    "Monitor for any changes in symptoms"
+  ],
+  "priority_actions": [
+    "Immediate attention required for 11 high-risk regions"
+  ],
+  "processing_time_seconds": 0.03205513954162598,
+  "model_confidence": 0.85,
+  "image_quality_score": 0.9939235240772701
+}

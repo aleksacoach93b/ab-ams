@@ -1,0 +1,33 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main ball circle -->
+  <circle cx="12" cy="12" r="10" fill="white" stroke="#000000" stroke-width="1.5"/>
+  
+  <!-- Central pentagon (solid black) -->
+  <path d="M12 6.5 L14.8 9 L13.8 12.5 L10.2 12.5 L9.2 9 Z" fill="#000000"/>
+  
+  <!-- Hexagons around pentagon (white with black outline) -->
+  <path d="M9.2 9 L12 6.5 L14.8 9 L14.8 15 L12 17.5 L9.2 15 Z" fill="white" stroke="#000000" stroke-width="1.2"/>
+  
+  <path d="M14.8 9 L17.6 11.5 L16.6 15 L13.8 12.5 L14.8 9 Z" fill="white" stroke="#000000" stroke-width="1.2"/>
+  
+  <path d="M13.8 12.5 L16.6 15 L13.8 17.5 L11 15 L12 11.5 Z" fill="white" stroke="#000000" stroke-width="1.2"/>
+  
+  <path d="M10.2 12.5 L9.2 9 L6.4 11.5 L7.4 15 L11 12.5 Z" fill="white" stroke="#000000" stroke-width="1.2"/>
+  
+  <path d="M9.2 15 L7.4 15 L10.2 17.5 L12 15 L9.2 15 Z" fill="white" stroke="#000000" stroke-width="1.2"/>
+  
+  <!-- Additional black pentagons -->
+  <path d="M12 17.5 L9.2 15 L10.2 11.5 L13.8 11.5 L14.8 15 Z" fill="#000000"/>
+  
+  <path d="M6.4 11.5 L9.2 9 L12 11.5 L11 15 L8.2 12.5 Z" fill="#000000"/>
+  
+  <path d="M17.6 11.5 L14.8 9 L12 11.5 L13 15 L15.8 12.5 Z" fill="#000000"/>
+  
+  <!-- Edge pentagons -->
+  <path d="M6.4 11.5 L8.2 12.5 L6.4 14.5 L4.6 13.5 L6.4 11.5 Z" fill="#000000"/>
+  <path d="M17.6 11.5 L15.8 12.5 L17.6 14.5 L19.4 13.5 L17.6 11.5 Z" fill="#000000"/>
+  
+  <!-- Partial hexagons at edges -->
+  <path d="M6.4 14.5 L8.2 12.5 L10.2 15 L8.4 17 L6.4 14.5 Z" fill="white" stroke="#000000" stroke-width="1.2"/>
+  <path d="M17.6 14.5 L15.8 12.5 L13.8 15 L15.6 17 L17.6 14.5 Z" fill="white" stroke="#000000" stroke-width="1.2"/>
+</svg>

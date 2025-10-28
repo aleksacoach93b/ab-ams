@@ -1,0 +1,36 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main ball with gradient effect -->
+  <circle cx="12" cy="12" r="10" fill="white" stroke="#000000" stroke-width="1.2"/>
+  
+  <!-- Classic soccer ball pattern with realistic geometry -->
+  <!-- Central pentagon -->
+  <path d="M12 5.2 L14.8 7.8 L13.8 11.2 L10.2 11.2 L9.2 7.8 Z" fill="#000000"/>
+  
+  <!-- Hexagons around central pentagon -->
+  <path d="M9.2 7.8 L12 5.2 L14.8 7.8 L14.8 12.2 L12 14.8 L9.2 12.2 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <path d="M14.8 7.8 L17.6 10.4 L16.6 13.8 L13.8 11.2 L14.8 7.8 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <path d="M13.8 11.2 L16.6 13.8 L13.8 16.4 L11 13.8 L12 10.4 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <path d="M10.2 11.2 L9.2 7.8 L6.4 10.4 L7.4 13.8 L11 11.2 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <path d="M9.2 12.2 L7.4 13.8 L10.2 16.4 L12 14.8 L9.2 12.2 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <!-- Additional pentagons for complete pattern -->
+  <path d="M12 14.8 L9.2 12.2 L10.2 8.8 L13.8 8.8 L14.8 12.2 Z" fill="#000000"/>
+  
+  <path d="M6.4 10.4 L9.2 7.8 L12 10.4 L11 13.8 L8.2 11.2 Z" fill="#000000"/>
+  
+  <path d="M17.6 10.4 L14.8 7.8 L12 10.4 L13 13.8 L15.8 11.2 Z" fill="#000000"/>
+  
+  <!-- Partial hexagons at edges -->
+  <path d="M6.4 10.4 L8.2 11.2 L7.4 13.8 L5.6 13 L6.4 10.4 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  <path d="M17.6 10.4 L15.8 11.2 L16.6 13.8 L18.4 13 L17.6 10.4 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <!-- 3D highlight effect -->
+  <ellipse cx="10" cy="9" rx="2.5" ry="1.8" fill="rgba(255,255,255,0.4)"/>
+  
+  <!-- Shadow for depth -->
+  <ellipse cx="14" cy="16" rx="3" ry="1.5" fill="rgba(0,0,0,0.1)"/>
+</svg>

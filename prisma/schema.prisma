@@ -1,0 +1,697 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String?
+  name        String?
+  role        UserRole  @default(PLAYER)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+  loginIp     String?
+  userAgent   String?
+  player      Player?
+  staff       Staff?
+  loginLogs   LoginLog[]
+  fileAccessLogs FileAccessLog[]
+  playerNotes PlayerNote[]
+  coachNotes  CoachNote[]
+  reportVisibility ReportVisibility[]
+  folderVisibility ReportFolderVisibility[]
+  playerReportVisibility PlayerReportVisibility[]
+  playerReportFolderVisibility PlayerReportFolderVisibility[]
+  chatRooms ChatRoomParticipant[]
+  sentMessages ChatMessage[]
+  readReceipts ChatMessageReadReceipt[]
+  notifications Notification[]
+
+  @@map("User")
+}
+
+model Player {
+  id                 String             @id @default(cuid())
+  name               String
+  email              String?
+  phone              String?
+  position           String?
+  jerseyNumber       Int?
+  dateOfBirth        DateTime?
+  status             PlayerStatus       @default(ACTIVE)
+  userId             String?            @unique
+  teamId             String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  availabilityStatus String             @default("Fully Available")
+  matchDayTag        String?
+  imageUrl           String?
+  events             EventParticipant[]
+  team               Team?              @relation(fields: [teamId], references: [id])
+  user               User?              @relation(fields: [userId], references: [id])
+  media              PlayerMedia[]
+  notes              PlayerNote[]
+  dailyAnalytics     DailyPlayerAnalytics[]
+  dailyNotes         DailyPlayerNotes[]
+  wellnessCompletions WellnessCompletion[]
+  playerReportAccess PlayerReportPlayerAccess[]
+
+  @@map("Player")
+}
+
+model Staff {
+  id               String             @id @default(cuid())
+  name             String
+  email            String?
+  phone            String?
+  position         String?
+  userId           String?            @unique
+  teamId           String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  imageUrl         String?
+  
+  // Reports permissions
+  canViewReports   Boolean            @default(false)
+  canEditReports   Boolean            @default(false)
+  canDeleteReports Boolean            @default(false)
+  
+  // Events permissions
+  canCreateEvents  Boolean            @default(false)
+  canEditEvents    Boolean            @default(false)
+  canDeleteEvents  Boolean            @default(false)
+  
+  // Players permissions
+  canViewAllPlayers Boolean           @default(false)
+  canEditPlayers   Boolean            @default(false)
+  canDeletePlayers Boolean            @default(false)
+  canAddPlayerMedia Boolean           @default(false)
+  canEditPlayerMedia Boolean          @default(false)
+  canDeletePlayerMedia Boolean        @default(false)
+  canAddPlayerNotes Boolean           @default(false)
+  canEditPlayerNotes Boolean          @default(false)
+  canDeletePlayerNotes Boolean        @default(false)
+  
+  // System permissions
+  canViewCalendar  Boolean            @default(false)
+  canViewDashboard Boolean            @default(false)
+  canManageStaff   Boolean            @default(false)
+  
+  events           EventParticipant[]
+  team             Team?              @relation(fields: [teamId], references: [id])
+  user             User?              @relation(fields: [userId], references: [id])
+  coachNoteAccess  CoachNoteStaffAccess[]
+  reportAccess     ReportStaffAccess[]
+  reportFolderAccess ReportFolderStaffAccess[]
+
+  @@map("Staff")
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  imageUrl    String?
+  players     Player[]
+  staff       Staff[]
+
+  @@map("Team")
+}
+
+model Event {
+  id           String             @id @default(cuid())
+  title        String
+  description  String?
+  date         DateTime
+  startTime    String
+  endTime      String
+  location     String?
+  type         EventType
+  status       EventStatus        @default(SCHEDULED)
+  matchDayTag  String?            // Match Day Tag for football events
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  iconName     String?
+  media        EventMedia[]
+  participants EventParticipant[]
+
+  @@map("Event")
+}
+
+model EventParticipant {
+  id        String   @id @default(cuid())
+  eventId   String
+  playerId  String?
+  staffId   String?
+  createdAt DateTime @default(now())
+  staff     Staff?   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  player    Player?  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("EventParticipant")
+}
+
+model EventMedia {
+  id         String   @id @default(cuid())
+  eventId    String
+  fileName   String
+  fileUrl    String
+  fileType   String
+  fileSize   Int?
+  uploadedAt DateTime @default(now())
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("EventMedia")
+}
+
+model PlayerNote {
+  id                String   @id @default(cuid())
+  playerId          String
+  authorId          String
+  title             String?
+  content           String
+  isVisibleToPlayer Boolean  @default(false)
+  isPinned          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  player            Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  author            User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("PlayerNote")
+}
+
+model PlayerMedia {
+  id           String   @id @default(cuid())
+  playerId     String
+  fileName     String
+  fileUrl      String
+  fileType     String
+  fileSize     Int?
+  thumbnailUrl String?
+  uploadedAt   DateTime @default(now())
+  tags         String?
+  player       Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("PlayerMedia")
+}
+
+model ReportFolder {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  parentId    String?
+  createdBy   String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  isActive    Boolean        @default(true)
+  reports     Report[]
+  parent      ReportFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    ReportFolder[] @relation("FolderHierarchy")
+  visibility  ReportFolderVisibility[]
+  visibleToStaff ReportFolderStaffAccess[]
+
+  @@map("ReportFolder")
+}
+
+model Report {
+  id           String         @id @default(cuid())
+  name         String
+  description  String?
+  fileName     String
+  fileUrl      String
+  fileType     String
+  fileSize     Int
+  thumbnailUrl String?
+  folderId     String?
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  createdBy    String
+  folder       ReportFolder?  @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  accesses     ReportAccess[]
+  visibility   ReportVisibility[]
+  visibleToStaff ReportStaffAccess[]
+
+  @@map("Report")
+}
+
+model ReportAccess {
+  id         String   @id @default(cuid())
+  reportId   String
+  userId     String
+  accessedAt DateTime @default(now())
+  action     String
+  report     Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("ReportAccess")
+}
+
+model ReportVisibility {
+  id        String   @id @default(cuid())
+  reportId  String
+  userId    String
+  canView   Boolean  @default(false)
+  canEdit   Boolean  @default(false)
+  canDelete Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, userId])
+  @@map("ReportVisibility")
+}
+
+model ReportFolderVisibility {
+  id        String       @id @default(cuid())
+  folderId  String
+  userId    String
+  canView   Boolean      @default(false)
+  canEdit   Boolean      @default(false)
+  canDelete Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  folder    ReportFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([folderId, userId])
+  @@map("ReportFolderVisibility")
+}
+
+enum UserRole {
+  ADMIN
+  COACH
+  PLAYER
+  STAFF
+}
+
+enum PlayerStatus {
+  ACTIVE
+  INJURED
+  SUSPENDED
+  RETIRED
+}
+
+enum EventType {
+  TRAINING
+  MATCH
+  MEETING
+  RECOVERY
+  MEAL
+  REST
+  LB_GYM
+  UB_GYM
+  PRE_ACTIVATION
+  REHAB
+  STAFF_MEETING
+  VIDEO_ANALYSIS
+  DAY_OFF
+  TRAVEL
+  OTHER
+}
+
+enum EventStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model LoginLog {
+  id        String   @id @default(cuid())
+  userId    String
+  email     String
+  role      UserRole
+  ipAddress String?
+  userAgent String?
+  success   Boolean  @default(true)
+  failureReason String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("LoginLog")
+}
+
+model FileAccessLog {
+  id        String   @id @default(cuid())
+  userId    String
+  fileType  String   // 'REPORT', 'MEDIA', 'AVATAR', etc.
+  fileId    String?  // ID of the specific file accessed
+  fileName  String?
+  action    String   // 'VIEW', 'DOWNLOAD', 'UPLOAD', 'DELETE'
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("FileAccessLog")
+}
+
+model CoachNote {
+  id                String   @id @default(cuid())
+  title             String
+  content           String
+  isPinned          Boolean  @default(false)
+  authorId          String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  author            User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  visibleToStaff    CoachNoteStaffAccess[]
+
+  @@map("CoachNote")
+}
+
+model CoachNoteStaffAccess {
+  id          String    @id @default(cuid())
+  coachNoteId String
+  staffId     String
+  canView     Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  coachNote   CoachNote @relation(fields: [coachNoteId], references: [id], onDelete: Cascade)
+  staff       Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([coachNoteId, staffId])
+  @@map("CoachNoteStaffAccess")
+}
+
+model ReportStaffAccess {
+  id        String   @id @default(cuid())
+  reportId  String
+  staffId   String
+  canView   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, staffId])
+  @@map("ReportStaffAccess")
+}
+
+model ReportFolderStaffAccess {
+  id           String       @id @default(cuid())
+  folderId     String
+  staffId      String
+  canView      Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  folder       ReportFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  staff        Staff        @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([folderId, staffId])
+  @@map("ReportFolderStaffAccess")
+}
+
+// Chat System Models
+model ChatRoom {
+  id          String      @id @default(cuid())
+  name        String
+  type        String      @default("group") // "group" or "direct"
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   String      // User ID who created the room
+  
+  // Relations
+  messages    ChatMessage[]
+  participants ChatRoomParticipant[]
+  
+  @@map("ChatRoom")
+}
+
+model ChatRoomParticipant {
+  id        String   @id @default(cuid())
+  roomId    String
+  userId    String
+  role      String   @default("member") // "admin", "member"
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  isActive  Boolean  @default(true)
+  
+  // Relations
+  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([roomId, userId])
+  @@map("ChatRoomParticipant")
+}
+
+model ChatMessage {
+  id          String      @id @default(cuid())
+  roomId      String
+  senderId    String
+  content     String
+  messageType String      @default("text") // "text", "file", "image", "system"
+  fileUrl     String?
+  fileName    String?
+  fileType    String?
+  fileSize    Int?
+  replyToId   String?     // For reply messages
+  editedAt    DateTime?
+  deletedAt   DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relations
+  room        ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender      User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  readReceipts ChatMessageReadReceipt[]
+  replies     ChatMessage[] @relation("MessageReplies")
+  replyTo     ChatMessage?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  
+  @@map("ChatMessage")
+}
+
+model ChatMessageReadReceipt {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+  
+  // Relations
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([messageId, userId])
+  @@map("ChatMessageReadReceipt")
+}
+
+// Notification System Models
+model Notification {
+  id          String            @id @default(cuid())
+  title       String
+  message     String
+  type        NotificationType  @default(INFO)
+  priority    NotificationPriority @default(MEDIUM)
+  category    NotificationCategory @default(GENERAL)
+  isRead      Boolean           @default(false)
+  userId      String
+  relatedId   String?           // ID of related entity (event, player, etc.)
+  relatedType String?           // Type of related entity (event, player, chat, etc.)
+  createdAt   DateTime          @default(now())
+  readAt      DateTime?
+  
+  // Relations
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("Notification")
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationCategory {
+  SYSTEM
+  PLAYER
+  EVENT
+  WELLNESS
+  CHAT
+  REPORT
+  GENERAL
+}
+
+// Daily Analytics Models for Power BI
+model DailyEventAnalytics {
+  id          String   @id @default(cuid())
+  date        DateTime // Date in YYYY-MM-DD format
+  eventType   String   // TRAINING, MATCH, MEAL, etc.
+  count       Int      // Number of events of this type on this date
+  totalDuration Int    // Total duration in minutes
+  avgDuration   Int    // Average duration in minutes
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([date, eventType])
+  @@map("DailyEventAnalytics")
+}
+
+model DailyPlayerAnalytics {
+  id          String   @id @default(cuid())
+  date        DateTime // Date in YYYY-MM-DD format
+  playerId    String
+  playerName  String
+  activity    String   // LOGIN, MEDIA_VIEW, NOTE_CREATED, etc.
+  count       Int      // Number of activities on this date
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([date, playerId, activity])
+  @@map("DailyPlayerAnalytics")
+}
+
+model DailyPlayerNotes {
+  id          String   @id @default(cuid())
+  date        DateTime // Date in YYYY-MM-DD format
+  playerId    String
+  playerName  String
+  status      String   // Availability status (FULLY_AVAILABLE, NOT_AVAILABLE_INJURY, etc.)
+  reason      String?  // Reason why player is not available
+  notes       String?  // Additional notes about player's condition
+  createdBy   String   // Admin/Coach who created the note
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([date, playerId])
+  @@map("DailyPlayerNotes")
+}
+
+model WellnessCompletion {
+  id        String   @id @default(cuid())
+  playerId  String
+  date      String   // Format: YYYY-MM-DD
+  completed Boolean  @default(false)
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([date, playerId])
+  @@map("WellnessCompletion")
+}
+
+// Player Reports System
+model PlayerReportFolder {
+  id          String              @id @default(cuid())
+  name        String
+  description String?
+  parentId    String?
+  createdBy   String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  isActive    Boolean             @default(true)
+  reports     PlayerReport[]
+  parent      PlayerReportFolder? @relation("PlayerFolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    PlayerReportFolder[] @relation("PlayerFolderHierarchy")
+  visibility  PlayerReportFolderVisibility[]
+  visibleToPlayers PlayerReportPlayerAccess[]
+
+  @@map("PlayerReportFolder")
+}
+
+model PlayerReport {
+  id           String              @id @default(cuid())
+  name         String
+  description  String?
+  fileName     String
+  fileUrl      String
+  fileType     String
+  fileSize     Int
+  thumbnailUrl String?
+  folderId     String?
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  createdBy    String
+  folder       PlayerReportFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  accesses     PlayerReportAccess[]
+  visibility   PlayerReportVisibility[]
+  visibleToPlayers PlayerReportPlayerAccess[]
+
+  @@map("PlayerReport")
+}
+
+model PlayerReportAccess {
+  id         String       @id @default(cuid())
+  reportId   String
+  userId     String
+  accessedAt DateTime     @default(now())
+  action     String
+  report     PlayerReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("PlayerReportAccess")
+}
+
+model PlayerReportVisibility {
+  id        String       @id @default(cuid())
+  reportId  String
+  userId    String
+  canView   Boolean      @default(false)
+  canEdit   Boolean      @default(false)
+  canDelete Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  report    PlayerReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, userId])
+  @@map("PlayerReportVisibility")
+}
+
+model PlayerReportFolderVisibility {
+  id        String              @id @default(cuid())
+  folderId  String
+  userId    String
+  canView   Boolean             @default(false)
+  canEdit   Boolean             @default(false)
+  canDelete Boolean             @default(false)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  folder    PlayerReportFolder  @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([folderId, userId])
+  @@map("PlayerReportFolderVisibility")
+}
+
+model PlayerReportPlayerAccess {
+  id           String              @id @default(cuid())
+  reportId     String?
+  folderId     String?
+  playerId     String
+  canView      Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  report       PlayerReport?       @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  folder       PlayerReportFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  player       Player              @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, playerId])
+  @@unique([folderId, playerId])
+  @@map("PlayerReportPlayerAccess")
+}
+

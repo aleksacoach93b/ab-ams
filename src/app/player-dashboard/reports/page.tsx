@@ -1,0 +1,1045 @@
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { 
+  FolderPlus, 
+  Upload, 
+  FolderOpen, 
+  File, 
+  Eye, 
+  Edit, 
+  Trash2, 
+  ArrowLeft,
+  MoreVertical,
+  Download,
+  Share2,
+  Settings,
+  EyeIcon,
+  Check,
+  Pencil,
+  Users,
+} from 'lucide-react'
+import { useTheme } from '@/contexts/ThemeContext'
+import { useAuth } from '@/contexts/AuthContext'
+import PDFThumbnail from '@/components/PDFThumbnail'
+
+interface ReportFolder {
+  id: string
+  name: string
+  description?: string
+  parentId?: string
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  parent?: ReportFolder
+  children: ReportFolder[]
+  reports: Report[]
+  visibleToPlayers: {
+    id: string
+    canView: boolean
+    player: {
+      id: string
+      name: string
+      email: string
+    }
+  }[]
+  _count: {
+    reports: number
+    children: number
+  }
+}
+
+interface Report {
+  id: string
+  name: string
+  description?: string
+  folderId: string
+  fileName: string
+  fileType: string
+  fileSize: number
+  fileUrl: string
+  thumbnailUrl?: string
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  folder: ReportFolder
+}
+
+interface Player {
+  id: string
+  name: string
+  email: string
+  user: {
+    id: string
+    name: string
+    email: string
+    role: string
+  }
+}
+
+export default function PlayerReportsPage() {
+  const { colorScheme } = useTheme()
+  const { user } = useAuth()
+  const [folders, setFolders] = useState<ReportFolder[]>([])
+  const [reports, setReports] = useState<Report[]>([])
+  const [players, setPlayers] = useState<Player[]>([])
+  const [loading, setLoading] = useState(true)
+  const [currentPath, setCurrentPath] = useState<ReportFolder[]>([])
+  const [selectedFolder, setSelectedFolder] = useState<ReportFolder | null>(null)
+  const [showCreateFolder, setShowCreateFolder] = useState(false)
+  const [showUploadReport, setShowUploadReport] = useState(false)
+  const [showVisibilityModal, setShowVisibilityModal] = useState(false)
+  const [showRenameModal, setShowRenameModal] = useState(false)
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<Report | ReportFolder | null>(null)
+  const [previewFile, setPreviewFile] = useState<Report | null>(null)
+
+  useEffect(() => {
+    fetchData()
+    // Initially fetch root level reports (no folder assigned)
+    fetchReports()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      const [foldersResponse, playersResponse] = await Promise.all([
+        fetch('/api/player-reports/folders', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }),
+        fetch('/api/players', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+      ])
+
+      if (foldersResponse.ok) {
+        const foldersData = await foldersResponse.json()
+        setFolders(foldersData)
+      }
+
+      if (playersResponse.ok) {
+        const playersData = await playersResponse.json()
+        setPlayers(Array.isArray(playersData) ? playersData : [])
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchReports = async (folderId?: string) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      const url = folderId 
+        ? `/api/player-reports?folderId=${folderId}`
+        : '/api/player-reports'
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setReports(data.reports || [])
+      }
+    } catch (error) {
+      console.error('Error fetching reports:', error)
+    }
+  }
+
+  const navigateToFolder = (folder: ReportFolder) => {
+    setCurrentPath(prev => [...prev, folder])
+    setSelectedFolder(folder)
+    fetchReports(folder.id)
+  }
+
+  const navigateUp = () => {
+    if (currentPath.length > 0) {
+      const newPath = currentPath.slice(0, -1)
+      setCurrentPath(newPath)
+      
+      if (newPath.length === 0) {
+        setSelectedFolder(null)
+        fetchReports()
+      } else {
+        const parentFolder = newPath[newPath.length - 1]
+        setSelectedFolder(parentFolder)
+        fetchReports(parentFolder.id)
+      }
+    }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const getFileIcon = (fileType: string) => {
+    if (fileType.includes('pdf')) return '📄'
+    if (fileType.includes('image')) return '🖼️'
+    if (fileType.includes('video')) return '🎥'
+    if (fileType.includes('audio')) return '🎵'
+    if (fileType.includes('word') || fileType.includes('document')) return '📝'
+    if (fileType.includes('excel') || fileType.includes('spreadsheet')) return '📊'
+    return '📁'
+  }
+
+  const handleFileAction = (action: 'view' | 'download', report: Report) => {
+    if (action === 'view') {
+      setPreviewFile(report)
+      setShowPreviewModal(true)
+    } else if (action === 'download') {
+      const link = document.createElement('a')
+      link.href = report.fileUrl
+      link.download = report.fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+  }
+
+  const handleDeleteReport = async (reportId: string) => {
+    if (!confirm('Are you sure you want to delete this report?')) return
+
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      const response = await fetch(`/api/player-reports/${reportId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        await fetchReports(selectedFolder?.id)
+        await fetchData()
+      } else {
+        console.error('Failed to delete report')
+      }
+    } catch (error) {
+      console.error('Error deleting report:', error)
+    }
+  }
+
+  const handleDeleteFolder = async (folderId: string) => {
+    if (!confirm('Are you sure you want to delete this folder? All reports inside will also be deleted.')) return
+
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      const response = await fetch(`/api/player-reports/folders/${folderId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        await fetchData()
+        await fetchReports(selectedFolder?.id)
+      } else {
+        console.error('Failed to delete folder')
+      }
+    } catch (error) {
+      console.error('Error deleting folder:', error)
+    }
+  }
+
+  const handleRenameFolder = async (folderId: string, newName: string) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      const response = await fetch(`/api/player-reports/folders/${folderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newName })
+      })
+
+      if (response.ok) {
+        await fetchData()
+        setShowRenameModal(false)
+        setSelectedItem(null)
+      } else {
+        console.error('Failed to rename folder')
+      }
+    } catch (error) {
+      console.error('Error renaming folder:', error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: colorScheme.background }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: colorScheme.primary }}></div>
+          <p style={{ color: colorScheme.text }}>Loading reports...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: colorScheme.background }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => window.history.back()}
+                className="p-2 rounded-lg hover:bg-opacity-10 transition-colors"
+                style={{ backgroundColor: colorScheme.surface }}
+              >
+                <ArrowLeft className="h-5 w-5" style={{ color: colorScheme.text }} />
+              </button>
+              <div>
+                <h1 className="text-3xl font-bold" style={{ color: colorScheme.text }}>
+                  Player Reports Management
+                </h1>
+                <p className="text-sm mt-1" style={{ color: colorScheme.textSecondary }}>
+                  Manage reports and folders for players
+                </p>
+              </div>
+            </div>
+            {/* Only show action buttons for admins and coaches */}
+            {user && (user.role === 'ADMIN' || user.role === 'COACH') && (
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setShowCreateFolder(true)}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: colorScheme.primary, color: 'white' }}
+                >
+                  <FolderPlus className="h-4 w-4" />
+                  <span>New Folder</span>
+                </button>
+                <button
+                  onClick={() => setShowUploadReport(true)}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: colorScheme.primary, color: 'white' }}
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>Upload Report</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Breadcrumb */}
+        {currentPath.length > 0 && (
+          <div className="mb-6">
+            <nav className="flex items-center space-x-2 text-sm">
+              <button
+                onClick={() => {
+                  setCurrentPath([])
+                  setSelectedFolder(null)
+                  fetchReports()
+                }}
+                className="hover:underline"
+                style={{ color: colorScheme.primary }}
+              >
+                Player Reports
+              </button>
+              {currentPath.map((folder, index) => (
+                <div key={folder.id} className="flex items-center space-x-2">
+                  <ArrowLeft className="h-4 w-4 rotate-180" style={{ color: colorScheme.textSecondary }} />
+                  <button
+                    onClick={() => {
+                      const newPath = currentPath.slice(0, index + 1)
+                      setCurrentPath(newPath)
+                      setSelectedFolder(folder)
+                      fetchReports(folder.id)
+                    }}
+                    className="hover:underline"
+                    style={{ color: colorScheme.primary }}
+                  >
+                    {folder.name}
+                  </button>
+                </div>
+              ))}
+            </nav>
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Folders */}
+          <div className="lg:col-span-1">
+            <div className="rounded-lg border p-6" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
+              <h2 className="text-lg font-semibold mb-4" style={{ color: colorScheme.text }}>
+                Folders
+              </h2>
+              <div className="space-y-2">
+                {folders.length === 0 ? (
+                  <p className="text-sm text-center py-8" style={{ color: colorScheme.textSecondary }}>
+                    No folders available
+                  </p>
+                ) : (
+                  folders.map((folder) => (
+                    <div
+                      key={folder.id}
+                      className="flex items-center justify-between p-3 rounded-lg hover:bg-opacity-10 transition-colors group"
+                      style={{ backgroundColor: colorScheme.surface }}
+                    >
+                      <button
+                        onClick={() => navigateToFolder(folder)}
+                        className="flex items-center space-x-3 flex-1 text-left"
+                      >
+                        <FolderOpen className="h-5 w-5" style={{ color: '#7C3AED' }} />
+                        <div>
+                          <p className="font-medium" style={{ color: colorScheme.text }}>
+                            {folder.name}
+                          </p>
+                          <p className="text-xs" style={{ color: colorScheme.textSecondary }}>
+                            {(folder.reports?.length || folder._count?.reports || 0)} reports
+                          </p>
+                        </div>
+                      </button>
+                      {/* Only show admin controls for admins and coaches */}
+                      {user && (user.role === 'ADMIN' || user.role === 'COACH') && (
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              setSelectedItem(folder)
+                              setShowVisibilityModal(true)
+                            }}
+                            className="p-2 rounded hover:bg-opacity-10 transition-colors"
+                            style={{ backgroundColor: colorScheme.surface }}
+                            title="Manage Visibility"
+                          >
+                            <Pencil className="h-4 w-4" style={{ color: colorScheme.text }} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedItem(folder)
+                              setShowRenameModal(true)
+                            }}
+                            className="p-2 rounded hover:bg-opacity-10 transition-colors"
+                            style={{ backgroundColor: colorScheme.surface }}
+                            title="Rename"
+                          >
+                            <Edit className="h-4 w-4" style={{ color: colorScheme.text }} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteFolder(folder.id)}
+                            className="p-2 rounded hover:bg-opacity-10 transition-colors"
+                            style={{ backgroundColor: colorScheme.surface }}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" style={{ color: '#EF4444' }} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Reports */}
+          <div className="lg:col-span-2">
+            <div className="rounded-lg border p-6" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold" style={{ color: colorScheme.text }}>
+                  {selectedFolder ? selectedFolder.name : 'All Reports'}
+                </h2>
+                {currentPath.length > 0 && (
+                  <button
+                    onClick={navigateUp}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-opacity-10 transition-colors"
+                    style={{ backgroundColor: colorScheme.surface }}
+                  >
+                    <ArrowLeft className="h-4 w-4" style={{ color: colorScheme.text }} />
+                    <span className="text-sm" style={{ color: colorScheme.text }}>Back</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {reports.length === 0 ? (
+                  <div className="text-center py-12">
+                    <File className="h-12 w-12 mx-auto mb-4" style={{ color: colorScheme.textSecondary }} />
+                    <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
+                      No reports in this folder
+                    </p>
+                  </div>
+                ) : (
+                  reports.map((report) => (
+                    <div
+                      key={report.id}
+                      className="flex items-center justify-between p-4 rounded-lg border hover:shadow-md transition-shadow group"
+                      style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="text-2xl">
+                          {getFileIcon(report.fileType)}
+                        </div>
+                        <div>
+                          <p className="font-medium" style={{ color: colorScheme.text }}>
+                            {report.fileName}
+                          </p>
+                          <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
+                            {formatFileSize(report.fileSize)} • {new Date(report.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleFileAction('view', report)}
+                          className="p-3 rounded-lg hover:bg-opacity-10 transition-colors"
+                          style={{ backgroundColor: colorScheme.surface }}
+                          title="View"
+                        >
+                          <Eye className="h-5 w-5" style={{ color: colorScheme.text }} />
+                        </button>
+                        <button
+                          onClick={() => handleFileAction('download', report)}
+                          className="p-3 rounded-lg hover:bg-opacity-10 transition-colors"
+                          style={{ backgroundColor: colorScheme.surface }}
+                          title="Download"
+                        >
+                          <Download className="h-5 w-5" style={{ color: colorScheme.text }} />
+                        </button>
+                        {/* Only show delete button for admins and coaches */}
+                        {user && (user.role === 'ADMIN' || user.role === 'COACH') && (
+                          <button
+                            onClick={() => handleDeleteReport(report.id)}
+                            className="p-2 rounded-lg hover:bg-opacity-10 transition-colors"
+                            style={{ backgroundColor: colorScheme.surface }}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" style={{ color: '#EF4444' }} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Create Folder Modal - Only for admins and coaches */}
+        {showCreateFolder && user && (user.role === 'ADMIN' || user.role === 'COACH') && (
+          <CreateFolderForm
+            onClose={() => setShowCreateFolder(false)}
+            onSuccess={async () => {
+              await fetchData()
+              setShowCreateFolder(false)
+            }}
+            colorScheme={colorScheme}
+          />
+        )}
+
+        {/* Upload Report Modal - Only for admins and coaches */}
+        {showUploadReport && user && (user.role === 'ADMIN' || user.role === 'COACH') && (
+          <UploadReportForm
+            folders={folders}
+            onClose={() => setShowUploadReport(false)}
+            onSuccess={async () => {
+              await fetchReports(selectedFolder?.id)
+              await fetchData()
+              setShowUploadReport(false)
+            }}
+            colorScheme={colorScheme}
+          />
+        )}
+
+        {/* Visibility Modal - Only for admins and coaches */}
+        {showVisibilityModal && selectedItem && user && (user.role === 'ADMIN' || user.role === 'COACH') && (
+          <VisibilityManager
+            item={selectedItem}
+            players={players}
+            onCancel={() => {
+              setShowVisibilityModal(false)
+              setSelectedItem(null)
+            }}
+            onSuccess={async () => {
+              await fetchData()
+              await fetchReports()
+            }}
+            colorScheme={colorScheme}
+          />
+        )}
+
+        {/* Rename Modal - Only for admins and coaches */}
+        {showRenameModal && selectedItem && user && (user.role === 'ADMIN' || user.role === 'COACH') && (
+          <RenameFolderForm
+            folder={selectedItem as ReportFolder}
+            onClose={() => {
+              setShowRenameModal(false)
+              setSelectedItem(null)
+            }}
+            onSuccess={handleRenameFolder}
+            colorScheme={colorScheme}
+          />
+        )}
+
+        {/* Preview Modal */}
+        {showPreviewModal && previewFile && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-lg font-semibold">{previewFile.fileName}</h3>
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  className="flex items-center space-x-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="text-sm">Back</span>
+                </button>
+              </div>
+              <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+                {previewFile.fileType.includes('pdf') ? (
+                  <PDFThumbnail
+                    fileUrl={previewFile.fileUrl}
+                    fileName={previewFile.fileName}
+                    width={800}
+                    height={600}
+                  />
+                ) : previewFile.fileType.includes('image') ? (
+                  <img
+                    src={previewFile.fileUrl}
+                    alt={previewFile.fileName}
+                    className="max-w-full h-auto"
+                  />
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 mb-4">Preview not available for this file type</p>
+                    <a
+                      href={previewFile.fileUrl}
+                      download={previewFile.fileName}
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download File
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Create Folder Form Component
+function CreateFolderForm({ onClose, onSuccess, colorScheme }: any) {
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) return
+
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      const response = await fetch('/api/player-reports/folders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || null
+        })
+      })
+
+      if (response.ok) {
+        onSuccess()
+      } else {
+        console.error('Failed to create folder')
+      }
+    } catch (error) {
+      console.error('Error creating folder:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full p-6">
+        <h3 className="text-lg font-semibold mb-4">Create New Folder</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Folder Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter folder name"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Description (Optional)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter folder description"
+              rows={3}
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !name.trim()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Creating...' : 'Create Folder'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// Upload Report Form Component
+function UploadReportForm({ folders, onClose, onSuccess, colorScheme }: any) {
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [selectedFolderId, setSelectedFolderId] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim() || !file) return
+
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      const formData = new FormData()
+      formData.append('name', name.trim())
+      formData.append('description', description.trim() || '')
+      formData.append('file', file)
+      formData.append('folderId', selectedFolderId || 'null')
+
+      const response = await fetch('/api/player-reports', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (response.ok) {
+        onSuccess()
+      } else {
+        console.error('Failed to upload report')
+      }
+    } catch (error) {
+      console.error('Error uploading report:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full p-6">
+        <h3 className="text-lg font-semibold mb-4">Upload Report</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Report Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter report name"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Description (Optional)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter report description"
+              rows={3}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Folder</label>
+            <select
+              value={selectedFolderId}
+              onChange={(e) => setSelectedFolderId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">No folder (root level)</option>
+              {folders.map((folder: any) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">File</label>
+            <input
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !name.trim() || !file}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Uploading...' : 'Upload Report'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// Visibility Manager Component
+function VisibilityManager({ item, players, onCancel, onSuccess, colorScheme }: any) {
+  const [selectedPlayers, setSelectedPlayers] = useState<{[key: string]: boolean}>({})
+
+  useEffect(() => {
+    // Initialize with all players unchecked
+    const initialSelection: {[key: string]: boolean} = {}
+    players.forEach((player: any) => {
+      initialSelection[player.id] = false
+    })
+    setSelectedPlayers(initialSelection)
+  }, [players])
+
+  const handleSubmit = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      // Create player access array from selected players
+      const playerAccess = Object.entries(selectedPlayers)
+        .filter(([playerId, canView]) => canView) // Only include selected players
+        .map(([playerId, canView]) => ({
+          playerId,
+          canView
+        }))
+
+      console.log('=== FRONTEND DEBUG ===')
+      console.log('Selected players:', selectedPlayers)
+      console.log('Player access data being sent:', playerAccess)
+      console.log('Players array:', players)
+
+      const endpoint = `/api/player-reports/folders/${item.id}`
+      
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          playerAccess
+        })
+      })
+
+      if (response.ok) {
+        console.log('✅ Successfully updated player access')
+        onSuccess()
+      } else {
+        const errorData = await response.text()
+        console.error('❌ Failed to update player access:', errorData)
+      }
+    } catch (error) {
+      console.error('❌ Error updating player access:', error)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full p-6">
+        <h3 className="text-lg font-semibold mb-4">Player Access Control</h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {players.map((player: any) => (
+              <div key={player.id} className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id={`player-${player.id}`}
+                  checked={selectedPlayers[player.id] || false}
+                  onChange={(e) => {
+                    setSelectedPlayers(prev => ({
+                      ...prev,
+                      [player.id]: e.target.checked
+                    }))
+                  }}
+                  className="w-4 h-4 rounded border-gray-300"
+                />
+                <label 
+                  htmlFor={`player-${player.id}`}
+                  className="text-sm font-medium"
+                >
+                  {player.name}
+                </label>
+              </div>
+            ))}
+          </div>
+          {players.length === 0 && (
+            <p className="text-sm text-gray-500 text-center py-4">
+              No players found
+            </p>
+          )}
+        </div>
+        <div className="flex justify-end space-x-3 mt-6">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Save Access
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Rename Folder Form Component
+function RenameFolderForm({ folder, onClose, onSuccess, colorScheme }: any) {
+  const [name, setName] = useState(folder.name)
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim() || name.trim() === folder.name) {
+      onClose()
+      return
+    }
+
+    setLoading(true)
+    try {
+      await onSuccess(folder.id, name.trim())
+    } catch (error) {
+      console.error('Error renaming folder:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full p-6">
+        <h3 className="text-lg font-semibold mb-4">Rename Folder</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Folder Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter folder name"
+              required
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !name.trim() || name.trim() === folder.name}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Renaming...' : 'Rename Folder'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
