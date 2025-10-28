@@ -1123,7 +1123,9 @@ export default function Dashboard() {
                     ringColor: `${colorScheme.primary}60`,
                     boxShadow: selectedPlayers.includes(player.id) 
                       ? `0 8px 20px -4px ${colorScheme.primary}30, 0 0 0 1px ${colorScheme.primary}20, 0 0 15px ${colorScheme.primary}25, 0 0 25px ${colorScheme.primary}15`
-                      : `0 0 0 0.1px ${currentStatusOption.color}, 0 0 8px ${currentStatusOption.color}30, 0 0 15px ${currentStatusOption.color}20`
+                      : theme === 'dark'
+                        ? `0 0 0 0.1px ${currentStatusOption.color}, 0 0 8px ${currentStatusOption.color}30, 0 0 15px ${currentStatusOption.color}20`
+                        : `0 4px 12px -2px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px #E2E8F0`
                   }}
                 >
                   {/* Animated Background Gradient */}
