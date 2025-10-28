@@ -4,20 +4,29 @@ declare global {
   var prisma: PrismaClient | undefined
 }
 
-export const prisma = globalThis.prisma ?? new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL
+// Create Prisma client with connection pooling
+const createPrismaClient = () => {
+  const databaseUrl = process.env.DATABASE_URL
+  
+  // Add connection pooling parameters for Supabase
+  const urlWithPooling = databaseUrl?.includes('?') 
+    ? `${databaseUrl}&pgbouncer=true&connection_limit=1`
+    : `${databaseUrl}?pgbouncer=true&connection_limit=1`
+  
+  console.log('🔗 Database URL configured:', urlWithPooling ? '✅ Set' : '❌ Missing')
+  
+  return new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    datasources: {
+      db: {
+        url: urlWithPooling
+      }
     }
-  },
-  // Add connection pooling and retry configuration
-  __internal: {
-    engine: {
-      connectTimeout: 60000,
-      queryTimeout: 60000,
-    }
-  }
-})
+  })
+}
 
-if (process.env.NODE_ENV !== 'production') globalThis.prisma = prisma
+export const prisma = globalThis.prisma ?? createPrismaClient()
+
+if (process.env.NODE_ENV !== 'production') {
+  globalThis.prisma = prisma
+}
