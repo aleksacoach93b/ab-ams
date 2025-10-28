@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
       }
     } else {
       // If no user filter, show all events (for admin/coach views)
-      events = await prisma.event.findMany({
+      events = await prisma.events.findMany({
         include: {
           participants: {
             include: {

@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     // If no data for today, get live events data
     let liveTodayData: any[] = []
     if (todayAnalytics.length === 0 && today >= start && today <= end) {
-      const todayEvents = await prisma.event.findMany({
+      const todayEvents = await prisma.events.findMany({
         where: {
           date: {
             gte: today,

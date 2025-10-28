@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       const dateStart = new Date(missingDate + 'T00:00:00')
       const dateEnd = new Date(missingDate + 'T23:59:59')
       
-      const dayEvents = await prisma.event.findMany({
+      const dayEvents = await prisma.events.findMany({
         where: {
           date: {
             gte: dateStart,
