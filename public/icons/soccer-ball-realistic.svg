@@ -1,0 +1,39 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main ball with shadow -->
+  <circle cx="12" cy="12" r="9.5" fill="white" stroke="#000000" stroke-width="1"/>
+  
+  <!-- Central black pentagon -->
+  <path d="M12 6.8 L14.2 8.8 L13.4 11.5 L10.6 11.5 L9.8 8.8 Z" fill="#000000"/>
+  
+  <!-- Hexagons around central pentagon -->
+  <path d="M9.8 8.8 L12 6.8 L14.2 8.8 L14.2 15.2 L12 17.2 L9.8 15.2 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <path d="M14.2 8.8 L16.4 10.8 L15.6 13.5 L13.4 11.5 L14.2 8.8 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <path d="M13.4 11.5 L15.6 13.5 L13.4 16.2 L11.2 14.2 L12 11.5 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <path d="M10.6 11.5 L9.8 8.8 L7.6 10.8 L8.4 13.5 L11.2 11.5 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <path d="M9.8 15.2 L8.4 13.5 L10.6 16.2 L12 14.2 L9.8 15.2 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <!-- Additional black pentagons -->
+  <path d="M12 17.2 L9.8 15.2 L10.6 12.5 L13.4 12.5 L14.2 15.2 Z" fill="#000000"/>
+  
+  <path d="M7.6 10.8 L9.8 8.8 L12 11.5 L11.2 14.2 L8.4 12.2 Z" fill="#000000"/>
+  
+  <path d="M16.4 10.8 L14.2 8.8 L12 11.5 L12.8 14.2 L15.6 12.2 Z" fill="#000000"/>
+  
+  <!-- Edge pentagons -->
+  <path d="M7.6 10.8 L8.4 12.2 L6.8 13.8 L5.4 12.4 L7.6 10.8 Z" fill="#000000"/>
+  <path d="M16.4 10.8 L15.6 12.2 L17.2 13.8 L18.6 12.4 L16.4 10.8 Z" fill="#000000"/>
+  
+  <!-- Partial hexagons at edges -->
+  <path d="M6.8 13.8 L8.4 12.2 L10.6 15.2 L9 16.8 L6.8 13.8 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  <path d="M17.2 13.8 L15.6 12.2 L13.4 15.2 L15 16.8 L17.2 13.8 Z" fill="white" stroke="#000000" stroke-width="0.6"/>
+  
+  <!-- Highlight for 3D effect -->
+  <ellipse cx="10.5" cy="9.5" rx="2" ry="1.5" fill="rgba(255,255,255,0.6)"/>
+  
+  <!-- Subtle shadow -->
+  <ellipse cx="13.5" cy="15.5" rx="2.5" ry="1" fill="rgba(0,0,0,0.1)"/>
+</svg>

@@ -1,0 +1,36 @@
+{
+  "name": "AB Athlete Management System",
+  "short_name": "AB AMS",
+  "description": "Modern athlete and sports team management platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#dc2626",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/football-ball-realistic.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["sports", "productivity", "business"],
+  "lang": "en",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View main dashboard",
+      "url": "/dashboard"
+    },
+    {
+      "name": "Calendar",
+      "short_name": "Calendar",
+      "description": "View calendar",
+      "url": "/dashboard/calendar"
+    }
+  ]
+}

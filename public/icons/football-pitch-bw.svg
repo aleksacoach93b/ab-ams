@@ -1,0 +1,45 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Field background -->
+  <rect x="2" y="3" width="20" height="18" rx="1" fill="white" stroke="#000000" stroke-width="1.2"/>
+  
+  <!-- Center circle -->
+  <circle cx="12" cy="12" r="3.5" fill="none" stroke="#000000" stroke-width="1"/>
+  <circle cx="12" cy="12" r="0.4" fill="#000000"/>
+  
+  <!-- Center line -->
+  <line x1="12" y1="3" x2="12" y2="21" stroke="#000000" stroke-width="1"/>
+  
+  <!-- Goal areas -->
+  <rect x="2" y="9" width="3" height="6" fill="none" stroke="#000000" stroke-width="1"/>
+  <rect x="19" y="9" width="3" height="6" fill="none" stroke="#000000" stroke-width="1"/>
+  
+  <!-- Goal posts -->
+  <line x1="2" y1="9.5" x2="2" y2="14.5" stroke="#000000" stroke-width="1.5"/>
+  <line x1="5" y1="9.5" x2="5" y2="14.5" stroke="#000000" stroke-width="1.5"/>
+  <line x1="19" y1="9.5" x2="19" y2="14.5" stroke="#000000" stroke-width="1.5"/>
+  <line x1="22" y1="9.5" x2="22" y2="14.5" stroke="#000000" stroke-width="1.5"/>
+  
+  <!-- Crossbar -->
+  <line x1="2" y1="9.5" x2="5" y2="9.5" stroke="#000000" stroke-width="1.5"/>
+  <line x1="19" y1="9.5" x2="22" y2="9.5" stroke="#000000" stroke-width="1.5"/>
+  
+  <!-- Penalty areas -->
+  <rect x="2" y="7" width="6" height="10" fill="none" stroke="#000000" stroke-width="1"/>
+  <rect x="16" y="7" width="6" height="10" fill="none" stroke="#000000" stroke-width="1"/>
+  
+  <!-- Penalty spots -->
+  <circle cx="8.5" cy="12" r="0.3" fill="#000000"/>
+  <circle cx="15.5" cy="12" r="0.3" fill="#000000"/>
+  
+  <!-- Corner arcs -->
+  <path d="M 2 3 Q 3 3 3 4" fill="none" stroke="#000000" stroke-width="1"/>
+  <path d="M 22 3 Q 21 3 21 4" fill="none" stroke="#000000" stroke-width="1"/>
+  <path d="M 2 21 Q 3 21 3 20" fill="none" stroke="#000000" stroke-width="1"/>
+  <path d="M 22 21 Q 21 21 21 20" fill="none" stroke="#000000" stroke-width="1"/>
+  
+  <!-- Touch lines -->
+  <line x1="2" y1="3" x2="2" y2="21" stroke="#000000" stroke-width="1"/>
+  <line x1="22" y1="3" x2="22" y2="21" stroke="#000000" stroke-width="1"/>
+  <line x1="2" y1="3" x2="22" y2="3" stroke="#000000" stroke-width="1"/>
+  <line x1="2" y1="21" x2="22" y2="21" stroke="#000000" stroke-width="1"/>
+</svg>
