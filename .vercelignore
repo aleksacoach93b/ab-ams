@@ -1,0 +1,4 @@
+# Force rebuild - ignore cache
+.next/
+node_modules/.prisma/
+
