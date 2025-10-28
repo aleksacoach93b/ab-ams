@@ -63,9 +63,20 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Player creation request received')
     
-    // Ensure database connection
-    await prisma.$connect()
-    console.log('✅ Database connected')
+    // Ensure database connection with retry
+    let retries = 3
+    while (retries > 0) {
+      try {
+        await prisma.$connect()
+        console.log('✅ Database connected')
+        break
+      } catch (error) {
+        retries--
+        console.log(`❌ Database connection failed, retries left: ${retries}`)
+        if (retries === 0) throw error
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    }
     
     const body = await request.json()
     console.log('📝 Request body:', body)
