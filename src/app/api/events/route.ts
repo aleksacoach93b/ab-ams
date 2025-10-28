@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Find events where the player is a participant
-        events = await prisma.event.findMany({
+        events = await prisma.events.findMany({
           where: {
             participants: {
               some: {
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
         })
       } else if (userRole === 'STAFF') {
         // Find events where the staff is a participant
-        events = await prisma.event.findMany({
+        events = await prisma.events.findMany({
           where: {
             participants: {
               some: {
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
         })
       } else {
         // For coaches and admins, show all events
-        events = await prisma.event.findMany({
+        events = await prisma.events.findMany({
           include: {
             participants: {
               include: {
@@ -213,7 +213,7 @@ export async function PUT(request: NextRequest) {
       ? upperTypePut as EventType 
       : EventType.TRAINING
     
-    const event = await prisma.event.update({
+    const event = await prisma.events.update({
       where: { id },
       data: {
         title,
@@ -367,7 +367,7 @@ export async function POST(request: NextRequest) {
       matchDayTag: matchDayTag || null, // Match Day Tag
     }
 
-    const event = await prisma.event.create({
+    const event = await prisma.events.create({
       data: eventData
     })
 
@@ -399,7 +399,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch the complete event with participants
-    const completeEvent = await prisma.event.findUnique({
+    const completeEvent = await prisma.events.findUnique({
       where: { id: event.id },
       include: {
         participants: {

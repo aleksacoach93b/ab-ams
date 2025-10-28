@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     console.log('📅 Creating simple event...')
     
     // Create event without participants first
-    const event = await prisma.event.create({
+    const event = await prisma.events.create({
       data: {
         title,
         description,

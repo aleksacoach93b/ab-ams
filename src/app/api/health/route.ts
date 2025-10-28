@@ -13,7 +13,7 @@ export async function GET() {
     const userCount = await prisma.user.count()
     console.log(`📊 Users count: ${userCount}`)
     
-    const eventCount = await prisma.event.count()
+    const eventCount = await prisma.events.count()
     console.log(`📅 Events count: ${eventCount}`)
     
     return NextResponse.json({

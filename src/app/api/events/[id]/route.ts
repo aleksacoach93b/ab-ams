@@ -31,7 +31,7 @@ export async function DELETE(
     const { id: eventId } = await params
 
     // Find the event first
-    const event = await prisma.event.findUnique({
+    const event = await prisma.events.findUnique({
       where: { id: eventId }
     })
 
@@ -43,7 +43,7 @@ export async function DELETE(
     }
 
     // Delete the event
-    await prisma.event.delete({
+    await prisma.events.delete({
       where: { id: eventId }
     })
 
@@ -129,7 +129,7 @@ export async function PUT(
         : 'TRAINING'
 
       // Update the event
-      const event = await tx.event.update({
+      const event = await tx.events.update({
         where: { id: eventId },
         data: {
           title,
@@ -174,7 +174,7 @@ export async function PUT(
       console.log('✅ Added staff:', selectedStaff.length)
 
       // Fetch the complete event with participants
-      const completeEvent = await tx.event.findUnique({
+      const completeEvent = await tx.events.findUnique({
         where: { id: eventId },
         include: {
           participants: {
