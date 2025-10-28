@@ -91,6 +91,7 @@ export function middleware(request: NextRequest) {
 
   } catch (error) {
     // Invalid token, redirect to login
+    console.log('JWT verification failed:', error.message)
     return NextResponse.redirect(new URL('/login', request.url))
   }
 }
