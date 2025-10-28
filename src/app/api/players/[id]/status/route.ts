@@ -20,13 +20,13 @@ export async function PUT(
     console.log(`🔄 Updating player ${id} availabilityStatus to: ${body.status}`)
     
     // Get player info before update for notification
-    const playerBefore = await prisma.player.findUnique({
+    const playerBefore = await prisma.players.findUnique({
       where: { id },
       select: { name: true, availabilityStatus: true }
     })
     
     // Update the availabilityStatus field instead of status
-    const updatedPlayer = await prisma.player.update({
+    const updatedPlayer = await prisma.players.update({
       where: { id },
       data: { availabilityStatus: body.status },
       select: {

@@ -33,7 +33,7 @@ export async function GET(
       )
     }
 
-    const notes = await prisma.playerNote.findMany({
+    const notes = await prisma.playersNote.findMany({
       where: { playerId: id },
       include: {
         author: {
@@ -87,7 +87,7 @@ export async function POST(
     }
 
     // Check if player exists
-    const player = await prisma.player.findUnique({
+    const player = await prisma.players.findUnique({
       where: { id }
     })
 
@@ -110,7 +110,7 @@ export async function POST(
       )
     }
 
-    const note = await prisma.playerNote.create({
+    const note = await prisma.playersNote.create({
       data: {
         playerId: id,
         authorId,

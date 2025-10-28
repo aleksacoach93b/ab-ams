@@ -40,7 +40,7 @@ export async function GET(
     }
 
     // Get player media files from database
-    const mediaFiles = await prisma.playerMedia.findMany({
+    const mediaFiles = await prisma.playersMedia.findMany({
       where: { playerId: id },
       orderBy: { uploadedAt: 'desc' }
     })
@@ -97,7 +97,7 @@ export async function POST(
     }
 
     // Check if player exists
-    const player = await prisma.player.findUnique({
+    const player = await prisma.players.findUnique({
       where: { id }
     })
 
@@ -170,7 +170,7 @@ export async function POST(
 
         // Save file info to database
         console.log(`📁 Saving file info to database...`)
-        mediaFile = await prisma.playerMedia.create({
+        mediaFile = await prisma.playersMedia.create({
           data: {
             playerId: id,
             fileName: file.name,

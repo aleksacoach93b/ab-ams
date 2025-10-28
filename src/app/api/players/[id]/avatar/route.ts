@@ -73,7 +73,7 @@ export async function POST(
     const avatarUrl = `/uploads/avatars/${fileName}`
     console.log('📸 Updating player with imageUrl:', avatarUrl)
     
-    const updatedPlayer = await prisma.player.update({
+    const updatedPlayer = await prisma.players.update({
       where: { id },
       data: { imageUrl: avatarUrl },
       select: {
@@ -124,7 +124,7 @@ export async function DELETE(
     }
 
     // Get current player to find imageUrl path
-    const player = await prisma.player.findUnique({
+    const player = await prisma.players.findUnique({
       where: { id },
       select: { imageUrl: true },
     })
@@ -137,7 +137,7 @@ export async function DELETE(
     }
 
     // Remove imageUrl from database
-    const updatedPlayer = await prisma.player.update({
+    const updatedPlayer = await prisma.players.update({
       where: { id },
       data: { imageUrl: null },
       select: {

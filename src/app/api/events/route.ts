@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       // Filter events based on user participation
       if (userRole === 'PLAYER') {
         // First, find the player by userId or by email
-        const player = await prisma.player.findFirst({
+        const player = await prisma.players.findFirst({
           where: {
             OR: [
               { userId: userId },

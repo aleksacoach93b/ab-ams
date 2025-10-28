@@ -17,7 +17,7 @@ export async function GET(
       )
     }
 
-    const player = await prisma.player.findUnique({
+    const player = await prisma.players.findUnique({
       where: { id },
       include: {
         user: true,
@@ -69,7 +69,7 @@ export async function PUT(
     } = body
 
     // First, get the player to find the associated user
-    const existingPlayer = await prisma.player.findUnique({
+    const existingPlayer = await prisma.players.findUnique({
       where: { id },
       include: { user: true }
     })
@@ -99,7 +99,7 @@ export async function PUT(
     }
 
     // Update player data
-    const player = await prisma.player.update({
+    const player = await prisma.players.update({
       where: { id },
       data: {
         name,
@@ -158,7 +158,7 @@ export async function DELETE(
     }
 
     // First check if player exists using Prisma
-    const player = await prisma.player.findUnique({
+    const player = await prisma.players.findUnique({
       where: { id: playerId },
       include: { user: true }
     })
@@ -176,13 +176,13 @@ export async function DELETE(
     // Delete related records first (due to foreign key constraints)
     try {
       // Delete player media files
-      await prisma.playerMedia.deleteMany({
+      await prisma.playersMedia.deleteMany({
         where: { playerId }
       })
       console.log('✅ Deleted player media files')
 
       // Delete player notes
-      await prisma.playerNote.deleteMany({
+      await prisma.playersNote.deleteMany({
         where: { playerId }
       })
       console.log('✅ Deleted player notes')
@@ -198,7 +198,7 @@ export async function DELETE(
     }
 
     // Delete the player record
-    await prisma.player.delete({
+    await prisma.players.delete({
       where: { id: playerId }
     })
     console.log('✅ Deleted player record')

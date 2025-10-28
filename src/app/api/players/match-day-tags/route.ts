@@ -11,7 +11,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update match day tags for all specified players
-    const updatedPlayers = await prisma.player.updateMany({
+    const updatedPlayers = await prisma.players.updateMany({
       where: {
         id: {
           in: playerIds
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update match day tag for single player
-    const updatedPlayer = await prisma.player.update({
+    const updatedPlayer = await prisma.players.update({
       where: { id: playerId },
       data: { matchDayTag: matchDayTag === '' ? null : matchDayTag }
     });

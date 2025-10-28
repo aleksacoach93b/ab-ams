@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       ...(unreadOnly && { isRead: false })
     }
 
-    const notifications = await prisma.notification.findMany({
+    const notifications = await prisma.notifications.findMany({
       where,
       orderBy: {
         createdAt: 'desc'

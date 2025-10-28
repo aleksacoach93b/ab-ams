@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Create player profile
-    await prisma.player.upsert({
+    await prisma.players.upsert({
       where: { userId: playerUser.id },
       update: {
         firstName: 'Mike',

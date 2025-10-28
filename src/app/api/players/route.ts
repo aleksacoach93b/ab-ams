@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const players = await prisma.player.findMany({
+    const players = await prisma.players.findMany({
       include: {
         user: true,
         team: true,
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
 
     console.log('⚽ Creating player profile...')
     // Create player profile
-    const player = await prisma.player.create({
+    const player = await prisma.players.create({
       data: {
         name,
         email,

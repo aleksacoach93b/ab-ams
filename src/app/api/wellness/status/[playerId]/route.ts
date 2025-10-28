@@ -20,7 +20,7 @@ export async function GET(
     }
 
     // Get player info
-    const player = await prisma.player.findUnique({
+    const player = await prisma.players.findUnique({
       where: { id: playerId },
       select: { name: true }
     })

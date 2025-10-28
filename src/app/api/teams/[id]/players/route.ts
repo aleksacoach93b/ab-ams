@@ -28,7 +28,7 @@ export async function POST(
     })
 
     // Update players to assign them to the team
-    const updatedPlayers = await prisma.player.updateMany({
+    const updatedPlayers = await prisma.players.updateMany({
       where: {
         id: {
           in: playerIds
@@ -90,7 +90,7 @@ export async function DELETE(
     })
 
     // Remove players from the team by setting teamId to null
-    const updatedPlayers = await prisma.player.updateMany({
+    const updatedPlayers = await prisma.players.updateMany({
       where: {
         id: {
           in: playerIds

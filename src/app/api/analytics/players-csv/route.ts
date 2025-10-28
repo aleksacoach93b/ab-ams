@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     // If no data for today, get live player data
     let liveTodayData: any[] = []
     if (todayAnalytics.length === 0) {
-      const players = await prisma.player.findMany({
+      const players = await prisma.players.findMany({
         select: {
           id: true,
           name: true,
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all players to access their match day tags
-    const allPlayers = await prisma.player.findMany({
+    const allPlayers = await prisma.players.findMany({
       select: {
         id: true,
         name: true,

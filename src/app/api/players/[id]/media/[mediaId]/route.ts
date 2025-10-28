@@ -18,7 +18,7 @@ export async function DELETE(
     }
 
     // Check if player exists
-    const player = await prisma.player.findUnique({
+    const player = await prisma.players.findUnique({
       where: { id: playerId }
     })
 
@@ -30,7 +30,7 @@ export async function DELETE(
     }
 
     // Get the media file record
-    const mediaFile = await prisma.playerMedia.findUnique({
+    const mediaFile = await prisma.playersMedia.findUnique({
       where: { id: mediaId }
     })
 
@@ -59,7 +59,7 @@ export async function DELETE(
     }
 
     // Delete the media record from database
-    await prisma.playerMedia.delete({
+    await prisma.playersMedia.delete({
       where: { id: mediaId }
     })
 

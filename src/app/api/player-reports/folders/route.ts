@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       whereClause.parentId = null
     }
 
-    const folders = await prisma.playerReportFolder.findMany({
+    const folders = await prisma.playersReportFolder.findMany({
       where: whereClause,
       include: {
         parent: true,
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     let filteredFolders = folders
     if (user.role === 'PLAYER') {
-      const player = await prisma.player.findUnique({
+      const player = await prisma.players.findUnique({
         where: { userId: user.userId }
       })
       
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Folder name is required' }, { status: 400 })
     }
 
-    const folder = await prisma.playerReportFolder.create({
+    const folder = await prisma.playersReportFolder.create({
       data: {
         name,
         description: description || '',

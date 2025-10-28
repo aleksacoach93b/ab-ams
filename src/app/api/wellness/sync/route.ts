@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Find player by name
-      const player = await prisma.player.findFirst({
+      const player = await prisma.players.findFirst({
         where: {
           name: {
             contains: playerName

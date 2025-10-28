@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       whereClause.folderId = null
     }
 
-    const reports = await prisma.playerReport.findMany({
+    const reports = await prisma.playersReport.findMany({
       where: whereClause,
       include: {
         folder: {
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     let filteredReports = reports
     if (user.role === 'PLAYER') {
       // Get the player for this user
-      const player = await prisma.player.findUnique({
+      const player = await prisma.players.findUnique({
         where: { userId: user.userId }
       })
       
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     await writeFile(filePath, buffer)
 
     // Create report in database
-    const report = await prisma.playerReport.create({
+    const report = await prisma.playersReport.create({
       data: {
         name: name,
         description: description,

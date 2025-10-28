@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   try {
     // Get a sample player to see their current status
-    const samplePlayer = await prisma.player.findFirst({
+    const samplePlayer = await prisma.players.findFirst({
       include: {
         user: true,
         team: true
