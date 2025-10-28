@@ -129,7 +129,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: 'Login successful',
-      user: userWithoutPassword,
+      user: {
+        ...userWithoutPassword,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        name: user.name || `${user.firstName} ${user.lastName}`
+      },
       token
     })
 
