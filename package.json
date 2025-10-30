@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "rm -rf node_modules/.prisma && rm -rf .next && npx prisma generate && npx prisma migrate deploy && next build",
+    "vercel-build": "npx prisma generate && npx prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx scripts/seed.ts",
