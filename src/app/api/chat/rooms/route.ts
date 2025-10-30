@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Chat rooms API - User:', user)
 
     // Get chat rooms where user is a participant
-    const chatRooms = await prisma.chatRoom.findMany({
+    const chatRooms = await prisma.chat_rooms.findMany({
       where: {
         isActive: true,
         participants: {
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create chat room
-    const chatRoom = await prisma.chatRoom.create({
+    const chatRoom = await prisma.chat_rooms.create({
       data: {
         name: name.trim(),
         type,

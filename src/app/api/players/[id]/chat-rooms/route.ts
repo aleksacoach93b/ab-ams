@@ -21,7 +21,7 @@ export async function GET(
     const playerId = params.id
 
     // Get real chat rooms where this player is a participant
-    const chatRooms = await prisma.chatRoom.findMany({
+    const chatRooms = await prisma.chat_rooms.findMany({
       where: {
         isActive: true,
         participants: {

@@ -30,7 +30,7 @@ export class NotificationService {
       // Create notifications for all target users
       const notifications = await Promise.all(
         targetUserIds.map(userId =>
-          prisma.notification.create({
+          prisma.notifications.create({
             data: {
               title: data.title,
               message: data.message,

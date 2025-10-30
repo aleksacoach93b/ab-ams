@@ -77,7 +77,7 @@ export async function DELETE(
     })
 
     // 4. Delete the chat room
-    await prisma.chatRoom.delete({
+    await prisma.chat_rooms.delete({
       where: {
         id: roomId
       }

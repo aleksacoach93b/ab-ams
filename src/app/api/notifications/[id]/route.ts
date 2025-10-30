@@ -27,7 +27,7 @@ export async function PATCH(
     const { isRead } = await request.json()
 
     // Check if notification belongs to user
-    const notification = await prisma.notification.findFirst({
+    const notification = await prisma.notifications.findFirst({
       where: {
         id,
         userId: user.userId
@@ -41,7 +41,7 @@ export async function PATCH(
       )
     }
 
-    const updatedNotification = await prisma.notification.update({
+    const updatedNotification = await prisma.notifications.update({
       where: { id },
       data: {
         isRead,
@@ -83,7 +83,7 @@ export async function DELETE(
     const { id } = await context.params
 
     // Check if notification belongs to user
-    const notification = await prisma.notification.findFirst({
+    const notification = await prisma.notifications.findFirst({
       where: {
         id,
         userId: user.userId
@@ -97,7 +97,7 @@ export async function DELETE(
       )
     }
 
-    await prisma.notification.delete({
+    await prisma.notifications.delete({
       where: { id }
     })
 

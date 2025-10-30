@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       skip: offset
     })
 
-    const unreadCount = await prisma.notification.count({
+    const unreadCount = await prisma.notifications.count({
       where: {
         userId: user.userId,
         isRead: false
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
     // Create notifications for all target users
     const notifications = await Promise.all(
       targetUserIds.map(userId =>
-        prisma.notification.create({
+        prisma.notifications.create({
           data: {
             title,
             message,

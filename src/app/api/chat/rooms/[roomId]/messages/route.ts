@@ -184,7 +184,7 @@ export async function POST(
     })
 
     // Update room's updatedAt timestamp
-    await prisma.chatRoom.update({
+    await prisma.chat_rooms.update({
       where: { id: roomId },
       data: { updatedAt: new Date() }
     })
@@ -209,7 +209,7 @@ export async function POST(
 
     // Create notification for new message (async, don't wait)
     try {
-      const room = await prisma.chatRoom.findUnique({
+      const room = await prisma.chat_rooms.findUnique({
         where: { id: roomId },
         select: { name: true }
       })

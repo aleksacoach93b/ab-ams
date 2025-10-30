@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await prisma.notification.updateMany({
+    const result = await prisma.notifications.updateMany({
       where: {
         userId: user.userId,
         isRead: false
