@@ -1,12 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { readState, writeState } from '@/lib/localDevStore'
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
 
 export async function GET(request: NextRequest) {
   try {
+    if (LOCAL_DEV_MODE) {
+      const { searchParams } = new URL(request.url)
+      const folderId = searchParams.get('folderId')
+      
+      const state = await readState()
+      let reports = state.playerReports || []
+      
+      // Filter by folderId
+      if (folderId) {
+        reports = reports.filter(r => r.folderId === folderId)
+      } else {
+        reports = reports.filter(r => !r.folderId || r.folderId === null)
+      }
+      
+      return NextResponse.json({ reports })
+    }
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ message: 'Authentication required' }, { status: 401 })
@@ -76,6 +94,97 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    if (LOCAL_DEV_MODE) {
+      const formData = await request.formData()
+      const file = formData.get('file') as File
+      const name = formData.get('name') as string
+      const descriptionRaw = formData.get('description') as string
+      const description = descriptionRaw && descriptionRaw.trim() !== '' && descriptionRaw !== 'undefined' ? descriptionRaw : null
+      const folderIdRaw = formData.get('folderId') as string
+      const folderId = folderIdRaw === 'null' || folderIdRaw === '' ? null : folderIdRaw
+
+      if (!name || !file) {
+        return NextResponse.json({ message: 'Name and file are required' }, { status: 400 })
+      }
+
+      // Validate file type
+      const allowedTypes = [
+        'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+        'video/mp4', 'video/avi', 'video/mov', 'video/wmv',
+        'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/ogg',
+        'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain', 'application/zip', 'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ]
+      
+      if (!allowedTypes.includes(file.type)) {
+        return NextResponse.json({ 
+          message: 'File type not allowed. Please upload images, videos, audio, PDF, or document files.' 
+        }, { status: 400 })
+      }
+
+      // Create upload directory
+      const uploadDir = join(process.cwd(), 'public', 'uploads', 'player-reports')
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true })
+      }
+
+      // Save file
+      const timestamp = Date.now()
+      const random = Math.random().toString(36).substring(2, 9)
+      const fileName = `${timestamp}-${random}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+      const filePath = join(uploadDir, fileName)
+      const fileUrl = `/uploads/player-reports/${fileName}`
+
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      await writeFile(filePath, buffer)
+
+      // Create report in state
+      const reportId = `local-player-report-${timestamp}-${random}`
+      const now = new Date().toISOString()
+      
+      const newReport = {
+        id: reportId,
+        name: name,
+        description: description,
+        folderId: folderId,
+        fileName: file.name,
+        fileUrl: fileUrl,
+        fileType: file.type,
+        fileSize: file.size,
+        thumbnailUrl: null,
+        createdBy: 'local-admin',
+        createdAt: now,
+        updatedAt: now,
+        folder: null
+      }
+
+      const state = await readState()
+      if (!state.playerReports) {
+        state.playerReports = []
+      }
+      state.playerReports.push(newReport)
+      await writeState(state)
+
+      console.log(`✅ Created player report ${name} in folder ${folderId || 'root'}`)
+
+      // Return report with folder info
+      const reportWithFolder = {
+        ...newReport,
+        folder: folderId ? {
+          id: folderId,
+          name: 'Folder',
+          description: null,
+          parentId: null,
+          createdBy: 'local-admin',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        } : null
+      }
+
+      return NextResponse.json(reportWithFolder, { status: 201 })
+    }
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ message: 'Authentication required' }, { status: 401 })

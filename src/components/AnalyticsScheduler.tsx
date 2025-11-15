@@ -7,10 +7,20 @@ export default function AnalyticsScheduler() {
     // Start the daily analytics scheduler when the app loads
     const startScheduler = async () => {
       try {
-        // Import and start the scheduler
-        const { dailyAnalyticsScheduler } = await import('@/lib/dailyAnalyticsScheduler')
-        dailyAnalyticsScheduler.start()
-        console.log('Daily analytics scheduler started')
+        // Call API endpoint to start scheduler on server
+        const response = await fetch('/api/analytics/scheduler', {
+          method: 'POST',
+          headers: {
+          'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ action: 'start' })
+        })
+        
+        if (response.ok) {
+          console.log('Daily analytics scheduler started')
+        } else {
+          console.error('Failed to start analytics scheduler:', response.statusText)
+        }
       } catch (error) {
         console.error('Failed to start analytics scheduler:', error)
       }
@@ -22,9 +32,19 @@ export default function AnalyticsScheduler() {
     return () => {
       const stopScheduler = async () => {
         try {
-          const { dailyAnalyticsScheduler } = await import('@/lib/dailyAnalyticsScheduler')
-          dailyAnalyticsScheduler.stop()
-          console.log('Daily analytics scheduler stopped')
+          const response = await fetch('/api/analytics/scheduler', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action: 'stop' })
+          })
+          
+          if (response.ok) {
+            console.log('Daily analytics scheduler stopped')
+          } else {
+            console.error('Failed to stop analytics scheduler:', response.statusText)
+          }
         } catch (error) {
           console.error('Failed to stop analytics scheduler:', error)
         }

@@ -5,10 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Simple event creation request received')
     
-    // Ensure database connection
-    await prisma.$connect()
-    console.log('✅ Database connected')
-    
+    // Prisma handles connection pooling automatically
     const body = await request.json()
     console.log('📝 Request body:', body)
     
@@ -41,16 +38,26 @@ export async function POST(request: NextRequest) {
     })
 
     // Create simple event without participants
+    // Parse date and time into DateTime objects
+    const eventDate = new Date(date)
+    const [startHours, startMinutes] = (startTime || '00:00').split(':').map(Number)
+    const [endHours, endMinutes] = (endTime || '23:59').split(':').map(Number)
+    
+    const startDateTime = new Date(eventDate)
+    startDateTime.setHours(startHours, startMinutes, 0, 0)
+    
+    const endDateTime = new Date(eventDate)
+    endDateTime.setHours(endHours, endMinutes, 0, 0)
+    
     const event = await prisma.events.create({
       data: {
         title,
         description: description || '',
         type: type || 'TRAINING',
-        date: new Date(date),
-        startTime: startTime || '00:00',
-        endTime: endTime || '23:59',
-        location: location || null,
-        iconName: type || 'Calendar',
+        startTime: startDateTime,
+        endTime: endDateTime,
+        icon: type || 'Calendar',
+        updatedAt: new Date(),
       }
     })
 
@@ -78,7 +85,5 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }

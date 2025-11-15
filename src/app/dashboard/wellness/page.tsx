@@ -4,12 +4,18 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { RefreshCw, Download, Calendar, Users, CheckCircle, XCircle } from 'lucide-react'
+import { RefreshCw, Download, Calendar, Users, CheckCircle, XCircle, Settings, Save } from 'lucide-react'
 
 interface WellnessData {
   syncedCount: number
   totalRows: number
   date: string
+}
+
+interface WellnessSettings {
+  csvUrl: string
+  surveyId: string
+  baseUrl: string
 }
 
 export default function WellnessPage() {
@@ -19,12 +25,88 @@ export default function WellnessPage() {
   const [wellnessData, setWellnessData] = useState<WellnessData | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null)
+  const [wellnessSettings, setWellnessSettings] = useState<WellnessSettings>({
+    csvUrl: 'https://wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv',
+    surveyId: 'cmg6klyig0004l704u1kd78zb',
+    baseUrl: 'https://wellness-monitor-tan.vercel.app'
+  })
+  const [isEditingSettings, setIsEditingSettings] = useState(false)
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [tempSettings, setTempSettings] = useState<WellnessSettings>(wellnessSettings)
 
   useEffect(() => {
     if (!isLoading && (!isAuthenticated || (user?.role !== 'ADMIN' && user?.role !== 'COACH'))) {
       router.push('/login')
     }
   }, [isLoading, isAuthenticated, user, router])
+
+  useEffect(() => {
+    if (user?.role === 'ADMIN' || user?.role === 'COACH') {
+      fetchWellnessSettings()
+    }
+  }, [user])
+
+  const fetchWellnessSettings = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      const response = await fetch('/api/wellness/settings', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setWellnessSettings(data.wellnessSettings)
+        setTempSettings(data.wellnessSettings)
+      }
+    } catch (error) {
+      console.error('Error fetching wellness settings:', error)
+    }
+  }
+
+  const handleSaveSettings = async () => {
+    setIsSavingSettings(true)
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert('No authentication token found')
+        return
+      }
+
+      const response = await fetch('/api/wellness/settings', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ wellnessSettings: tempSettings })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setWellnessSettings(data.wellnessSettings)
+        setIsEditingSettings(false)
+        alert('Wellness settings saved successfully!')
+      } else {
+        const error = await response.json()
+        alert(`Failed to save settings: ${error.message}`)
+      }
+    } catch (error) {
+      console.error('Error saving wellness settings:', error)
+      alert('Error saving wellness settings')
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setTempSettings(wellnessSettings)
+    setIsEditingSettings(false)
+  }
 
   const syncWellnessData = async () => {
     setIsSyncing(true)
@@ -62,7 +144,17 @@ export default function WellnessPage() {
 
   if (isLoading || !isAuthenticated || (user?.role !== 'ADMIN' && user?.role !== 'COACH')) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: colorScheme.background }}>
+      <div 
+        className="min-h-screen flex items-center justify-center" 
+        style={{ 
+          backgroundColor: colorScheme.background,
+          background: colorScheme.background,
+          minHeight: '100vh',
+          width: '100%',
+          margin: 0,
+          padding: 0
+        }}
+      >
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
           <p className="mt-2" style={{ color: colorScheme.textSecondary }}>
@@ -74,7 +166,17 @@ export default function WellnessPage() {
   }
 
   return (
-    <div className="min-h-screen p-8" style={{ backgroundColor: colorScheme.background, color: colorScheme.text }}>
+    <div 
+      className="min-h-screen p-8" 
+      style={{ 
+        backgroundColor: colorScheme.background,
+        background: colorScheme.background,
+        color: colorScheme.text,
+        minHeight: '100vh',
+        width: '100%',
+        margin: 0
+      }}
+    >
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -94,33 +196,151 @@ export default function WellnessPage() {
             borderColor: colorScheme.border 
           }}
         >
-          <h2 className="text-xl font-semibold mb-4 flex items-center" style={{ color: colorScheme.text }}>
-            <Download className="h-6 w-6 mr-2" style={{ color: colorScheme.primary }} />
-            CSV Data Source
-          </h2>
-          <div className="space-y-2">
-            <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
-              <strong>Source URL:</strong> 
-              <a 
-                href="https://wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="ml-2 underline"
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold flex items-center" style={{ color: colorScheme.text }}>
+              <Download className="h-6 w-6 mr-2" style={{ color: colorScheme.primary }} />
+              CSV Data Source
+            </h2>
+            {user?.role === 'ADMIN' && (
+              <button
+                onClick={() => {
+                  if (isEditingSettings) {
+                    handleCancelEdit()
+                  } else {
+                    setIsEditingSettings(true)
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center space-x-2"
                 style={{ 
-                  color: colorScheme.primary,
-                  backgroundColor: 'transparent'
+                  backgroundColor: isEditingSettings ? colorScheme.border : colorScheme.primary,
+                  color: 'white'
                 }}
               >
-                wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv
-              </a>
-            </p>
-            <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
-              <strong>Survey ID:</strong> cmg6klyig0004l704u1kd78zb
-            </p>
-            <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
-              <strong>Data Format:</strong> CSV with player names, submission dates, and survey responses
-            </p>
+                <Settings className="h-4 w-4" />
+                <span>{isEditingSettings ? 'Cancel' : 'Edit Settings'}</span>
+              </button>
+            )}
           </div>
+
+          {isEditingSettings && user?.role === 'ADMIN' ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: colorScheme.text }}>
+                  CSV Export URL
+                </label>
+                <input
+                  type="text"
+                  value={tempSettings.csvUrl}
+                  onChange={(e) => setTempSettings({ ...tempSettings, csvUrl: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg text-sm"
+                  style={{
+                    backgroundColor: colorScheme.surface,
+                    color: colorScheme.text,
+                    border: `1px solid ${colorScheme.border}`
+                  }}
+                  placeholder="https://wellness-monitor-tan.vercel.app/api/surveys/[surveyId]/export/csv"
+                />
+                <p className="text-xs mt-1" style={{ color: colorScheme.textSecondary }}>
+                  Full URL to the CSV export endpoint
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: colorScheme.text }}>
+                  Survey ID
+                </label>
+                <input
+                  type="text"
+                  value={tempSettings.surveyId}
+                  onChange={(e) => setTempSettings({ ...tempSettings, surveyId: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg text-sm"
+                  style={{
+                    backgroundColor: colorScheme.surface,
+                    color: colorScheme.text,
+                    border: `1px solid ${colorScheme.border}`
+                  }}
+                  placeholder="cmg6klyig0004l704u1kd78zb"
+                />
+                <p className="text-xs mt-1" style={{ color: colorScheme.textSecondary }}>
+                  Survey ID used for kiosk links
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: colorScheme.text }}>
+                  Base URL
+                </label>
+                <input
+                  type="text"
+                  value={tempSettings.baseUrl}
+                  onChange={(e) => setTempSettings({ ...tempSettings, baseUrl: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg text-sm"
+                  style={{
+                    backgroundColor: colorScheme.surface,
+                    color: colorScheme.text,
+                    border: `1px solid ${colorScheme.border}`
+                  }}
+                  placeholder="https://wellness-monitor-tan.vercel.app"
+                />
+                <p className="text-xs mt-1" style={{ color: colorScheme.textSecondary }}>
+                  Base URL of the wellness app (without trailing slash)
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={isSavingSettings}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2 disabled:opacity-50"
+                  style={{ 
+                    backgroundColor: colorScheme.primary,
+                    color: 'white'
+                  }}
+                >
+                  <Save className="h-4 w-4" />
+                  <span>{isSavingSettings ? 'Saving...' : 'Save Settings'}</span>
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  style={{ 
+                    backgroundColor: colorScheme.surface,
+                    color: colorScheme.text,
+                    border: `1px solid ${colorScheme.border}`
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
+                <strong>Source URL:</strong> 
+                <a 
+                  href={wellnessSettings.csvUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="ml-2 underline break-all"
+                  style={{ 
+                    color: colorScheme.primary,
+                    backgroundColor: 'transparent'
+                  }}
+                >
+                  {wellnessSettings.csvUrl}
+                </a>
+              </p>
+              <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
+                <strong>Survey ID:</strong> {wellnessSettings.surveyId}
+              </p>
+              <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
+                <strong>Base URL:</strong> {wellnessSettings.baseUrl}
+              </p>
+              <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
+                <strong>Data Format:</strong> CSV with player names, submission dates, and survey responses
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Sync Controls */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { X, Save, AlertCircle, User } from 'lucide-react'
@@ -29,7 +29,25 @@ export default function PlayerStatusNotesModal({
   const [reason, setReason] = useState('')
   const [notes, setNotes] = useState('')
 
+  // Check if status is FULLY_AVAILABLE
+  const isFullyAvailable = player.availabilityStatus === 'FULLY_AVAILABLE' || player.availabilityStatus === 'Fully Available'
+
+  // Automatically clear fields when status is FULLY_AVAILABLE
+  React.useEffect(() => {
+    if (isFullyAvailable) {
+      setReason('')
+      setNotes('')
+    }
+  }, [isFullyAvailable, isOpen])
+
   const handleSave = () => {
+    // If FULLY_AVAILABLE, always save with empty reason and notes
+    if (isFullyAvailable) {
+      onSave({ reason: '', notes: '' })
+      return
+    }
+
+    // For other statuses, require reason
     if (!reason.trim()) {
       alert('Please provide a reason for the player\'s unavailability.')
       return
@@ -138,68 +156,99 @@ export default function PlayerStatusNotesModal({
                     </div>
                   </div>
 
-                  {/* Reason Field */}
-                  <div className="mb-6">
-                    <label className={`block text-sm font-medium mb-2 ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      Reason for Unavailability *
-                    </label>
-                    <textarea
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                      placeholder="e.g., Injury - ankle sprain, Illness - flu symptoms, Personal reasons..."
-                      rows={3}
-                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                      }`}
-                    />
-                  </div>
-
-                  {/* Additional Notes */}
-                  <div className="mb-6">
-                    <label className={`block text-sm font-medium mb-2 ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      Additional Notes (Optional)
-                    </label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Any additional information about the player's condition, expected return date, treatment details..."
-                      rows={4}
-                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                      }`}
-                    />
-                  </div>
-
-                  {/* Info Box */}
-                  <div className={`p-4 rounded-lg mb-6 ${
-                    theme === 'dark' ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'
-                  }`}>
-                    <div className="flex items-start space-x-3">
-                      <AlertCircle className={`h-5 w-5 mt-0.5 ${
-                        theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                      }`} />
-                      <div>
-                        <p className={`text-sm font-medium ${
-                          theme === 'dark' ? 'text-blue-300' : 'text-blue-800'
+                  {/* Reason Field - Hidden/Disabled for FULLY_AVAILABLE */}
+                  {!isFullyAvailable && (
+                    <>
+                      <div className="mb-6">
+                        <label className={`block text-sm font-medium mb-2 ${
+                          theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                         }`}>
-                          Daily Evidence
-                        </p>
-                        <p className={`text-sm mt-1 ${
-                          theme === 'dark' ? 'text-blue-400' : 'text-blue-700'
+                          Reason for Unavailability *
+                        </label>
+                        <textarea
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                          placeholder="e.g., Injury - ankle sprain, Illness - flu symptoms, Personal reasons..."
+                          rows={3}
+                          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            theme === 'dark'
+                              ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                          }`}
+                        />
+                      </div>
+
+                      {/* Additional Notes */}
+                      <div className="mb-6">
+                        <label className={`block text-sm font-medium mb-2 ${
+                          theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                         }`}>
-                          This information will be saved as daily evidence and included in player analytics reports.
-                        </p>
+                          Additional Notes (Optional)
+                        </label>
+                        <textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Any additional information about the player's condition, expected return date, treatment details..."
+                          rows={4}
+                          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            theme === 'dark'
+                              ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                          }`}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Info for FULLY_AVAILABLE */}
+                  {isFullyAvailable && (
+                    <div className={`p-4 rounded-lg mb-6 ${
+                      theme === 'dark' ? 'bg-green-900/20 border border-green-800' : 'bg-green-50 border border-green-200'
+                    }`}>
+                      <div className="flex items-start space-x-3">
+                        <AlertCircle className={`h-5 w-5 mt-0.5 ${
+                          theme === 'dark' ? 'text-green-400' : 'text-green-600'
+                        }`} />
+                        <div>
+                          <p className={`text-sm font-medium ${
+                            theme === 'dark' ? 'text-green-300' : 'text-green-800'
+                          }`}>
+                            Fully Available Status
+                          </p>
+                          <p className={`text-sm mt-1 ${
+                            theme === 'dark' ? 'text-green-400' : 'text-green-700'
+                          }`}>
+                            No reason or notes needed. The system will automatically clear any previous notes when you save.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Info Box - Only show for non-FULLY_AVAILABLE status */}
+                  {!isFullyAvailable && (
+                    <div className={`p-4 rounded-lg mb-6 ${
+                      theme === 'dark' ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'
+                    }`}>
+                      <div className="flex items-start space-x-3">
+                        <AlertCircle className={`h-5 w-5 mt-0.5 ${
+                          theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                        }`} />
+                        <div>
+                          <p className={`text-sm font-medium ${
+                            theme === 'dark' ? 'text-blue-300' : 'text-blue-800'
+                          }`}>
+                            Daily Evidence
+                          </p>
+                          <p className={`text-sm mt-1 ${
+                            theme === 'dark' ? 'text-blue-400' : 'text-blue-700'
+                          }`}>
+                            This information will be saved as daily evidence and included in player analytics reports.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="flex space-x-3">
@@ -215,9 +264,9 @@ export default function PlayerStatusNotesModal({
                     </button>
                     <button
                       onClick={handleSave}
-                      disabled={isLoading || !reason.trim()}
+                      disabled={isLoading || (!isFullyAvailable && !reason.trim())}
                       className={`flex-1 px-4 py-2 bg-blue-600 text-white rounded-md font-medium transition-colors flex items-center justify-center space-x-2 ${
-                        isLoading || !reason.trim()
+                        isLoading || (!isFullyAvailable && !reason.trim())
                           ? 'opacity-50 cursor-not-allowed'
                           : 'hover:bg-blue-700'
                       }`}

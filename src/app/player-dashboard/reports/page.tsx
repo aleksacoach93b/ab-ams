@@ -108,8 +108,13 @@ export default function PlayerReportsPage() {
         return
       }
 
+      const parentId = selectedFolder?.id || null
+      const foldersUrl = parentId 
+        ? `/api/player-reports/folders?parentId=${parentId}`
+        : '/api/player-reports/folders'
+
       const [foldersResponse, playersResponse] = await Promise.all([
-        fetch('/api/player-reports/folders', {
+        fetch(foldersUrl, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -164,10 +169,11 @@ export default function PlayerReportsPage() {
     }
   }
 
-  const navigateToFolder = (folder: ReportFolder) => {
+  const navigateToFolder = async (folder: ReportFolder) => {
     setCurrentPath(prev => [...prev, folder])
     setSelectedFolder(folder)
-    fetchReports(folder.id)
+    await fetchReports(folder.id)
+    await fetchData() // Refresh folders to show subfolders
   }
 
   const navigateUp = () => {
@@ -209,12 +215,57 @@ export default function PlayerReportsPage() {
       setPreviewFile(report)
       setShowPreviewModal(true)
     } else if (action === 'download') {
+      handleDownload(report)
+    }
+  }
+
+  const handleDownload = async (report: Report) => {
+    try {
+      // Build full URL if it's a relative path
+      const fileUrl = report.fileUrl.startsWith('http') 
+        ? report.fileUrl 
+        : `${window.location.origin}${report.fileUrl}`
+      
+      const token = localStorage.getItem('token')
+      
+      // Try to fetch with authentication first
+      if (token) {
+        try {
+          const response = await fetch(fileUrl, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+
+          if (response.ok) {
+            // Get the blob and create download link
+            const blob = await response.blob()
+            const url = window.URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = report.fileName || report.name
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            window.URL.revokeObjectURL(url)
+            return
+          }
+        } catch (authError) {
+          console.log('Auth fetch failed, trying direct download:', authError)
+        }
+      }
+
+      // Fallback: Direct download (for public files or if auth fails)
       const link = document.createElement('a')
-      link.href = report.fileUrl
-      link.download = report.fileName
+      link.href = fileUrl
+      link.download = report.fileName || report.name
+      link.target = '_blank'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+    } catch (error) {
+      console.error('Download error:', error)
+      alert('Failed to download file. Please try again.')
     }
   }
 
@@ -305,7 +356,17 @@ export default function PlayerReportsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: colorScheme.background }}>
+      <div 
+        className="min-h-screen flex items-center justify-center" 
+        style={{ 
+          backgroundColor: colorScheme.background,
+          background: colorScheme.background,
+          minHeight: '100vh',
+          width: '100%',
+          margin: 0,
+          padding: 0
+        }}
+      >
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: colorScheme.primary }}></div>
           <p style={{ color: colorScheme.text }}>Loading reports...</p>
@@ -315,7 +376,17 @@ export default function PlayerReportsPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: colorScheme.background }}>
+    <div 
+      className="min-h-screen" 
+      style={{ 
+        backgroundColor: colorScheme.background,
+        background: colorScheme.background,
+        minHeight: '100vh',
+        width: '100%',
+        margin: 0,
+        padding: 0
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -323,10 +394,14 @@ export default function PlayerReportsPage() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => window.history.back()}
-                className="p-2 rounded-lg hover:bg-opacity-10 transition-colors"
-                style={{ backgroundColor: colorScheme.surface }}
+                className="p-2 rounded-lg hover:opacity-80 transition-colors border"
+                style={{ 
+                  backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#1f2937' : colorScheme.surface,
+                  borderColor: colorScheme.border,
+                  color: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#ffffff' : colorScheme.text
+                }}
               >
-                <ArrowLeft className="h-5 w-5" style={{ color: colorScheme.text }} />
+                <ArrowLeft className="h-5 w-5" />
               </button>
               <div>
                 <h1 className="text-3xl font-bold" style={{ color: colorScheme.text }}>
@@ -439,30 +514,42 @@ export default function PlayerReportsPage() {
                               setSelectedItem(folder)
                               setShowVisibilityModal(true)
                             }}
-                            className="p-2 rounded hover:bg-opacity-10 transition-colors"
-                            style={{ backgroundColor: colorScheme.surface }}
+                            className="p-2 rounded hover:opacity-80 transition-colors border"
+                            style={{ 
+                              backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                              borderColor: colorScheme.border,
+                              color: '#ffffff'
+                            }}
                             title="Manage Visibility"
                           >
-                            <Pencil className="h-4 w-4" style={{ color: colorScheme.text }} />
+                            <Pencil className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => {
                               setSelectedItem(folder)
                               setShowRenameModal(true)
                             }}
-                            className="p-2 rounded hover:bg-opacity-10 transition-colors"
-                            style={{ backgroundColor: colorScheme.surface }}
+                            className="p-2 rounded hover:opacity-80 transition-colors border"
+                            style={{ 
+                              backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                              borderColor: colorScheme.border,
+                              color: '#ffffff'
+                            }}
                             title="Rename"
                           >
-                            <Edit className="h-4 w-4" style={{ color: colorScheme.text }} />
+                            <Edit className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteFolder(folder.id)}
-                            className="p-2 rounded hover:bg-opacity-10 transition-colors"
-                            style={{ backgroundColor: colorScheme.surface }}
+                            className="p-2 rounded hover:opacity-80 transition-colors border"
+                            style={{ 
+                              backgroundColor: '#DC2626',
+                              borderColor: '#DC2626',
+                              color: '#ffffff'
+                            }}
                             title="Delete"
                           >
-                            <Trash2 className="h-4 w-4" style={{ color: '#EF4444' }} />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       )}
@@ -483,11 +570,15 @@ export default function PlayerReportsPage() {
                 {currentPath.length > 0 && (
                   <button
                     onClick={navigateUp}
-                    className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-opacity-10 transition-colors"
-                    style={{ backgroundColor: colorScheme.surface }}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:opacity-80 transition-colors border"
+                    style={{ 
+                      backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                      borderColor: colorScheme.border,
+                      color: '#ffffff'
+                    }}
                   >
-                    <ArrowLeft className="h-4 w-4" style={{ color: colorScheme.text }} />
-                    <span className="text-sm" style={{ color: colorScheme.text }}>Back</span>
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="text-sm">Back</span>
                   </button>
                 )}
               </div>
@@ -523,29 +614,41 @@ export default function PlayerReportsPage() {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => handleFileAction('view', report)}
-                          className="p-3 rounded-lg hover:bg-opacity-10 transition-colors"
-                          style={{ backgroundColor: colorScheme.surface }}
+                          className="p-3 rounded-lg hover:opacity-80 transition-colors border"
+                          style={{ 
+                            backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                            borderColor: colorScheme.border,
+                            color: '#ffffff'
+                          }}
                           title="View"
                         >
-                          <Eye className="h-5 w-5" style={{ color: colorScheme.text }} />
+                          <Eye className="h-5 w-5" />
                         </button>
                         <button
                           onClick={() => handleFileAction('download', report)}
-                          className="p-3 rounded-lg hover:bg-opacity-10 transition-colors"
-                          style={{ backgroundColor: colorScheme.surface }}
+                          className="p-3 rounded-lg hover:opacity-80 transition-colors border"
+                          style={{ 
+                            backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                            borderColor: colorScheme.border,
+                            color: '#ffffff'
+                          }}
                           title="Download"
                         >
-                          <Download className="h-5 w-5" style={{ color: colorScheme.text }} />
+                          <Download className="h-5 w-5" />
                         </button>
                         {/* Only show delete button for admins and coaches */}
                         {user && (user.role === 'ADMIN' || user.role === 'COACH') && (
                           <button
                             onClick={() => handleDeleteReport(report.id)}
-                            className="p-2 rounded-lg hover:bg-opacity-10 transition-colors"
-                            style={{ backgroundColor: colorScheme.surface }}
+                            className="p-2 rounded-lg hover:opacity-80 transition-colors border"
+                            style={{ 
+                              backgroundColor: '#DC2626',
+                              borderColor: '#DC2626',
+                              color: '#ffffff'
+                            }}
                             title="Delete"
                           >
-                            <Trash2 className="h-4 w-4" style={{ color: '#EF4444' }} />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         )}
                       </div>
@@ -560,6 +663,7 @@ export default function PlayerReportsPage() {
         {/* Create Folder Modal - Only for admins and coaches */}
         {showCreateFolder && user && (user.role === 'ADMIN' || user.role === 'COACH') && (
           <CreateFolderForm
+            parentFolder={selectedFolder}
             onClose={() => setShowCreateFolder(false)}
             onSuccess={async () => {
               await fetchData()
@@ -616,25 +720,58 @@ export default function PlayerReportsPage() {
         {/* Preview Modal */}
         {showPreviewModal && previewFile && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-hidden">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold">{previewFile.fileName}</h3>
-                <button
-                  onClick={() => setShowPreviewModal(false)}
-                  className="flex items-center space-x-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  <span className="text-sm">Back</span>
-                </button>
+            <div className="rounded-lg max-w-4xl max-h-[90vh] overflow-hidden" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
+              <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${colorScheme.border}` }}>
+                <h3 style={{ color: colorScheme.text }} className="text-lg font-semibold truncate flex-1 mr-4">{previewFile.fileName}</h3>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleDownload(previewFile)}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors border"
+                    style={{
+                      backgroundColor: colorScheme.primary,
+                      borderColor: colorScheme.primary,
+                      color: '#ffffff'
+                    }}
+                    title="Download"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="text-sm hidden sm:inline">Download</span>
+                  </button>
+                  <button
+                    onClick={() => setShowPreviewModal(false)}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors border"
+                    style={{
+                      backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                      borderColor: colorScheme.border,
+                      color: '#ffffff'
+                    }}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="text-sm">Back</span>
+                  </button>
+                </div>
               </div>
               <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
                 {previewFile.fileType.includes('pdf') ? (
-                  <PDFThumbnail
-                    fileUrl={previewFile.fileUrl}
-                    fileName={previewFile.fileName}
-                    width={800}
-                    height={600}
-                  />
+                  <div className="w-full" style={{ minHeight: '600px' }}>
+                    <iframe
+                      src={(() => {
+                        const baseUrl = previewFile.fileUrl.startsWith('http') 
+                          ? previewFile.fileUrl 
+                          : `${window.location.origin}${previewFile.fileUrl}`
+                        return `${baseUrl}#toolbar=1&navpanes=1&scrollbar=1`
+                      })()}
+                      className="w-full h-full border-0 rounded-lg"
+                      style={{
+                        width: '100%',
+                        height: '800px',
+                        minHeight: '600px',
+                        border: 'none',
+                        borderRadius: '8px'
+                      }}
+                      title={`PDF Preview: ${previewFile.fileName}`}
+                    />
+                  </div>
                 ) : previewFile.fileType.includes('image') ? (
                   <img
                     src={previewFile.fileUrl}
@@ -643,11 +780,21 @@ export default function PlayerReportsPage() {
                   />
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-gray-500 mb-4">Preview not available for this file type</p>
+                    <p style={{ color: colorScheme.textSecondary }} className="mb-4">Preview not available for this file type</p>
                     <a
                       href={previewFile.fileUrl}
                       download={previewFile.fileName}
-                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      className="inline-flex items-center px-4 py-2 rounded-lg transition-colors"
+                      style={{
+                        backgroundColor: colorScheme.primary,
+                        color: '#FFFFFF'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.filter = 'brightness(0.9)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.filter = 'none'
+                      }}
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Download File
@@ -664,7 +811,7 @@ export default function PlayerReportsPage() {
 }
 
 // Create Folder Form Component
-function CreateFolderForm({ onClose, onSuccess, colorScheme }: any) {
+function CreateFolderForm({ parentFolder, onClose, onSuccess, colorScheme }: any) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
@@ -689,7 +836,8 @@ function CreateFolderForm({ onClose, onSuccess, colorScheme }: any) {
         },
         body: JSON.stringify({
           name: name.trim(),
-          description: description.trim() || null
+          description: description.trim() || null,
+          parentId: parentFolder?.id || null
         })
       })
 
@@ -707,42 +855,71 @@ function CreateFolderForm({ onClose, onSuccess, colorScheme }: any) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <h3 className="text-lg font-semibold mb-4">Create New Folder</h3>
+      <div className="rounded-lg max-w-md w-full p-6" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
+        <h3 style={{ color: colorScheme.text }} className="text-lg font-semibold mb-4">Create New Folder</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Folder Name</label>
+            <label style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">Folder Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
               placeholder="Enter folder name"
               required
+              style={{
+                backgroundColor: colorScheme.background,
+                color: colorScheme.text,
+                border: `1px solid ${colorScheme.border}`
+              }}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Description (Optional)</label>
+            <label style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">Description (Optional)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
               placeholder="Enter folder description"
               rows={3}
+              style={{
+                backgroundColor: colorScheme.background,
+                color: colorScheme.text,
+                border: `1px solid ${colorScheme.border}`
+              }}
             />
           </div>
           <div className="flex justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              className="px-4 py-2 rounded-lg transition-colors"
+              style={{
+                backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                color: '#ffffff',
+                border: `1px solid ${colorScheme.border}`
+              }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !name.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg disabled:opacity-50 transition-colors"
+              style={{
+                backgroundColor: colorScheme.primary,
+                color: '#FFFFFF'
+              }}
+              onMouseEnter={(e) => {
+                if (!loading && name.trim()) {
+                  e.currentTarget.style.filter = 'brightness(0.9)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading && name.trim()) {
+                  e.currentTarget.style.filter = 'none'
+                }
+              }}
             >
               {loading ? 'Creating...' : 'Create Folder'}
             </button>
@@ -801,36 +978,51 @@ function UploadReportForm({ folders, onClose, onSuccess, colorScheme }: any) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <h3 className="text-lg font-semibold mb-4">Upload Report</h3>
+      <div className="rounded-lg max-w-md w-full p-6" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
+        <h3 style={{ color: colorScheme.text }} className="text-lg font-semibold mb-4">Upload Report</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Report Name</label>
+            <label style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">Report Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
               placeholder="Enter report name"
               required
+              style={{
+                backgroundColor: colorScheme.background,
+                color: colorScheme.text,
+                border: `1px solid ${colorScheme.border}`
+              }}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Description (Optional)</label>
+            <label style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">Description (Optional)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
               placeholder="Enter report description"
               rows={3}
+              style={{
+                backgroundColor: colorScheme.background,
+                color: colorScheme.text,
+                border: `1px solid ${colorScheme.border}`
+              }}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Folder</label>
+            <label style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">Folder</label>
             <select
               value={selectedFolderId}
               onChange={(e) => setSelectedFolderId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+              style={{
+                backgroundColor: colorScheme.background,
+                color: colorScheme.text,
+                border: `1px solid ${colorScheme.border}`
+              }}
             >
               <option value="">No folder (root level)</option>
               {folders.map((folder: any) => (
@@ -853,14 +1045,14 @@ function UploadReportForm({ folders, onClose, onSuccess, colorScheme }: any) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !name.trim() || !file}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               {loading ? 'Uploading...' : 'Upload Report'}
             </button>
@@ -968,13 +1160,13 @@ function VisibilityManager({ item, players, onCancel, onSuccess, colorScheme }: 
         <div className="flex justify-end space-x-3 mt-6">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Save Access
           </button>
@@ -1026,14 +1218,14 @@ function RenameFolderForm({ folder, onClose, onSuccess, colorScheme }: any) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !name.trim() || name.trim() === folder.name}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               {loading ? 'Renaming...' : 'Rename Folder'}
             </button>

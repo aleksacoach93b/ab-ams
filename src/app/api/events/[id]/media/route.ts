@@ -5,12 +5,16 @@ import { join } from 'path'
 import { existsSync } from 'fs'
 import { verifyToken } from '@/lib/auth'
 import { NotificationService } from '@/lib/notificationService'
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (LOCAL_DEV_MODE) {
+      return NextResponse.json([])
+    }
     const { id } = await params
 
     if (!id) {
@@ -56,6 +60,37 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (LOCAL_DEV_MODE) {
+      const { id } = await params
+      const formData = await request.formData()
+      const file = formData.get('file') as File
+      if (!file) {
+        return NextResponse.json({ message: 'No file uploaded' }, { status: 400 })
+      }
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'events')
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true })
+      }
+      const timestamp = Date.now()
+      const fileExtension = file.name.split('.').pop()
+      const fileName = `event_${id}_${timestamp}.${fileExtension}`
+      const filePath = join(uploadsDir, fileName)
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      await writeFile(filePath, buffer)
+      const fileUrl = `/uploads/events/${fileName}`
+      return NextResponse.json({
+        message: 'Media uploaded successfully (local mode)',
+        media: {
+          id: `local-${timestamp}`,
+          fileName: file.name,
+          fileUrl,
+          fileType: file.type,
+          fileSize: file.size,
+          uploadedAt: new Date().toISOString()
+        }
+      }, { status: 201 })
+    }
     const { id } = await params
 
     if (!id) {

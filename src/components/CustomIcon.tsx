@@ -61,12 +61,20 @@ const getColorFilter = (color: string) => {
 }
 
 export default function CustomIcon({ name, className = "h-6 w-6", style }: CustomIconProps) {
-  // Check if it's a custom SVG icon
-  if (customIcons[name]) {
+  // Normalize icon name (remove spaces, handle case variations)
+  const normalizedName = name?.trim() || 'Calendar'
+  
+  // Check if it's a custom SVG icon (case-insensitive)
+  const customIconKey = Object.keys(customIcons).find(
+    key => key.toLowerCase() === normalizedName.toLowerCase()
+  )
+  
+  if (customIconKey) {
+    console.log(`✅ Using custom icon: ${customIconKey} for "${normalizedName}"`)
     return (
       <img 
-        src={customIcons[name]}
-        alt={name}
+        src={customIcons[customIconKey]}
+        alt={normalizedName}
         className={className}
         style={{
           ...style,
@@ -75,19 +83,33 @@ export default function CustomIcon({ name, className = "h-6 w-6", style }: Custo
           opacity: 1
         }}
         onError={(e) => {
-          console.error(`Failed to load icon: ${name} from ${customIcons[name]}`)
+          console.error(`❌ Failed to load icon: ${normalizedName} from ${customIcons[customIconKey]}`)
+          // Don't hide, show Calendar fallback instead
           e.currentTarget.style.display = 'none'
+          // This will trigger the fallback below
         }}
       />
     )
   }
 
-  // Check if it's a Lucide icon
-  const IconComponent = lucideIcons[name]
-  if (IconComponent) {
+  // Check if it's a Lucide icon (case-insensitive)
+  const lucideIconKey = Object.keys(lucideIcons).find(
+    key => key.toLowerCase() === normalizedName.toLowerCase()
+  )
+  
+  if (lucideIconKey && lucideIcons[lucideIconKey]) {
+    const IconComponent = lucideIcons[lucideIconKey]
+    console.log(`✅ Using Lucide icon: ${lucideIconKey} for "${normalizedName}"`)
     return <IconComponent className={className} style={style} />
   }
 
-  // Fallback to Calendar icon
+  // Fallback to Calendar icon only if name is explicitly empty or undefined
+  if (!name || name.trim() === '' || name === 'Calendar') {
+    console.log(`⚠️ Using Calendar fallback for: "${normalizedName}"`)
+    return <Calendar className={className} style={style} />
+  }
+  
+  // If name exists but icon not found, log warning and use Calendar
+  console.warn(`⚠️ Icon not found: "${normalizedName}", using Calendar fallback`)
   return <Calendar className={className} style={style} />
 }

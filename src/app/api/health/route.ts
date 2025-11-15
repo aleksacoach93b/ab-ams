@@ -6,12 +6,9 @@ export async function GET() {
   try {
     console.log('🏥 Health check started')
     
-    // Test basic database connection
-    await prisma.$connect()
-    console.log('✅ Database connection successful')
-    
+    // Prisma handles connection pooling automatically
     // Test simple query
-    const userCount = await prisma.user.count()
+    const userCount = await prisma.users.count()
     console.log(`📊 Users count: ${userCount}`)
     
     const eventCount = await prisma.events.count()
@@ -44,7 +41,5 @@ export async function GET() {
         jwtSecret: process.env.JWT_SECRET ? 'Set' : 'Not set'
       }
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }

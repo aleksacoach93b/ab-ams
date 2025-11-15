@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { readState, writeState } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function PUT(
   request: NextRequest,
@@ -34,6 +37,82 @@ export async function PUT(
       )
     }
 
+    const body = await request.json()
+    const { visibility } = body
+
+    if (!Array.isArray(visibility)) {
+      return NextResponse.json(
+        { message: 'Visibility must be an array' },
+        { status: 400 }
+      )
+    }
+
+    // LOCAL_DEV_MODE: Update visibility in state
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      
+      // Find folder in all reportFolders keys
+      let folder = null
+      let folderKey = null
+      
+      for (const key of Object.keys(state.reportFolders)) {
+        const found = state.reportFolders[key].find((f: any) => f.id === id)
+        if (found) {
+          folder = found
+          folderKey = key
+          break
+        }
+      }
+      
+      if (!folder) {
+        return NextResponse.json(
+          { message: 'Folder not found' },
+          { status: 404 }
+        )
+      }
+
+      // Map visibility array to visibleToStaff format
+      const visibleToStaff = visibility.map((v: any) => {
+        // Find staff by userId
+        const staffMember = state.staff?.find((s: any) => 
+          s.user?.id === v.userId || s.id === v.userId
+        )
+        
+        if (!staffMember) {
+          console.warn(`⚠️ Staff not found for userId: ${v.userId}`)
+          return null
+        }
+        
+        return {
+          id: `access-${id}-${staffMember.id}`,
+          canView: v.canView || false,
+          canEdit: v.canEdit || false,
+          canDelete: v.canDelete || false,
+          staffId: staffMember.id,
+          userId: v.userId,
+          staff: {
+            id: staffMember.id,
+            name: staffMember.name,
+            email: staffMember.email || staffMember.user?.email
+          }
+        }
+      }).filter((item): item is NonNullable<typeof item> => item !== null)
+
+      // Update folder's visibleToStaff
+      folder.visibleToStaff = visibleToStaff
+      folder.updatedAt = new Date().toISOString()
+
+      // Save updated folder back to state
+      const folderIndex = state.reportFolders[folderKey!].findIndex((f: any) => f.id === id)
+      if (folderIndex !== -1) {
+        state.reportFolders[folderKey!][folderIndex] = folder
+        await writeState(state)
+        console.log(`✅ Updated folder visibility in LOCAL_DEV_MODE: ${visibleToStaff.length} staff members`)
+      }
+
+      return NextResponse.json({ message: 'Visibility updated successfully' })
+    }
+
     // For staff, check if they have permission to edit reports
     if (user.role === 'STAFF') {
       const staffMember = await prisma.staff.findFirst({
@@ -46,20 +125,6 @@ export async function PUT(
           { status: 403 }
         )
       }
-    }
-
-    const body = await request.json()
-    const { visibility } = body
-
-    console.log('=== FOLDER VISIBILITY DEBUG ===')
-    console.log('Folder ID:', id)
-    console.log('Received visibility:', JSON.stringify(visibility, null, 2))
-
-    if (!Array.isArray(visibility)) {
-      return NextResponse.json(
-        { message: 'Visibility must be an array' },
-        { status: 400 }
-      )
     }
 
     // Check if folder exists
@@ -76,17 +141,13 @@ export async function PUT(
 
     // Update visibility using transaction
     try {
-      console.log('Starting transaction...')
-      
       // Delete existing visibility records
-      console.log('Deleting existing visibility records for folder:', id)
       await prisma.reportFolderVisibility.deleteMany({
         where: { folderId: id }
       })
 
       // Create new visibility records
       if (visibility && visibility.length > 0) {
-        console.log('Creating new visibility records...')
         const visibilityData = visibility.map((v: any) => ({
           folderId: id,
           userId: v.userId,
@@ -95,14 +156,9 @@ export async function PUT(
           canDelete: v.canDelete || false
         }))
 
-        console.log('Visibility data to create:', JSON.stringify(visibilityData, null, 2))
-
         await prisma.reportFolderVisibility.createMany({
           data: visibilityData
         })
-        console.log('Successfully created visibility records')
-      } else {
-        console.log('No visibility records to create (empty array)')
       }
     } catch (transactionError) {
       console.error('Transaction error:', transactionError)

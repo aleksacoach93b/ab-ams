@@ -2,26 +2,66 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { readState } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Notifications fetch request received')
-    
-    // Ensure database connection with retry
-    let retries = 3
-    while (retries > 0) {
-      try {
-        await prisma.$connect()
-        console.log('✅ Database connected for notifications fetch')
-        break
-      } catch (error) {
-        retries--
-        console.log(`❌ Database connection failed, retries left: ${retries}`)
-        if (retries === 0) throw error
-        await new Promise(resolve => setTimeout(resolve, 1000))
+    if (LOCAL_DEV_MODE) {
+      const token = request.headers.get('authorization')?.replace('Bearer ', '')
+      if (!token) {
+        return NextResponse.json(
+          { message: 'Authentication required' },
+          { status: 401 }
+        )
       }
-    }
 
+      const user = await verifyToken(token)
+      if (!user) {
+        return NextResponse.json(
+          { message: 'Invalid token' },
+          { status: 401 }
+        )
+      }
+
+      const state = await readState()
+      
+      // Filter notifications for this user - simple match by userId
+      
+      const userNotifications = (state.notifications || []).filter((notif: any) => {
+        // Simple match: notification.userId === user.userId
+        return String(notif.userId) === String(user.userId)
+      }).sort((a: any, b: any) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      
+      const chatNotificationsForUser = userNotifications.filter((n: any) => n.category === 'CHAT')
+      console.log(`🔍 [NOTIFICATIONS GET] Found ${userNotifications.length} total notifications (${chatNotificationsForUser.length} chat) for user ${user.userId}`)
+      
+      const unreadCount = userNotifications.filter((notif: any) => !notif.isRead).length
+      
+      const { searchParams } = new URL(request.url)
+      const limit = parseInt(searchParams.get('limit') || '50')
+      const offset = parseInt(searchParams.get('offset') || '0')
+      const unreadOnly = searchParams.get('unreadOnly') === 'true'
+      
+      let filteredNotifications = userNotifications
+      if (unreadOnly) {
+        filteredNotifications = filteredNotifications.filter((notif: any) => !notif.isRead)
+      }
+      
+      const paginatedNotifications = filteredNotifications.slice(offset, offset + limit)
+      
+      return NextResponse.json({
+        notifications: paginatedNotifications,
+        unreadCount,
+        total: filteredNotifications.length
+      })
+    }
+    
+    // Prisma handles connection pooling automatically
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json(
@@ -81,22 +121,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Notification creation request received')
-    
-    // Ensure database connection with retry
-    let retries = 3
-    while (retries > 0) {
-      try {
-        await prisma.$connect()
-        console.log('✅ Database connected for notification creation')
-        break
-      } catch (error) {
-        retries--
-        console.log(`❌ Database connection failed, retries left: ${retries}`)
-        if (retries === 0) throw error
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
+    if (LOCAL_DEV_MODE) {
+      return NextResponse.json({ message: 'Notification created (local mode)', notifications: 0 })
     }
-
+    
+    // Prisma handles connection pooling automatically
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json(

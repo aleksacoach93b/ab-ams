@@ -160,7 +160,7 @@ export class DailyAnalyticsScheduler {
   private async collectPlayerAnalytics(date: Date) {
     try {
       // Fetch all players to collect their availability status
-      const players = await prisma.player.findMany({
+      const players = await prisma.players.findMany({
         orderBy: {
           name: 'asc'
         }

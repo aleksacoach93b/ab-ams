@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { readState } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,32 +24,63 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Only coaches and admins can view staff list
-    if (user.role !== 'ADMIN' && user.role !== 'COACH') {
+    // Only ADMIN can see all staff for access control
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { message: 'Access denied' },
         { status: 403 }
       )
     }
 
-    // Get all staff members
-    const staff = await prisma.staff.findMany({
+    // LOCAL_DEV_MODE: Return staff from state
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      const staffList = (state.staff || []).map((s: any) => ({
+        id: s.id,
+        name: s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim(),
+        email: s.email || s.user?.email,
+        user: {
+          id: s.user?.id || s.id,
+          name: s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim(),
+          email: s.email || s.user?.email,
+          role: s.role || 'STAFF'
+        }
+      }))
+
+      return NextResponse.json({ staff: staffList })
+    }
+
+    // Fetch all staff members
+    const staffMembers = await prisma.staff.findMany({
+      where: {
+        isActive: true
+      },
       include: {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             role: true
           }
         }
-      },
-      orderBy: {
-        name: 'asc'
       }
     })
 
-    return NextResponse.json({ staff })
+    const staffList = staffMembers.map(s => ({
+      id: s.id,
+      name: `${s.firstName} ${s.lastName}`,
+      email: s.email,
+      user: s.user ? {
+        id: s.user.id,
+        name: `${s.user.firstName} ${s.user.lastName}`,
+        email: s.user.email,
+        role: s.user.role
+      } : null
+    }))
+
+    return NextResponse.json({ staff: staffList })
   } catch (error) {
     console.error('Error fetching staff:', error)
     return NextResponse.json(

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { setMatchDayTag, setMatchDayTagsBulk } from '@/lib/localDevStore';
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function PUT(request: NextRequest) {
   try {
@@ -8,6 +10,11 @@ export async function PUT(request: NextRequest) {
 
     if (!playerIds || !Array.isArray(playerIds)) {
       return NextResponse.json({ message: 'Player IDs array is required' }, { status: 400 });
+    }
+
+    if (LOCAL_DEV_MODE) {
+      await setMatchDayTagsBulk(playerIds, matchDayTag === '' ? null : matchDayTag)
+      return NextResponse.json({ message: 'Match day tags updated (local mode)', updatedCount: (playerIds || []).length }, { status: 200 });
     }
 
     // Update match day tags for all specified players
@@ -39,6 +46,21 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { playerId, matchDayTag } = body;
+
+    if (LOCAL_DEV_MODE) {
+      if (!playerId) {
+        return NextResponse.json({ message: 'Player ID is required' }, { status: 400 });
+      }
+      await setMatchDayTag(playerId, matchDayTag === '' ? null : matchDayTag)
+      return NextResponse.json({
+        message: 'Match day tag updated successfully (local mode)',
+        player: {
+          id: playerId,
+          name: 'Local Player',
+          matchDayTag: matchDayTag === '' ? null : matchDayTag
+        }
+      }, { status: 200 });
+    }
 
     if (!playerId) {
       return NextResponse.json({ message: 'Player ID is required' }, { status: 400 });

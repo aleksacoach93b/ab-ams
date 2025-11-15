@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { readState, writeState } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { roomId: string } }
+  context: { params: Promise<{ roomId: string }> }
 ) {
   try {
     // Check authentication
@@ -24,7 +27,7 @@ export async function POST(
       )
     }
 
-    const { roomId } = params
+    const { roomId } = await context.params
     const { userIds } = await request.json()
 
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
@@ -32,6 +35,129 @@ export async function POST(
         { message: 'User IDs are required' },
         { status: 400 }
       )
+    }
+
+    // Local dev mode: add participants to localDevStore
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      const chatRooms = state.chatRooms || []
+      const chatRoom = chatRooms.find((room: any) => room.id === roomId)
+      
+      if (!chatRoom) {
+        return NextResponse.json(
+          { message: 'Chat room not found' },
+          { status: 404 }
+        )
+      }
+
+      // Check if user is admin of this room
+      const isAdmin = chatRoom.participants?.some((p: any) => 
+        (p.userId === user.userId || p.id === user.userId) && p.role === 'admin' && p.isActive !== false
+      )
+
+      if (!isAdmin) {
+        return NextResponse.json(
+          { message: 'Only admins can add members to chat room' },
+          { status: 403 }
+        )
+      }
+
+      // Get all users (players and staff) from state
+      const allPlayers = state.players || []
+      const allStaff = state.staff || []
+      const allPlayerUsers = state.playerUsers || []
+      
+      // Find users to add
+      const usersToAdd = userIds.map((userId: string) => {
+        // Check players
+        const player = allPlayers.find((p: any) => p.id === userId)
+        if (player) {
+          return {
+            id: player.id,
+            name: player.name,
+            email: player.email || '',
+            role: 'PLAYER'
+          }
+        }
+        
+        // Check player users
+        const playerUser = allPlayerUsers.find((pu: any) => pu.id === userId)
+        if (playerUser) {
+          return {
+            id: playerUser.id,
+            name: playerUser.name || playerUser.email || 'Player',
+            email: playerUser.email || '',
+            role: 'PLAYER'
+          }
+        }
+        
+        // Check staff
+        const staff = allStaff.find((s: any) => s.userId === userId || s.id === userId)
+        if (staff) {
+          return {
+            id: staff.userId || staff.id,
+            name: staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || 'Staff',
+            email: staff.email || '',
+            role: 'STAFF'
+          }
+        }
+        
+        return null
+      }).filter(Boolean)
+
+      // Add new participants to chat room
+      const newParticipants = usersToAdd.map((userToAdd: any) => {
+        // Check if already a participant
+        const existingParticipant = chatRoom.participants?.find((p: any) => 
+          (p.userId === userToAdd.id || p.id === userToAdd.id)
+        )
+
+        if (existingParticipant) {
+          // Reactivate if they left
+          if (existingParticipant.isActive === false) {
+            existingParticipant.isActive = true
+            existingParticipant.leftAt = null
+          }
+          return existingParticipant
+        }
+
+        // Create new participant
+        const newParticipant = {
+          id: `participant-${Date.now()}-${Math.random()}`,
+          userId: userToAdd.id,
+          role: 'member',
+          isActive: true,
+          avatar: userToAdd.avatar
+        }
+
+        if (!chatRoom.participants) {
+          chatRoom.participants = []
+        }
+        chatRoom.participants.push(newParticipant)
+
+        return {
+          ...newParticipant,
+          name: userToAdd.name,
+          email: userToAdd.email,
+          role: userToAdd.role,
+          isOnline: Math.random() > 0.5
+        }
+      })
+
+      chatRoom.updatedAt = new Date().toISOString()
+      await writeState(state)
+
+      console.log('✅ Added participants to chat room in local storage:', newParticipants.length)
+
+      // Transform participants for response
+      const transformedParticipants = newParticipants.map((p: any) => ({
+        id: p.userId || p.id,
+        name: p.name || 'Unknown',
+        role: p.role || 'PLAYER',
+        isOnline: p.isOnline || false
+      }))
+
+      return NextResponse.json(transformedParticipants)
     }
 
     // Check if user is admin of this room
@@ -120,18 +246,32 @@ export async function POST(
     )
 
     // Transform the data
-    const transformedParticipants = newParticipants.map(p => ({
-      id: p.user.id,
-      name: p.user.name || p.user.email,
-      role: p.user.role,
-      isOnline: Math.random() > 0.5 // TODO: Implement real online status
-    }))
+    const transformedParticipants = newParticipants.map(p => {
+      // Handle case where participant might be existing (not created)
+      if (p.user) {
+        return {
+          id: p.user.id,
+          name: p.user.name || p.user.email,
+          role: p.user.role,
+          isOnline: Math.random() > 0.5 // TODO: Implement real online status
+        }
+      } else {
+        // Existing participant case
+        return {
+          id: p.userId,
+          name: 'Existing User',
+          role: 'PLAYER',
+          isOnline: Math.random() > 0.5
+        }
+      }
+    })
 
     return NextResponse.json(transformedParticipants)
   } catch (error) {
     console.error('Error adding participants to chat room:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: errorMessage },
       { status: 500 }
     )
   }
@@ -139,7 +279,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { roomId: string } }
+  context: { params: Promise<{ roomId: string }> }
 ) {
   try {
     // Check authentication
@@ -159,7 +299,7 @@ export async function DELETE(
       )
     }
 
-    const { roomId } = params
+    const { roomId } = await context.params
     const { userId } = await request.json()
 
     if (!userId) {
@@ -167,6 +307,73 @@ export async function DELETE(
         { message: 'User ID is required' },
         { status: 400 }
       )
+    }
+
+    // Local dev mode: remove participant from localDevStore
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      const chatRooms = state.chatRooms || []
+      const chatRoom = chatRooms.find((room: any) => room.id === roomId)
+      
+      if (!chatRoom) {
+        return NextResponse.json(
+          { message: 'Chat room not found' },
+          { status: 404 }
+        )
+      }
+
+      // Check if user is participant
+      const isParticipant = chatRoom.participants?.some((p: any) => 
+        (p.userId === user.userId || p.id === user.userId) && p.isActive !== false
+      )
+
+      if (!isParticipant) {
+        return NextResponse.json(
+          { message: 'Access denied to this chat room' },
+          { status: 403 }
+        )
+      }
+
+      // Prevent players from leaving chat rooms
+      if (user.role === 'PLAYER' && userId === user.userId) {
+        return NextResponse.json(
+          { message: 'Players cannot leave chat rooms they were added to by admin' },
+          { status: 403 }
+        )
+      }
+
+      // Check if user is admin or removing themselves
+      const userParticipant = chatRoom.participants?.find((p: any) => 
+        (p.userId === user.userId || p.id === user.userId) && p.isActive !== false
+      )
+
+      if (userParticipant?.role !== 'admin' && userId !== user.userId) {
+        return NextResponse.json(
+          { message: 'Only admins can remove other members' },
+          { status: 403 }
+        )
+      }
+
+      // Remove participant
+      if (chatRoom.participants) {
+        chatRoom.participants = chatRoom.participants.map((p: any) => {
+          if ((p.userId === userId || p.id === userId)) {
+            return {
+              ...p,
+              isActive: false,
+              leftAt: new Date().toISOString()
+            }
+          }
+          return p
+        })
+      }
+
+      chatRoom.updatedAt = new Date().toISOString()
+      await writeState(state)
+
+      console.log('✅ Removed participant from chat room in local storage')
+
+      return NextResponse.json({ message: 'Participant removed successfully' })
     }
 
     // Check if user is admin of this room or removing themselves
@@ -185,7 +392,15 @@ export async function DELETE(
       )
     }
 
-    // Allow removal if user is admin or removing themselves
+    // Prevent players from leaving chat rooms
+    if (user.role === 'PLAYER' && userId === user.userId) {
+      return NextResponse.json(
+        { message: 'Players cannot leave chat rooms they were added to by admin' },
+        { status: 403 }
+      )
+    }
+
+    // Allow removal if user is admin or removing themselves (but not if player)
     if (participant.role !== 'admin' && userId !== user.userId) {
       return NextResponse.json(
         { message: 'Only admins can remove other members' },
@@ -208,8 +423,9 @@ export async function DELETE(
     return NextResponse.json({ message: 'Participant removed successfully' })
   } catch (error) {
     console.error('Error removing participant from chat room:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

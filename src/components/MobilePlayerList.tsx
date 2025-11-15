@@ -50,7 +50,7 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
             accountSetup: 'Complete',
             mobileUsed: 'Unknown',
             lastUsed: 'Unknown',
-            avatar: player.imageUrl || player.avatar,
+            avatar: player.imageUrl || player.avatar || null,
             age: player.dateOfBirth ? new Date().getFullYear() - new Date(player.dateOfBirth).getFullYear() : 0,
             height: player.height ? `${player.height} cm` : 'Not specified',
             weight: player.weight ? `${player.weight} kg` : 'Not specified'
@@ -86,11 +86,11 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
         setPlayers(players.filter((player: Player) => player.id !== playerId))
         alert('Player deleted successfully')
       } else {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }))
         console.error('Failed to delete player:', errorData)
         console.error('Response status:', response.status)
-        console.error('Response headers:', Object.fromEntries(response.headers.entries()))
-        alert(`Failed to delete player: ${errorData.message || errorData.error || 'Unknown error'}`)
+        const errorMessage = errorData?.message || errorData?.error || 'Unknown error'
+        alert(`Failed to delete player: ${typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage)}`)
       }
     } catch (error) {
       console.error('Error deleting player:', error)
@@ -218,27 +218,50 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
             {players.map((player) => (
               <div 
                 key={player.id} 
-                className="rounded-xl shadow-lg border overflow-hidden transition-all duration-300 hover:shadow-xl"
+                className="rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl group"
                 style={{
                   backgroundColor: colorScheme.surface,
-                  borderColor: colorScheme.border
+                  borderWidth: '4px',
+                  borderStyle: 'solid',
+                  borderColor: `${colorScheme.border}FF`,
+                  boxShadow: `0 4px 6px -1px ${colorScheme.border}20, 0 2px 4px -1px ${colorScheme.border}10`,
+                  position: 'relative'
                 }}
               >
                 {/* Card Header */}
-                <div className="p-3 sm:p-4">
-                  <div className="flex items-start justify-between">
+                  {/* Subtle gradient overlay on hover */}
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                    style={{
+                      background: `linear-gradient(135deg, ${colorScheme.border}08 0%, transparent 100%)`
+                    }}
+                  />
+                  <div className="p-3 sm:p-4 relative z-10">
+                    <div className="flex items-start justify-between">
                     {/* Avatar */}
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 relative">
                       {player.avatar ? (
-                        <img
-                          src={player.avatar}
-                          alt={player.name}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
+                        <div className="relative">
+                          <img
+                            src={player.avatar}
+                            alt={player.name}
+                            className="w-12 h-12 rounded-full object-cover border-2 transition-transform duration-300 group-hover:scale-110"
+                            style={{ borderColor: `${colorScheme.border}FF` }}
+                          />
+                          <div 
+                            className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                            style={{
+                              boxShadow: `0 0 0 2px ${colorScheme.border}40, 0 0 8px ${colorScheme.border}60`
+                            }}
+                          />
+                        </div>
                       ) : (
                         <div 
-                          className="w-12 h-12 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: colorScheme.primary }}
+                          className="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-transform duration-300 group-hover:scale-110"
+                          style={{ 
+                            backgroundColor: colorScheme.primary,
+                            borderColor: `${colorScheme.border}FF`
+                          }}
                         >
                           <span 
                             className="font-semibold text-lg"
@@ -251,13 +274,14 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
                     </div>
                     
                     {/* Action Buttons */}
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <Link
                         href={`/dashboard/players/${player.id}`}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
                         style={{ 
                           backgroundColor: colorScheme.primary,
-                          color: colorScheme.primaryText || 'white'
+                          color: colorScheme.primaryText || 'white',
+                          boxShadow: `0 2px 4px ${colorScheme.primary}40`
                         }}
                         title="View Profile"
                       >
@@ -265,10 +289,11 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
                       </Link>
                       <Link
                         href={`/dashboard/players/${player.id}/edit`}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
                         style={{ 
                           backgroundColor: colorScheme.primary,
-                          color: colorScheme.primaryText || 'white'
+                          color: colorScheme.primaryText || 'white',
+                          boxShadow: `0 2px 4px ${colorScheme.primary}40`
                         }}
                         title="Edit Player"
                       >
@@ -277,10 +302,11 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
                       <button
                         onClick={() => handleDeletePlayer(player.id)}
                         disabled={deleting === player.id}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                         style={{ 
-                          backgroundColor: '#ef4444', // Keep red for delete button
-                          color: 'white'
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)'
                         }}
                         title="Delete Player"
                       >
@@ -298,7 +324,7 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
                 <div className="px-3 sm:px-4 pb-4">
                   {/* Player Name */}
                   <h3 
-                    className="text-lg font-bold mb-1"
+                    className="text-lg font-bold mb-1 transition-all duration-300 group-hover:translate-x-1"
                     style={{ color: colorScheme.text }}
                   >
                     {player.name}
@@ -306,7 +332,7 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
                   
                   {/* Position */}
                   <p 
-                    className="text-sm mb-3"
+                    className="text-sm mb-3 transition-all duration-300 group-hover:translate-x-1"
                     style={{ color: colorScheme.textSecondary }}
                   >
                     {player.position}
@@ -351,9 +377,14 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
                     </div>
                     
                     {/* Status */}
-                    <div className="flex items-center">
-                      <div className={`w-2 h-2 rounded-full mr-2 ${getStatusDot(player.status)}`}></div>
-                      <span className={`text-sm font-medium ${getStatusColor(player.status)}`}>
+                    <div className="flex items-center mt-3">
+                      <div 
+                        className={`w-2.5 h-2.5 rounded-full mr-2 ${getStatusDot(player.status)} transition-all duration-300 group-hover:scale-125 group-hover:shadow-lg`}
+                        style={{
+                          boxShadow: `0 0 6px ${getStatusDot(player.status).includes('green') ? 'rgba(74, 222, 128, 0.6)' : getStatusDot(player.status).includes('yellow') ? 'rgba(250, 204, 21, 0.6)' : getStatusDot(player.status).includes('red') ? 'rgba(239, 68, 68, 0.6)' : 'rgba(156, 163, 175, 0.6)'}`
+                        }}
+                      />
+                      <span className={`text-sm font-medium transition-all duration-300 ${getStatusColor(player.status)}`}>
                         {player.status.replace('_', ' ')}
                       </span>
                     </div>

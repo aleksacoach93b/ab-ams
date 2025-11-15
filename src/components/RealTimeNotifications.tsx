@@ -46,12 +46,11 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
       if (response.ok) {
         const data = await response.json()
         // Filter out chat notifications - they should be shown on chat icon
+        // Also filter out read notifications - only show unread ones
         const nonChatNotifications = data.notifications.filter((notification: Notification) => 
-          notification.category !== 'CHAT'
+          notification.category !== 'CHAT' && !notification.isRead
         )
-        const nonChatUnreadCount = nonChatNotifications.filter((notification: Notification) => 
-          !notification.isRead
-        ).length
+        const nonChatUnreadCount = nonChatNotifications.length
         
         setNotifications(nonChatNotifications)
         setUnreadCount(nonChatUnreadCount)
@@ -65,8 +64,8 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
     if (user?.id) {
       fetchNotifications()
       
-      // Poll for new notifications every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000)
+      // Poll for new notifications every 5 seconds for faster updates
+      const interval = setInterval(fetchNotifications, 5000)
       return () => clearInterval(interval)
     }
   }, [user?.id])
@@ -154,14 +153,13 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
       })
 
       if (response.ok) {
+        // Remove the notification from the list when marked as read
         setNotifications(prev => 
-          prev.map(notification => 
-            notification.id === notificationId 
-              ? { ...notification, isRead: true }
-              : notification
-          )
+          prev.filter(notification => notification.id !== notificationId)
         )
         setUnreadCount(prev => Math.max(0, prev - 1))
+        // Refresh to ensure sync
+        setTimeout(() => fetchNotifications(), 500)
       }
     } catch (error) {
       console.error('Error marking notification as read:', error)
@@ -182,10 +180,11 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
       })
 
       if (response.ok) {
-        setNotifications(prev => 
-          prev.map(notification => ({ ...notification, isRead: true }))
-        )
+        // Clear all notifications when marked as read
+        setNotifications([])
         setUnreadCount(0)
+        // Refresh to ensure sync
+        setTimeout(() => fetchNotifications(), 500)
       }
     } catch (error) {
       console.error('Error marking all notifications as read:', error)

@@ -28,12 +28,13 @@ export default function ChatNotifications({ onOpenChat }: ChatNotificationsProps
   const [chatNotifications, setChatNotifications] = useState<Notification[]>([])
   const [unreadChatCount, setUnreadChatCount] = useState(0)
 
+
   const fetchChatNotifications = async () => {
     try {
       const token = localStorage.getItem('token')
       if (!token) return
 
-      const response = await fetch('/api/notifications?limit=20', {
+      const response = await fetch('/api/notifications?limit=100&unreadOnly=false', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -42,6 +43,7 @@ export default function ChatNotifications({ onOpenChat }: ChatNotificationsProps
 
       if (response.ok) {
         const data = await response.json()
+        
         // Filter only chat notifications
         const chatOnlyNotifications = data.notifications.filter((notification: Notification) => 
           notification.category === 'CHAT'
@@ -52,6 +54,8 @@ export default function ChatNotifications({ onOpenChat }: ChatNotificationsProps
         
         setChatNotifications(chatOnlyNotifications)
         setUnreadChatCount(unreadChatNotifications.length)
+      } else {
+        console.error('Failed to fetch chat notifications:', response.status)
       }
     } catch (error) {
       console.error('Error fetching chat notifications:', error)
@@ -62,9 +66,19 @@ export default function ChatNotifications({ onOpenChat }: ChatNotificationsProps
     if (user?.id) {
       fetchChatNotifications()
       
-      // Poll for new chat notifications every 30 seconds
-      const interval = setInterval(fetchChatNotifications, 30000)
-      return () => clearInterval(interval)
+      // Poll for new chat notifications every 5 seconds for faster updates
+      const interval = setInterval(fetchChatNotifications, 5000)
+      
+      // Also refresh when chat is closed
+      const handleChatClosed = () => {
+        fetchChatNotifications()
+      }
+      window.addEventListener('chat-closed', handleChatClosed)
+      
+      return () => {
+        clearInterval(interval)
+        window.removeEventListener('chat-closed', handleChatClosed)
+      }
     }
   }, [user?.id])
 
@@ -100,9 +114,11 @@ export default function ChatNotifications({ onOpenChat }: ChatNotificationsProps
     }
   }
 
-  const handleChatClick = () => {
+  const handleChatClick = async () => {
     // Mark chat notifications as read when opening chat
-    markChatNotificationsAsRead()
+    await markChatNotificationsAsRead()
+    // Refresh count immediately
+    setTimeout(() => fetchChatNotifications(), 300)
     onOpenChat()
   }
 
@@ -120,10 +136,14 @@ export default function ChatNotifications({ onOpenChat }: ChatNotificationsProps
         <MessageCircle className="h-5 w-5" style={{ color: colorScheme.text }} />
         {unreadChatCount > 0 && (
           <span 
-            className="absolute -top-1 -right-1 w-5 h-5 text-white text-xs rounded-full flex items-center justify-center"
-            style={{ backgroundColor: '#ef4444' }}
+            className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg z-10"
+            style={{ 
+              backgroundColor: '#ef4444',
+              fontSize: '11px',
+              lineHeight: '1.2'
+            }}
           >
-            {unreadChatCount > 9 ? '9+' : unreadChatCount}
+            {unreadChatCount > 99 ? '99+' : unreadChatCount > 9 ? '9+' : unreadChatCount}
           </span>
         )}
       </button>

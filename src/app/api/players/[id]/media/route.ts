@@ -6,7 +6,10 @@ import { existsSync } from 'fs'
 import { logFileAccess, getClientInfo } from '@/lib/fileAccessLogger'
 import { NotificationService } from '@/lib/notificationService'
 import { verifyToken } from '@/lib/auth'
+import { readState, writeState } from '@/lib/localDevStore'
 // import { RealPDFThumbnail } from '@/lib/realPdfThumbnail' // Removed - using client-side thumbnails
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function GET(
   request: NextRequest,
@@ -22,7 +25,32 @@ export async function GET(
       )
     }
 
-    // Check authentication
+    // Local dev mode: return mock data (no auth required)
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      // Get media files from state (we'll store them in state)
+      let mediaFiles = state.playerMediaFiles?.[id] || []
+      
+      // Remove duplicates by ID
+      const uniqueFiles = []
+      const seenIds = new Set()
+      for (const file of mediaFiles) {
+        if (!seenIds.has(file.id)) {
+          seenIds.add(file.id)
+          uniqueFiles.push(file)
+        }
+      }
+      
+      // Update state if duplicates were found
+      if (uniqueFiles.length !== mediaFiles.length) {
+        state.playerMediaFiles[id] = uniqueFiles
+        await writeState(state)
+      }
+      
+      return NextResponse.json(uniqueFiles)
+    }
+
+    // Check authentication for database mode
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json(
@@ -40,9 +68,9 @@ export async function GET(
     }
 
     // Get player media files from database
-    const mediaFiles = await prisma.playersMedia.findMany({
+    const mediaFiles = await prisma.player_media.findMany({
       where: { playerId: id },
-      orderBy: { uploadedAt: 'desc' }
+      orderBy: { createdAt: 'desc' }
     })
 
     // Transform the response to match frontend expectations
@@ -53,7 +81,7 @@ export async function GET(
       fileType: file.fileType,
       fileSize: file.fileSize,
       thumbnailUrl: file.thumbnailUrl,
-      uploadedAt: file.uploadedAt.toISOString(),
+      uploadedAt: file.createdAt.toISOString(),
       tags: file.tags ? file.tags.split(',').map(tag => tag.trim()) : []
     }))
 
@@ -96,6 +124,108 @@ export async function POST(
       )
     }
 
+    const formData = await request.formData()
+    const files = formData.getAll('files') as File[]
+    const tags = formData.get('tags') as string
+
+    console.log('📁 Media upload request for player:', id)
+    console.log('📁 Files received:', files.length)
+    console.log('📁 Tags:', tags)
+
+    if (!files || files.length === 0) {
+      return NextResponse.json(
+        { message: 'No files provided' },
+        { status: 400 }
+      )
+    }
+
+    // Local dev mode: save to state and disk
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      if (!state.playerMediaFiles) {
+        state.playerMediaFiles = {}
+      }
+      if (!state.playerMediaFiles[id]) {
+        state.playerMediaFiles[id] = []
+      }
+
+      const uploadDir = join(process.cwd(), 'public', 'uploads', 'players', id)
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true })
+      }
+
+      const uploadedFiles = []
+      const existingIds = new Set(state.playerMediaFiles[id].map(f => f.id))
+
+      for (const file of files) {
+        if (file.size === 0) continue
+
+        // Generate unique filename with timestamp + random
+        const timestamp = Date.now()
+        const random = Math.random().toString(36).substring(2, 9)
+        const fileName = `${timestamp}-${random}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+        const filePath = join(uploadDir, fileName)
+
+        // Save file to disk
+        const bytes = await file.arrayBuffer()
+        const buffer = Buffer.from(bytes)
+        await writeFile(filePath, buffer)
+
+        const fileUrl = `/uploads/players/${id}/${fileName}`
+        
+        // Generate unique ID - ensure it doesn't exist
+        let mediaId = `media_${id}_${timestamp}_${random}`
+        let attempts = 0
+        while (existingIds.has(mediaId) && attempts < 10) {
+          mediaId = `media_${id}_${timestamp}_${random}_${attempts}`
+          attempts++
+        }
+        existingIds.add(mediaId)
+        
+        const mediaFile = {
+          id: mediaId,
+          fileName: file.name,
+          fileUrl: fileUrl,
+          fileType: file.type,
+          fileSize: file.size,
+          thumbnailUrl: null, // Thumbnails generated client-side
+          uploadedAt: new Date().toISOString(),
+          tags: tags ? tags.split(',').map(tag => tag.trim()) : []
+        }
+
+        state.playerMediaFiles[id].push(mediaFile)
+        uploadedFiles.push(mediaFile)
+      }
+
+      await writeState(state)
+      
+      // Send notification to player
+      try {
+        const { createNotification } = await import('@/lib/localDevStore')
+        const playerUser = state.playerUsers.find((u: any) => u.playerId === id)
+        const playerUserId = playerUser?.id
+        
+        if (playerUserId) {
+          await createNotification({
+            title: 'New Media Uploaded',
+            message: `${uploadedFiles.length} file(s) have been added to your profile`,
+            type: 'INFO',
+            category: 'PLAYER',
+            userIds: [playerUserId],
+            relatedId: id,
+            relatedType: 'player'
+          })
+          console.log(`📱 Sent media upload notification to player ${id}`)
+        }
+      } catch (notificationError) {
+        console.error('❌ Error creating media notification:', notificationError)
+        // Don't fail upload if notification fails
+      }
+      
+      return NextResponse.json(uploadedFiles, { status: 201 })
+    }
+
+    // Database mode
     // Check if player exists
     const player = await prisma.players.findUnique({
       where: { id }
@@ -105,31 +235,6 @@ export async function POST(
       return NextResponse.json(
         { message: 'Player not found' },
         { status: 404 }
-      )
-    }
-
-    const formData = await request.formData()
-    const files = formData.getAll('files') as File[]
-    const tags = formData.get('tags') as string
-
-    console.log('📁 Media upload request for player:', id)
-    console.log('📁 Files received:', files.length)
-    console.log('📁 Tags:', tags)
-
-    // Test database connection
-    try {
-      console.log('📁 Testing database connection...')
-      await prisma.$connect()
-      console.log('✅ Database connected successfully')
-    } catch (dbError) {
-      console.error('💥 Database connection failed:', dbError)
-      throw new Error(`Database connection failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`)
-    }
-
-    if (!files || files.length === 0) {
-      return NextResponse.json(
-        { message: 'No files provided' },
-        { status: 400 }
       )
     }
 
@@ -170,8 +275,9 @@ export async function POST(
 
         // Save file info to database
         console.log(`📁 Saving file info to database...`)
-        mediaFile = await prisma.playersMedia.create({
+        mediaFile = await prisma.player_media.create({
           data: {
+            id: `media_${id}_${timestamp}`,
             playerId: id,
             fileName: file.name,
             fileUrl: `/uploads/players/${id}/${fileName}`,
@@ -179,6 +285,7 @@ export async function POST(
             fileSize: file.size,
             tags: tags || null,
             thumbnailUrl: thumbnailUrl,
+            updatedAt: new Date(),
           }
         })
         console.log(`✅ File info saved to database:`, mediaFile.id)
@@ -206,7 +313,7 @@ export async function POST(
         fileType: mediaFile.fileType,
         fileSize: mediaFile.fileSize,
         thumbnailUrl: mediaFile.thumbnailUrl,
-        uploadedAt: mediaFile.uploadedAt.toISOString(),
+        uploadedAt: mediaFile.createdAt.toISOString(),
         tags: mediaFile.tags ? mediaFile.tags.split(',').map(tag => tag.trim()) : [],
       })
     }

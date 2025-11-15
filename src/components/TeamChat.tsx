@@ -22,7 +22,8 @@ import {
   Download,
   Image as ImageIcon,
   ExternalLink,
-  Eye
+  Eye,
+  Trash2
 } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -81,6 +82,9 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
   const [editText, setEditText] = useState('')
   const [showRoomDropdown, setShowRoomDropdown] = useState<string | null>(null)
   const [showAddMembersModal, setShowAddMembersModal] = useState(false)
+  const [showCreateChatModal, setShowCreateChatModal] = useState(false)
+  const [newChatName, setNewChatName] = useState('')
+  const [newChatParticipants, setNewChatParticipants] = useState<string[]>([])
   const [availableUsers, setAvailableUsers] = useState<any[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [showMoreOptions, setShowMoreOptions] = useState(false)
@@ -91,9 +95,23 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
 
   useEffect(() => {
     // Load messages for active room only when a valid DB room id is selected
-    if (!activeRoom) return
+    if (!activeRoom || activeRoom.trim() === '') {
+      console.log('⚠️ No active room selected')
+      return
+    }
+    
+    if (chatRooms.length === 0) {
+      console.log('⚠️ Chat rooms not loaded yet, waiting...')
+      return
+    }
+    
     const roomExists = chatRooms.some(r => r.id === activeRoom)
-    if (!roomExists) return
+    if (!roomExists) {
+      console.warn('⚠️ Active room does not exist in chatRooms:', activeRoom, 'Available rooms:', chatRooms.map(r => r.id))
+      return
+    }
+    
+    console.log('✅ Loading messages for active room:', activeRoom)
     loadMessages(activeRoom)
   }, [activeRoom, chatRooms])
 
@@ -161,8 +179,15 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
         
         // Set first room as active if available, otherwise clear activeRoom
         if (rooms.length > 0) {
-          setActiveRoom(rooms[0].id)
+          const firstRoomId = rooms[0].id
+          console.log('✅ Setting first room as active:', firstRoomId)
+          setActiveRoom(firstRoomId)
+          // Also load messages for the first room
+          setTimeout(() => {
+            loadMessages(firstRoomId)
+          }, 100)
         } else {
+          console.log('⚠️ No chat rooms available')
           setActiveRoom('')
         }
       } else {
@@ -174,12 +199,21 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
   }
 
   const loadMessages = async (roomId: string) => {
+    // Validate roomId
+    if (!roomId || roomId.trim() === '') {
+      console.warn('⚠️ loadMessages called with invalid roomId:', roomId)
+      setMessages([])
+      return
+    }
+
     try {
       const token = localStorage.getItem('token')
       if (!token) {
         console.error('No authentication token found')
         return
       }
+
+      console.log('📥 Loading messages for room:', roomId)
 
       const response = await fetch(`/api/chat/rooms/${roomId}/messages`, {
         method: 'GET',
@@ -191,20 +225,20 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
 
       if (response.ok) {
         const messages = await response.json()
-        console.log('Fetched messages for room:', roomId, messages)
+        console.log('✅ Loaded messages:', messages.length)
         
         // Parse messages and add file info
         const parsedMessages = messages.map((message: any) => {
           // If message has fileUrl, it's a file message
-          if (message.fileUrl) {
+          if (message.fileUrl || message.type === 'file') {
             return {
               ...message,
               type: 'file' as const,
               fileInfo: {
-                fileName: message.fileName || 'Unknown file',
-                fileSize: message.fileSize || 0,
-                fileType: message.fileType || 'application/octet-stream',
-                fileUrl: message.fileUrl
+                fileName: message.fileName || message.fileInfo?.fileName || 'Unknown file',
+                fileSize: message.fileSize || message.fileInfo?.fileSize || 0,
+                fileType: message.fileType || message.fileInfo?.fileType || 'application/octet-stream',
+                fileUrl: message.fileUrl || message.fileInfo?.fileUrl
               }
             }
           }
@@ -218,7 +252,8 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
               fileInfo: {
                 fileName: pdfInfo.fileName,
                 fileSize: pdfInfo.fileSize,
-                fileType: pdfInfo.fileType
+                fileType: pdfInfo.fileType,
+                fileUrl: message.fileUrl // Preserve existing fileUrl if present
               }
             }
           }
@@ -228,11 +263,26 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
         
         setMessages(parsedMessages)
       } else {
-        console.error('Failed to fetch messages:', response.status, response.statusText)
-        setMessages([])
+        const errorText = await response.text()
+        let errorMessage = 'Unknown error'
+        try {
+          const errorData = JSON.parse(errorText)
+          errorMessage = errorData.message || errorData.error || errorMessage
+        } catch {
+          errorMessage = response.statusText || errorMessage
+        }
+        
+        if (response.status === 404) {
+          console.warn(`⚠️ Chat room not found (404): ${roomId}`, errorMessage)
+          // Don't show error for 404, just set empty messages
+          setMessages([])
+        } else {
+          console.error(`❌ Failed to fetch messages (${response.status}):`, errorMessage)
+          setMessages([])
+        }
       }
     } catch (error) {
-      console.error('Error loading messages:', error)
+      console.error('❌ Error loading messages:', error)
       setMessages([])
     }
   }
@@ -244,13 +294,22 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
   const sendMessage = async () => {
     if (!newMessage.trim()) return
 
-    // Check if user has access to the active room
-    if (!activeRoom) {
-      console.error('No active room selected')
-      return
+    // If no active room, try to set first available room
+    let roomIdToUse = activeRoom
+    if (!roomIdToUse) {
+      if (chatRooms.length > 0) {
+        console.log('🔄 No active room, auto-selecting first available room:', chatRooms[0].id)
+        roomIdToUse = chatRooms[0].id
+        setActiveRoom(roomIdToUse)
+      } else {
+        console.error('❌ No active room selected and no rooms available')
+        alert('Please select a chat room first')
+        return
+      }
     }
 
-    const hasAccess = chatRooms.some(room => room.id === activeRoom)
+    // Check if user has access to the room
+    const hasAccess = chatRooms.some(room => room.id === roomIdToUse)
     if (!hasAccess) {
       console.error('User does not have access to this chat room')
       alert('You do not have access to this chat room')
@@ -289,7 +348,7 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
         return
       }
 
-      const response = await fetch(`/api/chat/rooms/${activeRoom}/messages`, {
+      const response = await fetch(`/api/chat/rooms/${roomIdToUse}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -336,7 +395,24 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file) {
+      console.log('❌ No file selected')
+      return
+    }
+
+    if (!activeRoom) {
+      console.error('❌ No active room selected')
+      alert('Please select a chat room first')
+      return
+    }
+
+    console.log('📤 Starting file upload...', { 
+      fileName: file.name, 
+      fileSize: file.size, 
+      fileType: file.type,
+      chatRoomId: activeRoom 
+    })
+    console.log('Token:', localStorage.getItem('token') ? 'Present' : 'Missing')
 
     setUploadingFile(true)
     try {
@@ -344,10 +420,6 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('chatRoomId', activeRoom)
-
-      // Upload file to server
-      console.log('Starting file upload...', { fileName: file.name, fileSize: file.size, fileType: file.type })
-      console.log('Token:', localStorage.getItem('token') ? 'Present' : 'Missing')
       
       const response = await fetch('/api/chat/upload', {
         method: 'POST',
@@ -357,47 +429,77 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
         }
       })
       
-      console.log('Upload response status:', response.status)
-      console.log('Upload response ok:', response.ok)
+      console.log('📥 Upload response status:', response.status)
+      console.log('📥 Upload response ok:', response.ok)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Upload failed:', errorText)
+        try {
+          const errorData = JSON.parse(errorText)
+          alert(`Upload failed: ${errorData.message || 'Unknown error'}`)
+        } catch {
+          alert(`Upload failed: ${response.statusText}`)
+        }
+        setUploadingFile(false)
+        return
+      }
 
-      if (response.ok) {
-        const uploadResult = await response.json()
-        console.log('Upload result:', uploadResult)
-        
-        // Send file message to API to save in database
-        const token = localStorage.getItem('token')
-        if (token) {
-          try {
-            const messageResponse = await fetch(`/api/chat/rooms/${activeRoom}/messages`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                content: `📎 ${file.name}`,
-                messageType: 'file',
-                fileUrl: uploadResult.fileUrl,
-                fileName: file.name,
-                fileType: file.type,
-                fileSize: file.size
-              })
+      const uploadResult = await response.json()
+      console.log('✅ Upload result:', uploadResult)
+      
+      // Send file message to API to save in database/local storage
+      const token = localStorage.getItem('token')
+      if (token) {
+        try {
+          console.log('💾 Saving file message to chat room...')
+          const messageResponse = await fetch(`/api/chat/rooms/${activeRoom}/messages`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              content: `📎 ${file.name}`,
+              messageType: 'file',
+              fileUrl: uploadResult.fileUrl,
+              fileName: uploadResult.fileName || file.name,
+              fileType: uploadResult.fileType || file.type,
+              fileSize: uploadResult.fileSize || file.size
             })
+          })
 
-            if (messageResponse.ok) {
-              const savedMessage = await messageResponse.json()
-              console.log('File message saved to database:', savedMessage)
-              
-              // Use the message from database
-              setMessages(prev => [...prev, savedMessage])
-            } else {
-              throw new Error('Failed to save file message')
+          if (messageResponse.ok) {
+            const savedMessage = await messageResponse.json()
+            console.log('✅ File message saved successfully:', savedMessage)
+            
+            // Ensure fileInfo is properly set
+            const messageWithFileInfo = {
+              ...savedMessage,
+              type: 'file' as const,
+              fileInfo: {
+                fileName: savedMessage.fileName || file.name,
+                fileSize: savedMessage.fileSize || file.size,
+                fileType: savedMessage.fileType || file.type,
+                fileUrl: savedMessage.fileUrl || uploadResult.fileUrl
+              }
             }
-          } catch (error) {
-            console.error('Error saving file message to database:', error)
+            
+            // Add message to UI immediately
+            setMessages(prev => [...prev, messageWithFileInfo])
+            
+            // Refresh messages after a short delay to ensure consistency
+            setTimeout(async () => {
+              await loadMessages(activeRoom)
+            }, 500)
+          } else {
+            const errorData = await messageResponse.json().catch(() => ({ message: 'Unknown error' }))
+            console.error('❌ Failed to save file message:', errorData)
+            alert(`File uploaded but failed to save message: ${errorData.message || 'Unknown error'}`)
+            
             // Fallback: add message to UI without saving
             const fileMessage: Message = {
-              id: String(Date.now()),
+              id: `temp_${Date.now()}`,
               senderId: user?.id || '1',
               senderName: user?.name || 'You',
               senderRole: user?.role || 'ADMIN',
@@ -414,10 +516,13 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
             }
             setMessages(prev => [...prev, fileMessage])
           }
-        } else {
-          // No token, just add to UI
+        } catch (error) {
+          console.error('❌ Error saving file message:', error)
+          alert('File uploaded but failed to save message. Please try again.')
+          
+          // Fallback: add message to UI without saving
           const fileMessage: Message = {
-            id: String(Date.now()),
+            id: `temp_${Date.now()}`,
             senderId: user?.id || '1',
             senderName: user?.name || 'You',
             senderRole: user?.role || 'ADMIN',
@@ -434,42 +539,12 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
           }
           setMessages(prev => [...prev, fileMessage])
         }
-        
-        console.log('File uploaded successfully:', file.name, 'URL:', uploadResult.fileUrl)
       } else {
-        // Fallback: create file message without upload
-        console.warn('Upload failed, creating file message without URL')
-        console.log('Response status:', response.status)
-        console.log('Response statusText:', response.statusText)
-        
-        // Try to get error message from response
-        try {
-          const errorData = await response.json()
-          console.log('Error response:', errorData)
-        } catch (e) {
-          console.log('Could not parse error response')
-        }
-        
-        const fileMessage: Message = {
-          id: String(Date.now()),
-          senderId: user?.id || '1',
-          senderName: user?.name || 'You',
-          senderRole: user?.role || 'ADMIN',
-          content: `📎 ${file.name}`,
-          timestamp: new Date().toISOString(),
-          type: 'file',
-          status: 'delivered',
-          fileInfo: {
-            fileName: file.name,
-            fileSize: file.size,
-            fileType: file.type
-            // No fileUrl - will show as non-downloadable
-          }
-        }
-        
-        setMessages(prev => [...prev, fileMessage])
-        console.log('File message created (no upload):', file.name)
+        console.error('❌ No authentication token found')
+        alert('Authentication required. Please refresh and try again.')
       }
+      
+      console.log('✅ File upload completed:', file.name, 'URL:', uploadResult.fileUrl)
     } catch (error) {
       console.error('Error uploading file:', error)
       
@@ -635,6 +710,12 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
   }
 
   const handleLeaveChat = () => {
+    // Prevent players from leaving chat rooms
+    if (user?.role === 'PLAYER') {
+      alert('Players cannot leave chat rooms they were added to by admin')
+      return
+    }
+
     if (confirm('Are you sure you want to leave this chat room?')) {
       // Remove user from chat room
       setChatRooms(prev => prev.map(room => 
@@ -651,11 +732,19 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
   }
 
   const startEditingMessage = (messageId: string, currentText: string) => {
+    // Prevent players from editing messages
+    if (user?.role === 'PLAYER') {
+      return
+    }
     setEditingMessage(messageId)
     setEditText(currentText)
   }
 
   const saveEditedMessage = () => {
+    // Prevent players from saving edited messages
+    if (user?.role === 'PLAYER') {
+      return
+    }
     if (editingMessage && editText.trim()) {
       setMessages(prev => 
         prev.map(m => 
@@ -675,6 +764,12 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
   }
 
   const deleteMessage = async (messageId: string) => {
+    // Prevent players from deleting messages
+    if (user?.role === 'PLAYER') {
+      alert('Players cannot delete messages')
+      return
+    }
+
     if (!confirm('Are you sure you want to delete this message?')) {
       return
     }
@@ -700,56 +795,80 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
       })
 
       if (response.ok) {
-        console.log('✅ Message deleted successfully from database')
+        console.log('✅ Message deleted successfully')
         
-        // Remove from frontend state
+        // Remove from frontend state (soft delete - filter by deletedAt)
         setMessages(prev => prev.filter(m => m.id !== messageId))
+        
+        // Refresh messages to ensure consistency
+        setTimeout(async () => {
+          if (activeRoom) {
+            await loadMessages(activeRoom)
+          }
+        }, 300)
       } else {
-        const errorData = await response.json()
-        console.error('❌ Failed to delete message:', errorData.message)
-        alert(`Failed to delete message: ${errorData.message}`)
+        const errorText = await response.text()
+        let errorMessage = 'Unknown error'
+        try {
+          const errorData = JSON.parse(errorText)
+          errorMessage = errorData.message || errorData.error || errorMessage
+        } catch {
+          errorMessage = response.statusText || errorMessage
+        }
+        console.error('❌ Failed to delete message:', errorMessage)
+        alert(`Failed to delete message: ${errorMessage}`)
       }
     } catch (error) {
       console.error('❌ Error deleting message:', error)
-      alert('Error deleting message. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      alert(`Error deleting message: ${errorMessage}`)
     }
   }
 
-  const createNewChatRoom = async (roomName: string) => {
-    if (roomName.trim()) {
-      try {
-        const token = localStorage.getItem('token')
-        if (!token) {
-          console.error('No authentication token found')
-          return
-        }
+  const createNewChatRoom = async () => {
+    if (!newChatName.trim()) {
+      alert('Please enter a chat room name')
+      return
+    }
 
-        const response = await fetch('/api/chat/rooms', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: roomName.trim(),
-            type: 'group',
-            participantIds: [] // Only creator for now
-          })
-        })
-
-        if (response.ok) {
-          const newRoom = await response.json()
-          console.log('Created new chat room:', newRoom)
-          setChatRooms(prev => [...prev, newRoom])
-          setActiveRoom(newRoom.id)
-        } else {
-          const errorData = await response.json()
-          console.error('Failed to create chat room:', response.status, response.statusText)
-          alert(`Failed to create chat room: ${errorData.message || 'Unknown error'}`)
-        }
-      } catch (error) {
-        console.error('Error creating chat room:', error)
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
       }
+
+      const response = await fetch('/api/chat/rooms', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: newChatName.trim(),
+          type: 'group',
+          participantIds: newChatParticipants // Include selected participants
+        })
+      })
+
+      if (response.ok) {
+        const newRoom = await response.json()
+        console.log('Created new chat room:', newRoom)
+        setChatRooms(prev => [...prev, newRoom])
+        setActiveRoom(newRoom.id)
+        setShowCreateChatModal(false)
+        setNewChatName('')
+        setNewChatParticipants([])
+        // Refresh chat rooms list
+        await loadRealUsersAndCreateChatRooms()
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }))
+        console.error('Failed to create chat room:', response.status, response.statusText)
+        alert(`Failed to create chat room: ${errorData.message || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error creating chat room:', error)
+      alert('Error creating chat room. Please try again.')
     }
   }
 
@@ -812,35 +931,79 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
         return
       }
 
-      console.log('📡 Making API request to /api/users...')
-      const response = await fetch('/api/users', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
+      // Fetch players and staff separately
+      console.log('📡 Making API requests to /api/players and /api/staff...')
+      const [playersResponse, staffResponse] = await Promise.all([
+        fetch('/api/players', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch('/api/staff', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      ])
       
-      console.log('📊 Response status:', response.status)
+      console.log('📊 Players response status:', playersResponse.status)
+      console.log('📊 Staff response status:', staffResponse.status)
       
-      if (response.ok) {
-        const users = await response.json()
-        console.log('✅ Fetched users from database:', users)
-        console.log('📊 Total users:', users.length)
+      const allUsers: any[] = []
+      
+      // Process players
+      if (playersResponse.ok) {
+        const players = await playersResponse.json()
+        console.log('✅ Fetched players:', players)
         
-        // Filter out inactive users and only show PLAYER, STAFF, and COACH roles
-        const activeUsers = users.filter((user: any) => 
-          user.isActive && ['PLAYER', 'STAFF', 'COACH'].includes(user.role)
-        )
-        console.log('👥 Active users (PLAYER, STAFF, COACH):', activeUsers)
-        console.log('📊 Active users count:', activeUsers.length)
+        // Handle both array and object with players property
+        const playersList = Array.isArray(players) ? players : (players.players || [])
         
-        setAvailableUsers(activeUsers)
-        console.log('✅ Available users state updated')
+        playersList.forEach((player: any) => {
+          allUsers.push({
+            id: player.id,
+            name: player.name || `${player.firstName || ''} ${player.lastName || ''}`.trim(),
+            email: player.email,
+            role: 'PLAYER',
+            isActive: true,
+            firstName: player.firstName,
+            lastName: player.lastName
+          })
+        })
       } else {
-        console.error('❌ Failed to fetch users:', response.status, response.statusText)
-        setAvailableUsers([])
+        console.error('❌ Failed to fetch players:', playersResponse.status)
       }
+      
+      // Process staff
+      if (staffResponse.ok) {
+        const staffData = await staffResponse.json()
+        console.log('✅ Fetched staff:', staffData)
+        
+        // Handle both array and object with staff property
+        const staffList = Array.isArray(staffData) ? staffData : (staffData.staff || [])
+        
+        staffList.forEach((staffMember: any) => {
+          allUsers.push({
+            id: staffMember.user?.id || staffMember.id,
+            name: staffMember.name || `${staffMember.firstName || ''} ${staffMember.lastName || ''}`.trim(),
+            email: staffMember.email || staffMember.user?.email,
+            role: 'STAFF',
+            isActive: true,
+            firstName: staffMember.firstName,
+            lastName: staffMember.lastName
+          })
+        })
+      } else {
+        console.error('❌ Failed to fetch staff:', staffResponse.status)
+      }
+      
+      console.log('👥 Total available users (PLAYER, STAFF):', allUsers)
+      console.log('📊 Total users count:', allUsers.length)
+      
+      setAvailableUsers(allUsers)
+      console.log('✅ Available users state updated')
     } catch (error) {
       console.error('❌ Error fetching users:', error)
       setAvailableUsers([])
@@ -848,15 +1011,27 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
   }
 
   const addMembersToChat = async () => {
-    if (selectedUsers.length > 0) {
-      try {
-        const token = localStorage.getItem('token')
-        if (!token) {
-          console.error('No authentication token found')
-          return
-        }
+    if (selectedUsers.length === 0) {
+      console.warn('⚠️ No users selected to add')
+      return
+    }
 
-        const response = await fetch(`/api/chat/rooms/${activeRoom}/participants`, {
+    if (!activeRoom || activeRoom.trim() === '') {
+      console.error('❌ No active room selected')
+      alert('Please select a chat room first')
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      console.log('➕ Adding members to chat room:', activeRoom, 'Users:', selectedUsers)
+
+      const response = await fetch(`/api/chat/rooms/${activeRoom}/participants`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -884,13 +1059,23 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
           setSelectedUsers([])
           setShowAddMembersModal(false)
         } else {
-          console.error('Failed to add members to chat room:', response.status, response.statusText)
+          const errorText = await response.text()
+          let errorMessage = 'Unknown error'
+          try {
+            const errorData = JSON.parse(errorText)
+            errorMessage = errorData.message || errorData.error || errorMessage
+          } catch {
+            errorMessage = response.statusText || errorMessage
+          }
+          console.error('Failed to add members to chat room:', response.status, errorMessage)
+          alert(`Failed to add members: ${errorMessage}`)
         }
       } catch (error) {
         console.error('Error adding members to chat room:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        alert(`Error adding members: ${errorMessage}`)
       }
     }
-  }
 
   const removeMemberFromChat = (memberId: string) => {
     setChatRooms(prev => prev.map(room => 
@@ -979,11 +1164,9 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
               {user && user.role === 'ADMIN' && (
                 <div className="flex items-center space-x-2 mb-3">
                   <button
-                    onClick={() => {
-                      const newRoomName = prompt('Enter new chat room name:')
-                      if (newRoomName && newRoomName.trim()) {
-                        createNewChatRoom(newRoomName)
-                      }
+                    onClick={async () => {
+                      await fetchAvailableUsers()
+                      setShowCreateChatModal(true)
                     }}
                     className="flex-1 px-3 py-2 rounded-lg font-medium transition-colors hover:scale-105"
                     style={{ 
@@ -1076,19 +1259,19 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
                     </div>
                   </div>
                   
-                  {/* Room Actions - Only show for non-default rooms */}
-                  {room.id !== 'general' && (
+                  {/* Room Actions - Only show for admins and non-default rooms */}
+                  {user && user.role === 'ADMIN' && room.id !== 'general' && (
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (confirm(`Are you sure you want to delete "${room.name}" chat room?`)) {
+                          if (confirm(`Are you sure you want to delete "${room.name}" chat room? This action cannot be undone.`)) {
                             deleteChatRoom(room.id)
                           }
                         }}
                         className="p-1 rounded hover:bg-opacity-20 transition-colors"
                         style={{ color: colorScheme.error }}
-                        title="Delete chat room"
+                        title="Delete chat room (Admin only)"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -1100,28 +1283,29 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
             </div>
           </div>
 
-          {/* Main Chat Area */}
-          <div className="flex-1 flex flex-col w-full sm:w-auto overflow-hidden">
-            {/* Chat Header */}
-            <div className="p-3 border-b shadow-sm flex-shrink-0" style={{ 
-              backgroundColor: colorScheme.surface,
-              borderColor: colorScheme.border 
-            }}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 sm:space-x-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold text-white text-sm sm:text-base"
-                       style={{ backgroundColor: colorScheme.primary }}>
-                    {chatRooms.find(r => r.id === activeRoom)?.name.charAt(0)}
+          {/* Main Chat Area - Only show if user has chat rooms and one is active */}
+          {chatRooms.length > 0 && activeRoom ? (
+            <div className="flex-1 flex flex-col w-full sm:w-auto overflow-hidden">
+              {/* Chat Header */}
+              <div className="p-3 border-b shadow-sm flex-shrink-0" style={{ 
+                backgroundColor: colorScheme.surface,
+                borderColor: colorScheme.border 
+              }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold text-white text-sm sm:text-base"
+                         style={{ backgroundColor: colorScheme.primary }}>
+                      {chatRooms.find(r => r.id === activeRoom)?.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm sm:text-base" style={{ color: colorScheme.text }}>
+                        {chatRooms.find(r => r.id === activeRoom)?.name}
+                      </h3>
+                      <p className="text-xs sm:text-sm" style={{ color: colorScheme.textSecondary }}>
+                        {chatRooms.find(r => r.id === activeRoom)?.participants.length} members
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-sm sm:text-base" style={{ color: colorScheme.text }}>
-                      {chatRooms.find(r => r.id === activeRoom)?.name}
-                    </h3>
-                    <p className="text-xs sm:text-sm" style={{ color: colorScheme.textSecondary }}>
-                      {chatRooms.find(r => r.id === activeRoom)?.participants.length} members
-                    </p>
-                  </div>
-                </div>
                 <div className="flex items-center space-x-1 sm:space-x-2">
                   {/* Only show Add Members button for admins */}
                   {user && user.role === 'ADMIN' && (
@@ -1136,19 +1320,37 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
                       <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                     </button>
                   )}
-                  <button 
-                    onClick={() => {
-                      const newName = prompt('Enter new chat room name:', chatRooms.find(r => r.id === activeRoom)?.name)
-                      if (newName && newName.trim()) {
-                        console.log('Renaming room to:', newName)
-                        // Add rename logic here
-                      }
-                    }}
-                    className="p-1.5 sm:p-2 rounded-lg hover:bg-opacity-20 transition-colors"
-                    style={{ color: colorScheme.textSecondary }}
-                    title="Edit Chat Room">
-                    <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </button>
+                  {/* Only show Delete button for admins */}
+                  {user && user.role === 'ADMIN' && activeRoom && activeRoom !== 'general' && (
+                    <button 
+                      onClick={() => {
+                        const room = chatRooms.find(r => r.id === activeRoom)
+                        if (room && confirm(`Are you sure you want to delete "${room.name}" chat room? This action cannot be undone.`)) {
+                          deleteChatRoom(activeRoom)
+                        }
+                      }}
+                      className="p-1.5 sm:p-2 rounded-lg hover:bg-opacity-20 transition-colors"
+                      style={{ color: colorScheme.error }}
+                      title="Delete Chat Room (Admin only)">
+                      <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </button>
+                  )}
+                  {/* Only show Edit Chat Room button for non-players */}
+                  {user && user.role !== 'PLAYER' && (
+                    <button 
+                      onClick={() => {
+                        const newName = prompt('Enter new chat room name:', chatRooms.find(r => r.id === activeRoom)?.name)
+                        if (newName && newName.trim()) {
+                          console.log('Renaming room to:', newName)
+                          // Add rename logic here
+                        }
+                      }}
+                      className="p-1.5 sm:p-2 rounded-lg hover:bg-opacity-20 transition-colors"
+                      style={{ color: colorScheme.textSecondary }}
+                      title="Edit Chat Room">
+                      <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </button>
+                  )}
                   <div className="relative">
                     <button 
                       onClick={handleMoreOptions}
@@ -1166,20 +1368,26 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
                              borderColor: colorScheme.border 
                            }}>
                         <div className="py-1">
-                          <button
-                            onClick={handleClearChat}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-opacity-20 transition-colors"
-                            style={{ color: colorScheme.text }}
-                          >
-                            Clear Chat
-                          </button>
-                          <button
-                            onClick={handleLeaveChat}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-opacity-20 transition-colors"
-                            style={{ color: colorScheme.error }}
-                          >
-                            Leave Chat
-                          </button>
+                          {/* Only show Clear Chat for non-players */}
+                          {user && user.role !== 'PLAYER' && (
+                            <button
+                              onClick={handleClearChat}
+                              className="w-full px-4 py-2 text-left text-sm hover:bg-opacity-20 transition-colors"
+                              style={{ color: colorScheme.text }}
+                            >
+                              Clear Chat
+                            </button>
+                          )}
+                          {/* Hide Leave Chat for players */}
+                          {user && user.role !== 'PLAYER' && (
+                            <button
+                              onClick={handleLeaveChat}
+                              className="w-full px-4 py-2 text-left text-sm hover:bg-opacity-20 transition-colors"
+                              style={{ color: colorScheme.error }}
+                            >
+                              Leave Chat
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1289,8 +1497,8 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
                       </>
                     )}
                     
-                    {/* Message Actions - Only show for user's own messages */}
-                    {message.senderId === user?.id && editingMessage !== message.id && (
+                    {/* Message Actions - Only show for user's own messages and not for players */}
+                    {message.senderId === user?.id && editingMessage !== message.id && user?.role !== 'PLAYER' && (
                       <div className="absolute -right-2 top-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <div className="flex items-center space-x-1 bg-white rounded-lg shadow-lg border p-1"
                              style={{ borderColor: colorScheme.border }}>
@@ -1319,11 +1527,12 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input */}
-            <div className="p-3 border-t shadow-lg flex-shrink-0" style={{ 
-              backgroundColor: colorScheme.surface,
-              borderColor: colorScheme.border 
-            }}>
+            {/* Message Input - Only show if active room exists */}
+            {activeRoom && (
+              <div className="p-3 border-t shadow-lg flex-shrink-0" style={{ 
+                backgroundColor: colorScheme.surface,
+                borderColor: colorScheme.border 
+              }}>
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => fileInputRef.current?.click()}
@@ -1389,9 +1598,153 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
                 </button>
               </div>
             </div>
-          </div>
+            )}
+            </div>
+          ) : (
+            /* Empty state when no chat rooms */
+            <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: colorScheme.background }}>
+              <div className="text-center">
+                <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-30" style={{ color: colorScheme.textSecondary }} />
+                <p className="text-lg font-medium" style={{ color: colorScheme.textSecondary }}>
+                  You are not added to any chat
+                </p>
+                <p className="text-sm mt-2" style={{ color: colorScheme.textSecondary }}>
+                  Contact administrator to add you to a chat room
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Create Chat Modal */}
+      {showCreateChatModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div
+            className="rounded-lg shadow-xl max-w-md w-full max-h-[80vh] flex flex-col"
+            style={{ backgroundColor: colorScheme.surface }}
+          >
+            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: colorScheme.border }}>
+              <h2 className="text-xl font-semibold" style={{ color: colorScheme.text }}>
+                Create New Chat Room
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateChatModal(false)
+                  setNewChatName('')
+                  setNewChatParticipants([])
+                }}
+                className="p-2 rounded-lg hover:bg-opacity-20 transition-colors"
+                style={{ color: colorScheme.textSecondary }}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 p-4 overflow-y-auto space-y-4">
+              {/* Chat Name Input */}
+              <div>
+                <label style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
+                  Chat Room Name *
+                </label>
+                <input
+                  type="text"
+                  value={newChatName}
+                  onChange={(e) => setNewChatName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  placeholder="Enter chat room name"
+                  style={{
+                    backgroundColor: colorScheme.background,
+                    color: colorScheme.text,
+                    border: `1px solid ${colorScheme.border}`
+                  }}
+                />
+              </div>
+
+              {/* Participants Selection */}
+              <div>
+                <label style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
+                  Select Participants (Staff & Players)
+                </label>
+                <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-2" style={{ borderColor: colorScheme.border }}>
+                  {availableUsers.length === 0 ? (
+                    <div className="text-center py-4" style={{ color: colorScheme.textSecondary }}>
+                      <p>No users available</p>
+                      <p className="text-xs mt-1">Make sure you have STAFF or PLAYER users in your system</p>
+                    </div>
+                  ) : (
+                    availableUsers
+                      .filter(availableUser => availableUser.id !== user?.id) // Exclude current user (admin)
+                      .filter(availableUser => ['STAFF', 'PLAYER'].includes(availableUser.role)) // Only STAFF and PLAYER
+                      .map(availableUser => (
+                        <div
+                          key={availableUser.id}
+                          className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                            newChatParticipants.includes(availableUser.id) ? 'bg-opacity-20' : 'hover:bg-opacity-10'
+                          }`}
+                          style={{ 
+                            backgroundColor: newChatParticipants.includes(availableUser.id) ? colorScheme.primary : 'transparent'
+                          }}
+                          onClick={() => {
+                            setNewChatParticipants(prev => 
+                              prev.includes(availableUser.id) 
+                                ? prev.filter(id => id !== availableUser.id)
+                                : [...prev, availableUser.id]
+                            )
+                          }}
+                        >
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white"
+                               style={{ backgroundColor: colorScheme.primary }}>
+                            {availableUser.name?.charAt(0) || availableUser.email?.charAt(0) || 'U'}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-medium" style={{ color: colorScheme.text }}>
+                              {availableUser.name || availableUser.email}
+                            </h3>
+                            <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
+                              {availableUser.role}
+                            </p>
+                          </div>
+                          {newChatParticipants.includes(availableUser.id) && (
+                            <Check className="h-5 w-5" style={{ color: colorScheme.primary }} />
+                          )}
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t flex items-center justify-end space-x-2" style={{ borderColor: colorScheme.border }}>
+              <button
+                onClick={() => {
+                  setShowCreateChatModal(false)
+                  setNewChatName('')
+                  setNewChatParticipants([])
+                }}
+                className="px-4 py-2 rounded-lg font-medium transition-colors"
+                style={{ 
+                  backgroundColor: colorScheme.border,
+                  color: colorScheme.text
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createNewChatRoom}
+                disabled={!newChatName.trim()}
+                className="px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+                style={{ 
+                  backgroundColor: colorScheme.primary,
+                  color: colorScheme.primaryText || 'white'
+                }}
+              >
+                Create Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Members Modal */}
       {showAddMembersModal && (

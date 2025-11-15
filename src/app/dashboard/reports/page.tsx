@@ -98,11 +98,19 @@ export default function ReportsPage() {
   useEffect(() => {
     fetchData()
     fetchStaffPermissions()
-    // Initially fetch root level reports (no folder assigned)
+    // Initially fetch root level folders and reports
+    fetchFolders(null)
     fetchReports()
-  }, [])
+  }, [user])
 
-  const fetchData = async () => {
+  // Update folders when selectedFolder changes
+  useEffect(() => {
+    if (user) {
+      fetchFolders(selectedFolder?.id || null)
+    }
+  }, [selectedFolder, user])
+
+  const fetchFolders = async (parentId?: string | null) => {
     try {
       const token = localStorage.getItem('token')
       if (!token) {
@@ -112,7 +120,11 @@ export default function ReportsPage() {
 
       if (user?.role === 'STAFF') {
         // For staff users, use the staff-reports API
-        const response = await fetch('/api/reports/staff-reports', {
+        const url = parentId 
+          ? `/api/reports/staff-reports?folderId=${parentId}`
+          : '/api/reports/staff-reports'
+        
+        const response = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -121,37 +133,74 @@ export default function ReportsPage() {
         if (response.ok) {
           const data = await response.json()
           setFolders(data.folders || [])
-          setReports(data.reports || [])
         }
       } else {
-        // For admin/coach users, use the regular API
-        const [foldersResponse, staffResponse] = await Promise.all([
-          fetch('/api/reports/folders', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }),
-          fetch('/api/reports/staff', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          })
-        ])
+        // For admin users, use the regular API with parentId parameter
+        const url = parentId 
+          ? `/api/reports/folders?parentId=${parentId}`
+          : '/api/reports/folders'
+        
+        const foldersResponse = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
 
         if (foldersResponse.ok) {
           const foldersData = await foldersResponse.json()
           setFolders(foldersData)
         }
+      }
+    } catch (error) {
+      console.error('Error fetching folders:', error)
+    }
+  }
 
-        if (staffResponse.ok) {
-          const staffData = await staffResponse.json()
-          setStaff(staffData.staff)
-        }
+  const fetchData = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      // Fetch folders for current folder (or root if no folder selected)
+      await fetchFolders(selectedFolder?.id || null)
+
+      // Fetch staff list for admin (needed for folder creation and visibility)
+      if (user?.role === 'ADMIN') {
+        await refreshStaffList()
       }
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const refreshStaffList = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      const staffResponse = await fetch('/api/reports/staff', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (staffResponse.ok) {
+        const staffData = await staffResponse.json()
+        setStaff(staffData.staff || [])
+        console.log('✅ Staff list refreshed:', staffData.staff?.length || 0, 'members')
+      } else {
+        console.error('Failed to fetch staff:', staffResponse.status)
+      }
+    } catch (error) {
+      console.error('Error refreshing staff list:', error)
     }
   }
 
@@ -223,7 +272,13 @@ export default function ReportsPage() {
         })
         if (response.ok) {
           const data = await response.json()
-          setReports(data.reports)
+          console.log('📊 Reports fetched:', { 
+            folderId, 
+            reportsCount: data.reports?.length || 0,
+            reports: data.reports 
+          })
+          // Ensure we set an array even if reports is undefined
+          setReports(data.reports || [])
         } else {
           console.error('Failed to fetch reports:', response.status, response.statusText)
           if (response.status === 401) {
@@ -242,7 +297,8 @@ export default function ReportsPage() {
   const navigateToFolder = (folder: ReportFolder) => {
     setCurrentPath(prev => [...prev, folder])
     setSelectedFolder(folder)
-    fetchReports(folder.id)
+    fetchFolders(folder.id) // Fetch child folders
+    fetchReports(folder.id) // Fetch reports in folder
   }
 
   const navigateUp = () => {
@@ -251,7 +307,8 @@ export default function ReportsPage() {
       setCurrentPath(newPath)
       const parentFolder = newPath[newPath.length - 1] || null
       setSelectedFolder(parentFolder)
-      fetchReports(parentFolder?.id)
+      fetchFolders(parentFolder?.id || null) // Fetch folders for parent (or root)
+      fetchReports(parentFolder?.id) // Fetch reports for parent
     }
   }
 
@@ -277,8 +334,15 @@ export default function ReportsPage() {
       })
 
       if (response.ok) {
-        await fetchData()
+        // Refresh folders for current location
+        await fetchFolders(selectedFolder?.id || null)
+        // Also refresh reports to show updated folder structure
+        await fetchReports(selectedFolder?.id)
         setShowCreateFolder(false)
+        alert('Folder created successfully!')
+      } else {
+        const errorData = await response.json()
+        alert(`Failed to create folder: ${errorData.message || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error creating folder:', error)
@@ -317,7 +381,14 @@ export default function ReportsPage() {
       
       if (response.ok) {
         console.log('Upload successful!')
-        await fetchReports(selectedFolder?.id)
+        // Wait a moment for the server to process the upload
+        await new Promise(resolve => setTimeout(resolve, 500))
+        // Refresh reports in the current folder
+        const folderId = selectedFolder?.id || undefined
+        console.log('Refreshing reports for folder:', folderId)
+        await fetchReports(folderId)
+        // Also refresh folders to update counts
+        await fetchFolders(folderId || null)
         setShowUploadReport(false)
         alert('Report uploaded successfully!')
       } else {
@@ -512,31 +583,31 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen p-4" style={{ backgroundColor: colorScheme.background }}>
+    <div className="min-h-screen p-0 sm:p-4" style={{ backgroundColor: colorScheme.background }}>
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2" style={{ color: colorScheme.text }}>
+      <div className="mb-4 sm:mb-6 px-4 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2" style={{ color: colorScheme.text }}>
               Reports Management
             </h1>
-            <div className="flex items-center space-x-2 text-sm" style={{ color: colorScheme.textSecondary }}>
+            <div className="flex items-center space-x-2 text-xs sm:text-sm flex-wrap" style={{ color: colorScheme.textSecondary }}>
               <span>📁</span>
               <span>Reports</span>
               {currentPath.map((folder, index) => (
                 <React.Fragment key={folder.id}>
                   <span>/</span>
-                  <span>{folder.name}</span>
+                  <span className="truncate max-w-[150px] sm:max-w-none">{folder.name}</span>
                 </React.Fragment>
               ))}
             </div>
           </div>
           {/* Only show admin controls for ADMIN and COACH roles */}
           {user?.role !== 'STAFF' && (
-            <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:gap-0">
               <button
                 onClick={() => setShowCreateFolder(true)}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors"
+                className="flex items-center justify-center sm:justify-start space-x-2 px-3 sm:px-4 py-2 rounded-lg border transition-colors text-sm sm:text-base"
                 style={{ 
                   backgroundColor: colorScheme.surface, 
                   borderColor: colorScheme.border,
@@ -548,7 +619,7 @@ export default function ReportsPage() {
               </button>
               <button
                 onClick={() => setShowUploadReport(true)}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors"
+                className="flex items-center justify-center sm:justify-start space-x-2 px-3 sm:px-4 py-2 rounded-lg border transition-colors text-sm sm:text-base"
                 style={{ 
                   backgroundColor: colorScheme.surface, 
                   borderColor: colorScheme.border,
@@ -565,10 +636,10 @@ export default function ReportsPage() {
 
       {/* Navigation */}
       {currentPath.length > 0 && (
-        <div className="mb-4">
+        <div className="mb-4 px-4 sm:px-0">
           <button
             onClick={navigateUp}
-            className="flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors"
+            className="flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors text-sm sm:text-base"
             style={{ 
               backgroundColor: colorScheme.surface, 
               borderColor: colorScheme.border,
@@ -582,26 +653,28 @@ export default function ReportsPage() {
       )}
 
       {/* Folders Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-        {folders.filter(folder => folder.parentId === (selectedFolder?.id || null)).map((folder) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 mb-6 px-4 sm:px-0">
+        {folders.map((folder) => (
           <div
             key={folder.id}
-            className="p-4 rounded-lg border cursor-pointer hover:shadow-lg transition-shadow"
+            className="p-3 sm:p-4 rounded-lg border cursor-pointer hover:shadow-lg transition-shadow"
             style={{ 
               backgroundColor: colorScheme.surface, 
               borderColor: colorScheme.border 
             }}
             onClick={() => navigateToFolder(folder)}
           >
-            <div className="flex items-start justify-between mb-3">
-              <FolderOpen className="h-8 w-8" style={{ color: '#7C3AED' }} />
+            <div className="flex items-start justify-between mb-2 sm:mb-3">
+              <FolderOpen className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0" style={{ color: '#7C3AED' }} />
               {/* Only show admin controls for ADMIN and COACH roles */}
               {user?.role !== 'STAFF' && (
                 <div className="flex space-x-1">
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation()
                       setSelectedItem(folder)
+                      // Refresh staff list before opening modal
+                      await refreshStaffList()
                       setShowVisibilityModal(true)
                     }}
                     className="p-1 rounded hover:bg-gray-100 transition-colors"
@@ -638,11 +711,11 @@ export default function ReportsPage() {
                 </div>
               )}
             </div>
-            <h3 className="font-semibold mb-1" style={{ color: colorScheme.text }}>
+            <h3 className="font-semibold mb-1 text-sm sm:text-base truncate" style={{ color: colorScheme.text }}>
               {folder.name}
             </h3>
             {folder.description && (
-              <p className="text-sm mb-2" style={{ color: colorScheme.textSecondary }}>
+              <p className="text-xs sm:text-sm mb-2 line-clamp-2" style={{ color: colorScheme.textSecondary }}>
                 {folder.description}
               </p>
             )}
@@ -678,19 +751,19 @@ export default function ReportsPage() {
       </div>
 
       {/* Reports Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 px-4 sm:px-0">
         {reports.map((report) => (
           <div
             key={report.id}
-            className="p-4 rounded-lg border hover:shadow-lg transition-shadow"
+            className="p-3 sm:p-4 rounded-lg border hover:shadow-lg transition-shadow"
             style={{ 
               backgroundColor: colorScheme.surface, 
               borderColor: colorScheme.border 
             }}
           >
-            <div className="flex items-start justify-between mb-3">
+            <div className="flex items-start justify-between mb-2 sm:mb-3">
               {report.fileType === 'application/pdf' ? (
-                <div className="w-12 h-16 rounded border overflow-hidden" style={{ backgroundColor: '#f3f4f6' }}>
+                <div className="w-10 h-14 sm:w-12 sm:h-16 rounded border overflow-hidden flex-shrink-0" style={{ backgroundColor: '#f3f4f6' }}>
                   <PDFThumbnail
                     pdfUrl={report.fileUrl}
                     fileName={report.name}
@@ -700,9 +773,9 @@ export default function ReportsPage() {
                   />
                 </div>
               ) : (
-                <span className="text-2xl">{getFileIcon(report.fileType)}</span>
+                <span className="text-xl sm:text-2xl flex-shrink-0">{getFileIcon(report.fileType)}</span>
               )}
-              <div className="flex space-x-1">
+              <div className="flex space-x-1 flex-shrink-0">
                 <button
                   onClick={() => {
                     trackFileAccess(report.id, 'view')
@@ -724,11 +797,11 @@ export default function ReportsPage() {
                 )}
               </div>
             </div>
-            <h3 className="font-semibold mb-1" style={{ color: colorScheme.text }}>
+            <h3 className="font-semibold mb-1 text-sm sm:text-base truncate" style={{ color: colorScheme.text }}>
               {report.name}
             </h3>
             {report.description && (
-              <p className="text-sm mb-2" style={{ color: colorScheme.textSecondary }}>
+              <p className="text-xs sm:text-sm mb-2 line-clamp-2" style={{ color: colorScheme.textSecondary }}>
                 {report.description}
               </p>
             )}

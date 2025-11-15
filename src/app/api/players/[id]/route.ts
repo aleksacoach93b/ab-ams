@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hashPassword } from '@/lib/auth'
 import { NotificationService } from '@/lib/notificationService'
+import { readState, writeState, syncPlayerUserEmail } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function GET(
   request: NextRequest,
@@ -15,6 +18,59 @@ export async function GET(
         { message: 'Player ID is required' },
         { status: 400 }
       )
+    }
+
+    // Local dev mode: return data from state
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      
+      // Find player in state.players (by ID)
+      const statePlayer = state.players.find(p => p.id === id)
+      
+      if (!statePlayer) {
+        return NextResponse.json(
+          { message: 'Player not found' },
+          { status: 404 }
+        )
+      }
+      
+      // Find associated user account
+      const playerUser = state.playerUsers.find(u => u.playerId === id)
+      
+      const nameParts = statePlayer.name.split(' ')
+      const firstName = nameParts[0] || ''
+      const lastName = nameParts.slice(1).join(' ') || ''
+      const now = new Date().toISOString()
+      
+      return NextResponse.json({
+        id: statePlayer.id,
+        firstName,
+        lastName,
+        name: statePlayer.name,
+        email: statePlayer.email,
+        position: statePlayer.position || '',
+        status: statePlayer.status || 'FULLY_AVAILABLE',
+        availabilityStatus: statePlayer.status || 'FULLY_AVAILABLE',
+        matchDayTag: state.playerTags[id] ?? null,
+        teamId: 'team-sepsi',
+        imageUrl: state.playerAvatars[id] ?? null,
+        phone: '',
+        dateOfBirth: null,
+        nationality: '',
+        height: null,
+        weight: null,
+        preferredFoot: '',
+        jerseyNumber: null,
+        medicalInfo: null,
+        emergencyContact: null,
+        team: { id: 'team-sepsi', name: 'Sepsi OSK' },
+        user: playerUser ? { 
+          id: playerUser.id, 
+          email: playerUser.email 
+        } : { id: `local-user-${id}`, email: statePlayer.email },
+        createdAt: now,
+        updatedAt: now
+      })
     }
 
     const player = await prisma.players.findUnique({
@@ -68,6 +124,87 @@ export async function PUT(
       status
     } = body
 
+    // Local dev mode: update state file
+    if (LOCAL_DEV_MODE) {
+      try {
+        const state = await readState()
+        const now = new Date().toISOString()
+        
+        // Find player in state
+        const playerIndexInState = state.players.findIndex(p => p.id === id)
+        
+        if (playerIndexInState === -1) {
+          return NextResponse.json(
+            { message: 'Player not found' },
+            { status: 404 }
+          )
+        }
+        
+        // Get existing player data to preserve fields
+        const existingPlayer = state.players[playerIndexInState]
+        
+        // Sync player user email and password if changed
+        if (email || password) {
+          try {
+            await syncPlayerUserEmail(id, email || existingPlayer.email || '', name || existingPlayer.name || '', password)
+          } catch (syncError) {
+            console.error('Error syncing player user email/password:', syncError)
+            // Continue even if sync fails
+          }
+        }
+        
+        // Find associated playerUser
+        const playerUser = state.playerUsers.find(u => u.playerId === id)
+        
+        // Update player data in state.players
+        const updatedPlayer = {
+          ...existingPlayer,
+          id,
+          name: name || existingPlayer.name || '',
+          email: email || existingPlayer.email || '',
+          position: position !== undefined ? position : existingPlayer.position || '',
+          status: status || existingPlayer.status || 'FULLY_AVAILABLE',
+          phone: phone !== undefined ? phone : existingPlayer.phone,
+          dateOfBirth: dateOfBirth !== undefined ? dateOfBirth : existingPlayer.dateOfBirth,
+          height: body.height !== undefined ? body.height : existingPlayer.height,
+          weight: body.weight !== undefined ? body.weight : existingPlayer.weight,
+          jerseyNumber: jerseyNumber !== undefined ? (jerseyNumber ? parseInt(jerseyNumber) : null) : existingPlayer.jerseyNumber
+        }
+        
+        state.players[playerIndexInState] = updatedPlayer
+        await writeState(state)
+        
+        return NextResponse.json({
+          id,
+          name: updatedPlayer.name,
+          email: updatedPlayer.email,
+          phone: updatedPlayer.phone || '',
+          dateOfBirth: updatedPlayer.dateOfBirth || null,
+          position: updatedPlayer.position || '',
+          jerseyNumber: updatedPlayer.jerseyNumber || null,
+          height: updatedPlayer.height || null,
+          weight: updatedPlayer.weight || null,
+          status: updatedPlayer.status || 'FULLY_AVAILABLE',
+          availabilityStatus: updatedPlayer.status || 'FULLY_AVAILABLE',
+          imageUrl: state.playerAvatars[id] || null,
+          teamId: 'team-sepsi',
+          team: { id: 'team-sepsi', name: 'Sepsi OSK' },
+          user: playerUser ? { 
+            id: playerUser.id, 
+            email: playerUser.email 
+          } : { id: `local-user-${id}`, email: updatedPlayer.email },
+          createdAt: existingPlayer.createdAt || now,
+          updatedAt: now
+        })
+      } catch (error) {
+        console.error('Error updating player in LOCAL_DEV_MODE:', error)
+        return NextResponse.json(
+          { message: 'Failed to update player', error: error instanceof Error ? error.message : 'Unknown error' },
+          { status: 500 }
+        )
+      }
+    }
+
     // First, get the player to find the associated user
     const existingPlayer = await prisma.players.findUnique({
       where: { id },
@@ -90,10 +227,11 @@ export async function PUT(
         )
       }
 
-      await prisma.user.update({
+      await prisma.users.update({
         where: { id: existingPlayer.userId },
         data: {
-          password: await hashPassword(password)
+          password: await hashPassword(password),
+          updatedAt: new Date()
         }
       })
     }
@@ -157,6 +295,78 @@ export async function DELETE(
       )
     }
 
+    // Local dev mode: delete from state
+    if (LOCAL_DEV_MODE) {
+      try {
+        const state = await readState()
+        
+        // Remove player from state.players
+        state.players = state.players.filter(p => p.id !== playerId)
+        
+        // Remove player user from state.playerUsers
+        if (state.playerUsers) {
+          state.playerUsers = state.playerUsers.filter(u => u.playerId !== playerId)
+        }
+        
+        // Remove player avatar
+        if (state.playerAvatars) {
+          delete state.playerAvatars[playerId]
+        }
+        
+        // Remove player media files
+        if (state.playerMediaFiles) {
+          delete state.playerMediaFiles[playerId]
+        }
+        
+        // Remove player notes
+        if (state.playerNotes) {
+          delete state.playerNotes[playerId]
+        }
+        
+        // Remove player tag
+        if (state.playerTags) {
+          delete state.playerTags[playerId]
+        }
+        
+        // Remove player from events (remove from participants)
+        if (state.events) {
+          state.events = state.events.map(event => ({
+            ...event,
+            participants: event.participants.filter(p => p.playerId !== playerId)
+          }))
+        }
+        
+        // Remove player report folders for this player
+        if (state.playerReportFolders) {
+          // Delete all folders for this player (folders are stored by parentId, so we need to find all)
+          const folderKeys = Object.keys(state.playerReportFolders)
+          for (const key of folderKeys) {
+            state.playerReportFolders[key] = state.playerReportFolders[key].filter(
+              folder => folder.createdBy !== playerId
+            )
+          }
+        }
+        
+        await writeState(state)
+        
+        console.log('🎉 Successfully deleted player from local state:', playerId)
+        
+        return NextResponse.json(
+          { message: 'Player deleted successfully' },
+          { status: 200 }
+        )
+      } catch (error) {
+        console.error('💥 Error deleting player in LOCAL_DEV_MODE:', error)
+        return NextResponse.json(
+          { 
+            message: 'Failed to delete player', 
+            error: error instanceof Error ? error.message : 'Unknown error'
+          },
+          { status: 500 }
+        )
+      }
+    }
+
     // First check if player exists using Prisma
     const player = await prisma.players.findUnique({
       where: { id: playerId },
@@ -176,19 +386,19 @@ export async function DELETE(
     // Delete related records first (due to foreign key constraints)
     try {
       // Delete player media files
-      await prisma.playersMedia.deleteMany({
+      await prisma.player_media.deleteMany({
         where: { playerId }
       })
       console.log('✅ Deleted player media files')
 
       // Delete player notes
-      await prisma.playersNote.deleteMany({
+      await prisma.player_notes.deleteMany({
         where: { playerId }
       })
       console.log('✅ Deleted player notes')
 
       // Delete event participants
-      await prisma.eventParticipant.deleteMany({
+      await prisma.event_participants.deleteMany({
         where: { playerId }
       })
       console.log('✅ Deleted event participants')
@@ -205,7 +415,7 @@ export async function DELETE(
 
     // Delete the associated user record if it exists
     if (player.userId) {
-      await prisma.user.delete({
+      await prisma.users.delete({
         where: { id: player.userId }
       })
       console.log('✅ Deleted user record')

@@ -4,6 +4,9 @@ import { prisma } from '@/lib/prisma'
 import { EventType } from '@prisma/client'
 import { verifyToken } from '@/lib/auth'
 import { NotificationService } from '@/lib/notificationService'
+import { readState, writeState } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 const getEventColor = (type: string) => {
   switch (type) {
@@ -29,22 +32,33 @@ const getEventColor = (type: string) => {
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Events fetch request received')
-    
-    // Ensure database connection with retry
-    let retries = 3
-    while (retries > 0) {
-      try {
-        await prisma.$connect()
-        console.log('✅ Database connected for events fetch')
-        break
-      } catch (error) {
-        retries--
-        console.log(`❌ Database connection failed, retries left: ${retries}`)
-        if (retries === 0) throw error
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      // Return events from state, transform to match frontend expectations
+      const events = (state.events || []).map(event => ({
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        type: event.type,
+        date: event.date,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        location: event.location,
+        iconName: event.iconName || event.icon,
+        icon: event.icon || event.iconName || 'Calendar',
+        color: event.color || getEventColor(event.type),
+        matchDayTag: event.matchDayTag,
+        isAllDay: event.isAllDay,
+        isRecurring: event.isRecurring,
+        allowPlayerCreation: event.allowPlayerCreation,
+        allowPlayerReschedule: event.allowPlayerReschedule,
+        participants: event.participants || [],
+        media: event.media || []
+      }))
+      return NextResponse.json(events)
     }
-
+    
+    // Prisma handles connection pooling automatically
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
     const userRole = searchParams.get('userRole')
@@ -71,30 +85,30 @@ export async function GET(request: NextRequest) {
         // Find events where the player is a participant
         events = await prisma.events.findMany({
           where: {
-            participants: {
+            event_participants: {
               some: {
                 playerId: player.id
               }
             }
           },
           include: {
-            participants: {
+            event_participants: {
               include: {
-                player: true,
+                players: true,
                 staff: true,
               },
             },
-            media: true,
+            event_media: true,
           },
           orderBy: {
-            date: 'asc'
+            startTime: 'asc'
           }
         })
       } else if (userRole === 'STAFF') {
         // Find events where the staff is a participant
         events = await prisma.events.findMany({
           where: {
-            participants: {
+            event_participants: {
               some: {
                 staff: {
                   userId: userId
@@ -103,32 +117,32 @@ export async function GET(request: NextRequest) {
             }
           },
           include: {
-            participants: {
+            event_participants: {
               include: {
-                player: true,
+                players: true,
                 staff: true,
               },
             },
-            media: true,
+            event_media: true,
           },
           orderBy: {
-            date: 'asc'
+            startTime: 'asc'
           }
         })
       } else {
         // For coaches and admins, show all events
         events = await prisma.events.findMany({
           include: {
-            participants: {
+            event_participants: {
               include: {
-                player: true,
+                players: true,
                 staff: true,
               },
             },
-            media: true,
+            event_media: true,
           },
           orderBy: {
-            date: 'asc'
+            startTime: 'asc'
           }
         })
       }
@@ -145,16 +159,41 @@ export async function GET(request: NextRequest) {
           media: true,
         },
         orderBy: {
-          date: 'asc'
+          startTime: 'asc'
         }
       })
     }
 
-    // Transform events to map iconName to icon for frontend compatibility
-    const transformedEvents = events.map(event => ({
-      ...event,
-      icon: event.iconName || 'Calendar' // Map iconName to icon
-    }))
+    // Transform events for frontend compatibility
+    const transformedEvents = events.map(event => {
+      // Transform participants and media to match frontend expectations
+      const participants = event.event_participants?.map(p => ({
+        id: p.id,
+        playerId: p.playerId,
+        staffId: p.staffId,
+        role: p.role,
+        player: p.players,
+        staff: p.staff
+      })) || []
+      
+      const media = event.event_media?.map(m => ({
+        id: m.id,
+        name: m.fileName,
+        type: m.fileType,
+        url: m.fileUrl,
+        size: m.fileSize
+      })) || []
+      
+      return {
+        ...event,
+        participants,
+        media,
+        icon: event.icon || 'Calendar',
+        // Remove the Prisma relation fields
+        event_participants: undefined,
+        event_media: undefined
+      }
+    })
 
     return NextResponse.json(transformedEvents)
   } catch (error) {
@@ -168,7 +207,135 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    console.log('📝 Event update request received')
+    console.log('📝 [UPDATE EVENT] Request received')
+    
+    if (LOCAL_DEV_MODE) {
+      const body = await request.json()
+      console.log('📝 [UPDATE EVENT] Body received:', { 
+        id: body.id, 
+        title: body.title, 
+        icon: body.icon,
+        type: body.type
+      })
+      
+      const {
+        id,
+        title,
+        description,
+        type,
+        date,
+        startTime,
+        endTime,
+        location,
+        icon,
+        matchDayTag,
+        selectedPlayers = [],
+        selectedStaff = [],
+        isAllDay,
+        isRecurring,
+        allowPlayerCreation,
+        allowPlayerReschedule
+      } = body
+
+      if (!id) {
+        console.error('❌ [UPDATE EVENT] Event ID is required')
+        return NextResponse.json(
+          { message: 'Event ID is required' },
+          { status: 400 }
+        )
+      }
+
+      const state = await readState()
+      const eventIndex = state.events?.findIndex(e => e.id === id)
+      
+      if (eventIndex === undefined || eventIndex === -1) {
+        console.error('❌ [UPDATE EVENT] Event not found:', id)
+        return NextResponse.json(
+          { message: 'Event not found' },
+          { status: 404 }
+        )
+      }
+
+      const existingEvent = state.events[eventIndex]
+      console.log('✅ [UPDATE EVENT] Found event:', { 
+        id: existingEvent.id, 
+        title: existingEvent.title,
+        currentIcon: existingEvent.icon || existingEvent.iconName,
+        newIcon: icon
+      })
+
+      // Update participants if provided
+      let participants = existingEvent.participants || []
+      if (selectedPlayers.length > 0 || selectedStaff.length > 0) {
+        participants = [
+          ...selectedPlayers.map((playerId: string) => ({
+            id: `part_${id}_player_${playerId}_${Date.now()}`,
+            eventId: id,
+            playerId,
+            staffId: null,
+            role: null,
+            player: null,
+            staff: null
+          })),
+          ...selectedStaff.map((staffId: string) => ({
+            id: `part_${id}_staff_${staffId}_${Date.now()}`,
+            eventId: id,
+            playerId: null,
+            staffId,
+            role: null,
+            player: null,
+            staff: null
+          }))
+        ]
+      }
+
+      // Use provided icon or keep existing, ensure both icon and iconName are set
+      const finalIcon = icon !== undefined && icon !== null ? icon : (existingEvent.icon || existingEvent.iconName || 'Calendar')
+
+      const updatedEvent = {
+        ...existingEvent,
+        title: title !== undefined ? title : existingEvent.title,
+        description: description !== undefined ? description : existingEvent.description,
+        type: type ? type.toUpperCase() : existingEvent.type,
+        date: date ? new Date(date).toISOString() : existingEvent.date,
+        startTime: startTime !== undefined ? startTime : existingEvent.startTime,
+        endTime: endTime !== undefined ? endTime : existingEvent.endTime,
+        location: location !== undefined ? location : existingEvent.location,
+        icon: finalIcon,
+        iconName: finalIcon, // Keep both fields in sync
+        color: type ? getEventColor(type.toUpperCase()) : existingEvent.color,
+        matchDayTag: matchDayTag !== undefined ? matchDayTag : existingEvent.matchDayTag,
+        isAllDay: isAllDay !== undefined ? isAllDay : existingEvent.isAllDay,
+        isRecurring: isRecurring !== undefined ? isRecurring : existingEvent.isRecurring,
+        allowPlayerCreation: allowPlayerCreation !== undefined ? allowPlayerCreation : existingEvent.allowPlayerCreation,
+        allowPlayerReschedule: allowPlayerReschedule !== undefined ? allowPlayerReschedule : existingEvent.allowPlayerReschedule,
+        participants,
+        updatedAt: new Date().toISOString()
+      }
+
+      console.log('✅ [UPDATE EVENT] Updating event with:', { 
+        icon: updatedEvent.icon, 
+        iconName: updatedEvent.iconName,
+        title: updatedEvent.title
+      })
+
+      state.events[eventIndex] = updatedEvent
+      await writeState(state)
+
+      console.log('✅ [UPDATE EVENT] Event updated successfully:', updatedEvent.id)
+
+      return NextResponse.json(
+        { 
+          message: 'Event updated successfully', 
+          event: {
+            ...updatedEvent,
+            icon: updatedEvent.icon || updatedEvent.iconName,
+            iconName: updatedEvent.iconName || updatedEvent.icon
+          }
+        },
+        { status: 200 }
+      )
+    }
     
     const body = await request.json()
     console.log('📝 Request body:', body)
@@ -258,11 +425,12 @@ export async function PUT(request: NextRequest) {
       stack: error instanceof Error ? error.stack : 'No stack trace'
     })
     
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
     return NextResponse.json(
       { 
-        message: 'Failed to update event', 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        details: error instanceof Error ? error.stack : 'No details available'
+        message: 'Failed to update event',
+        error: errorMessage
       },
       { status: 500 }
     )
@@ -272,22 +440,169 @@ export async function PUT(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Event creation request received')
-    
-    // Ensure database connection with retry
-    let retries = 3
-    while (retries > 0) {
-      try {
-        await prisma.$connect()
-        console.log('✅ Database connected for event creation')
-        break
-      } catch (error) {
-        retries--
-        console.log(`❌ Database connection failed, retries left: ${retries}`)
-        if (retries === 0) throw error
-        await new Promise(resolve => setTimeout(resolve, 1000))
+    if (LOCAL_DEV_MODE) {
+      const body = await request.json()
+      const {
+        title,
+        description = '',
+        type = 'TRAINING',
+        date,
+        startTime = '10:00',
+        endTime = '11:00',
+        location = '',
+        icon,
+        matchDayTag = '',
+        selectedPlayers = [],
+        selectedStaff = [],
+        isAllDay = false,
+        isRecurring = false,
+        allowPlayerCreation = false,
+        allowPlayerReschedule = false
+      } = body
+
+      // Validate required fields
+      if (!title || !date) {
+        return NextResponse.json(
+          { message: 'Title and date are required' },
+          { status: 400 }
+        )
       }
+
+      // Set appropriate default icon based on event type
+      // IMPORTANT: Use exact icon names that match CustomIcon.tsx customIcons map
+      const getDefaultIcon = (eventType: string) => {
+        switch (eventType.toUpperCase()) {
+          case 'TRAINING': return 'Dumbbell'
+          case 'MATCH': return 'FootballBall'
+          case 'MEETING': return 'Meeting' // CRITICAL: Use 'Meeting' not 'meeting-new'
+          case 'MEDICAL': return 'BloodSample'
+          case 'RECOVERY': return 'Recovery'
+          case 'MEAL': return 'MealPlate'
+          case 'REST': return 'BedTime'
+          case 'LB_GYM': return 'Dumbbell'
+          case 'UB_GYM': return 'Dumbbell'
+          case 'PRE_ACTIVATION': return 'Activity'
+          case 'REHAB': return 'BloodSample'
+          case 'STAFF_MEETING': return 'Meeting' // CRITICAL: Use 'Meeting' not 'meeting-new'
+          case 'VIDEO_ANALYSIS': return 'Video'
+          case 'DAY_OFF': return 'BedTime'
+          case 'TRAVEL': return 'Bus'
+          case 'OTHER': return 'Calendar'
+          default: return 'Dumbbell'
+        }
+      }
+
+      // Use provided icon or default based on type
+      // IMPORTANT: Ensure icon name matches CustomIcon.tsx keys exactly
+      const finalIcon = icon || getDefaultIcon(type)
+      console.log('🎨 [CREATE EVENT] Icon selected:', { 
+        providedIcon: icon, 
+        finalIcon, 
+        eventType: type,
+        defaultIcon: getDefaultIcon(type)
+      })
+      const eventId = `local-evt-${Date.now()}`
+      const now = new Date().toISOString()
+      
+      // Create participants array
+      const participants = [
+        ...selectedPlayers.map((playerId: string) => ({
+          id: `part_${eventId}_player_${playerId}_${Date.now()}`,
+          eventId,
+          playerId,
+          staffId: null,
+          role: null,
+          player: null,
+          staff: null
+        })),
+        ...selectedStaff.map((staffId: string) => ({
+          id: `part_${eventId}_staff_${staffId}_${Date.now()}`,
+          eventId,
+          playerId: null,
+          staffId,
+          role: null,
+          player: null,
+          staff: null
+        }))
+      ]
+
+      const newEvent = {
+        id: eventId,
+        title,
+        description: description || null,
+        type: type.toUpperCase(),
+        date: new Date(date).toISOString(),
+        startTime,
+        endTime,
+        location: location || null,
+        icon: finalIcon,
+        iconName: finalIcon,
+        color: getEventColor(type.toUpperCase()),
+        matchDayTag: matchDayTag || null,
+        isAllDay: !!isAllDay,
+        isRecurring: !!isRecurring,
+        allowPlayerCreation: !!allowPlayerCreation,
+        allowPlayerReschedule: !!allowPlayerReschedule,
+        participants,
+        media: [],
+        createdAt: now,
+        updatedAt: now
+      }
+
+      // Save to state
+      const state = await readState()
+      if (!state.events) {
+        state.events = []
+      }
+      state.events.push(newEvent)
+      await writeState(state)
+
+      // Send notifications to player participants only
+      try {
+        const { createNotification } = await import('@/lib/localDevStore')
+        const playerParticipantIds = selectedPlayers || []
+        
+        if (playerParticipantIds.length > 0) {
+          // Get player user IDs for participants
+          const playerUserIds = playerParticipantIds
+            .map(pid => {
+              const playerUser = state.playerUsers.find((u: any) => u.playerId === pid)
+              return playerUser?.id
+            })
+            .filter((id): id is string => !!id)
+          
+          if (playerUserIds.length > 0) {
+            await createNotification({
+              title: 'New Event Created',
+              message: `"${title}" has been scheduled`,
+              type: 'INFO',
+              category: 'EVENT',
+              userIds: playerUserIds,
+              relatedId: eventId,
+              relatedType: 'event'
+            })
+            console.log(`📱 Sent ${playerUserIds.length} event notifications to players`)
+          }
+        }
+      } catch (notificationError) {
+        console.error('❌ Error creating event notifications:', notificationError)
+        // Don't fail event creation if notification fails
+      }
+
+      return NextResponse.json(
+        { 
+          message: 'Event created successfully', 
+          event: {
+            ...newEvent,
+            icon: finalIcon,
+            iconName: finalIcon
+          }
+        },
+        { status: 201 }
+      )
     }
     
+    // Prisma handles connection pooling automatically
     const body = await request.json()
     console.log('📝 Request body:', body)
     
@@ -418,22 +733,41 @@ export async function POST(request: NextRequest) {
       icon: completeEvent?.iconName || 'Calendar'
     }
 
-    // Create notification for new event (async, don't wait)
+    // Create notifications for player participants only
     try {
-      const token = request.headers.get('authorization')?.replace('Bearer ', '')
-      if (token) {
-        const user = await verifyToken(token)
-        if (user) {
-          await NotificationService.notifyEventCreated(
-            event.id,
-            title,
-            user.userId
-          )
+      if (selectedPlayers && selectedPlayers.length > 0) {
+        // Get player user IDs for participants
+        const playerUsers = await prisma.user.findMany({
+          where: {
+            role: 'PLAYER',
+            player: {
+              id: {
+                in: selectedPlayers
+              }
+            },
+            isActive: true
+          },
+          select: { id: true }
+        })
+        
+        const playerUserIds = playerUsers.map(u => u.id)
+        
+        if (playerUserIds.length > 0) {
+          await NotificationService.createNotification({
+            title: 'New Event Created',
+            message: `"${title}" has been scheduled`,
+            type: 'INFO',
+            category: 'EVENT',
+            userIds: playerUserIds,
+            relatedId: event.id,
+            relatedType: 'event'
+          })
+          console.log(`✅ Sent ${playerUserIds.length} event notifications to players`)
         }
       }
     } catch (notificationError) {
-      console.error('Error creating event notification:', notificationError)
-      // Don't fail the event creation if notification fails
+      console.error('❌ Error creating event notifications:', notificationError)
+      // Don't fail event creation if notification fails
     }
 
     return NextResponse.json(

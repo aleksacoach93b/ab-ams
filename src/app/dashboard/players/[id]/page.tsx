@@ -77,10 +77,41 @@ export default function PlayerProfilePage() {
   const [selectedUploadTags, setSelectedUploadTags] = useState<string[]>([])
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null)
   const [playerChatRooms, setPlayerChatRooms] = useState<any[]>([])
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [previewFile, setPreviewFile] = useState<MediaFile | null>(null)
+  const [wellnessCompletedToday, setWellnessCompletedToday] = useState<boolean | null>(null)
+  const [isCheckingWellness, setIsCheckingWellness] = useState(false)
+  const [wellnessSettings, setWellnessSettings] = useState<{
+    csvUrl: string
+    surveyId: string
+    baseUrl: string
+  } | null>(null)
 
   const playerId = params.id as string
 
+  const fetchWellnessSettings = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      const response = await fetch('/api/wellness/settings', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setWellnessSettings(data.wellnessSettings)
+      }
+    } catch (error) {
+      console.error('Error fetching wellness settings:', error)
+    }
+  }
+
   useEffect(() => {
+    fetchWellnessSettings()
     const fetchPlayerData = async () => {
       try {
         // Get authentication token
@@ -97,12 +128,16 @@ export default function PlayerProfilePage() {
           fetch(`/api/players/${playerId}/media`, { headers }),
           fetch(`/api/players/${playerId}/notes`, { headers }),
           fetch(`/api/players/${playerId}/tags`),
-          fetch(`/api/players/${playerId}/chat-rooms`)
+          fetch(`/api/players/${playerId}/chat-rooms`, { headers }) // ADD HEADERS WITH TOKEN!
         ])
 
         if (playerResponse.ok) {
           const playerData = await playerResponse.json()
-          setPlayer(playerData)
+          // Map imageUrl to avatar for compatibility
+          setPlayer({
+            ...playerData,
+            avatar: playerData.imageUrl || playerData.avatar || null
+          })
         }
 
         if (mediaResponse.ok) {
@@ -110,7 +145,15 @@ export default function PlayerProfilePage() {
           console.log('📁 Fetched media data:', mediaData)
           
           // Transform the data to match our interface
-          const transformedMedia = mediaData.map((file: any) => ({
+          // Filter duplicates by ID first
+          const uniqueMediaMap = new Map()
+          mediaData.forEach((file: any) => {
+            if (!uniqueMediaMap.has(file.id)) {
+              uniqueMediaMap.set(file.id, file)
+            }
+          })
+          
+          const transformedMedia = Array.from(uniqueMediaMap.values()).map((file: any) => ({
             id: file.id,
             name: file.fileName,
             fileName: file.fileName,
@@ -118,11 +161,11 @@ export default function PlayerProfilePage() {
             fileType: file.fileType,
             size: file.fileSize,
             fileSize: file.fileSize,
-            uploadedAt: file.uploadedAt,
-            uploadDate: file.uploadedAt,
-            url: file.fileUrl,
+            uploadedAt: file.uploadedAt || file.createdAt,
+            uploadDate: file.uploadedAt || file.createdAt,
+            url: file.fileUrl || file.url,
             thumbnailUrl: file.thumbnailUrl,
-            tags: file.tags || []
+            tags: Array.isArray(file.tags) ? file.tags : (file.tags ? file.tags.split(',').map((t: string) => t.trim()) : [])
           }))
           console.log('📁 Transformed media data:', transformedMedia)
           setMediaFiles(transformedMedia)
@@ -140,7 +183,18 @@ export default function PlayerProfilePage() {
 
         if (chatResponse.ok) {
           const chatData = await chatResponse.json()
-          setPlayerChatRooms(chatData)
+          console.log('💬 Fetched player chat rooms:', chatData)
+          setPlayerChatRooms(Array.isArray(chatData) ? chatData : [])
+        } else {
+          console.error('❌ Failed to fetch chat rooms:', chatResponse.status, chatResponse.statusText)
+          const errorText = await chatResponse.text().catch(() => 'Unknown error')
+          console.error('Error details:', errorText)
+          setPlayerChatRooms([])
+        }
+
+        // Check wellness survey completion for players
+        if (user?.role === 'PLAYER' && playerId === user.id) {
+          await checkWellnessSurveyCompletion()
         }
       } catch (error) {
         console.error('Error fetching player data:', error)
@@ -152,7 +206,42 @@ export default function PlayerProfilePage() {
     if (playerId) {
       fetchPlayerData()
     }
-  }, [playerId])
+  }, [playerId, user])
+
+  const checkWellnessSurveyCompletion = async () => {
+    if (!playerId) return
+    
+    setIsCheckingWellness(true)
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        setWellnessCompletedToday(false)
+        return
+      }
+
+      const response = await fetch(`/api/wellness/status/${playerId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Wellness survey status:', data)
+        setWellnessCompletedToday(data.completed || false)
+      } else {
+        console.error('Failed to check wellness status:', response.status, response.statusText)
+        setWellnessCompletedToday(false)
+      }
+    } catch (error) {
+      console.error('Error checking wellness survey completion:', error)
+      setWellnessCompletedToday(false)
+    } finally {
+      setIsCheckingWellness(false)
+    }
+  }
 
   const handleFileUpload = async (files: FileList, tags: string[] = []) => {
     console.log('📁 Starting file upload:', { 
@@ -203,11 +292,11 @@ export default function PlayerProfilePage() {
           fileType: file.fileType,
           size: file.fileSize,
           fileSize: file.fileSize,
-          uploadedAt: file.uploadedAt,
-          uploadDate: file.uploadedAt,
-          url: file.fileUrl,
+          uploadedAt: file.uploadedAt || file.createdAt,
+          uploadDate: file.uploadedAt || file.createdAt,
+          url: file.fileUrl || file.url,
           thumbnailUrl: file.thumbnailUrl,
-          tags: file.tags || []
+          tags: Array.isArray(file.tags) ? file.tags : (file.tags ? file.tags.split(',').map((t: string) => t.trim()) : [])
         }))
         console.log('✅ Transformed media:', transformedMedia)
         setMediaFiles(prev => [...prev, ...transformedMedia])
@@ -372,11 +461,18 @@ export default function PlayerProfilePage() {
       const textContent = tempDiv.textContent || tempDiv.innerText || ''
       const title = textContent.trim().substring(0, 50) || 'Untitled Note'
       
+      // Get token from localStorage
+      const token = localStorage.getItem('token')
+      const headers: any = {
+        'Content-Type': 'application/json',
+      }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`/api/players/${playerId}/notes`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           title,
           content,
@@ -551,6 +647,56 @@ export default function PlayerProfilePage() {
         </div>
       </div>
 
+      {/* Wellness Survey Lock - Only for players viewing their own profile */}
+      {user?.role === 'PLAYER' && playerId === user.id && wellnessCompletedToday === false && (
+        <div className="p-6 m-4 rounded-2xl border-2" style={{ 
+          backgroundColor: '#FEF2F2',
+          borderColor: '#FCA5A5'
+        }}>
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+              <User className="h-8 w-8 text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-red-800 mb-2">
+                Daily Wellness Survey Required
+              </h3>
+              <p className="text-red-700 mb-4">
+                You must complete your daily wellness survey to access your profile and all features.
+              </p>
+              <button
+                onClick={async () => {
+                  if (!wellnessSettings) {
+                    alert('Wellness settings not loaded. Please refresh the page.')
+                    return
+                  }
+                  
+                  const wellnessUrl = `${wellnessSettings.baseUrl}/kiosk/${wellnessSettings.surveyId}`
+                  
+                  const wellnessWindow = window.open(wellnessUrl, '_blank')
+                  
+                  // Check for survey completion after window closes
+                  const checkCompletion = setInterval(async () => {
+                    if (wellnessWindow?.closed) {
+                      clearInterval(checkCompletion)
+                      await checkWellnessSurveyCompletion()
+                    }
+                  }, 2000)
+                  
+                  setTimeout(() => clearInterval(checkCompletion), 10 * 60 * 1000)
+                }}
+                className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
+              >
+                Complete Wellness Survey
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content - Only show if wellness completed or user is not a player */}
+      {!(user?.role === 'PLAYER' && playerId === user.id && wellnessCompletedToday === false) && (
+        <>
       {/* Tabs */}
       <div 
         className="border-b"
@@ -865,10 +1011,11 @@ export default function PlayerProfilePage() {
                 <div className={`absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity ${
                   viewMode === 'list' ? 'relative top-0 right-0 opacity-100' : ''
                 }`}>
-                  <a
-                    href={file.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => {
+                      setPreviewFile(file)
+                      setShowPreviewModal(true)
+                    }}
                     className="p-1.5 rounded-md transition-colors shadow-sm hover:opacity-80"
                     style={{
                       backgroundColor: colorScheme.border,
@@ -877,7 +1024,7 @@ export default function PlayerProfilePage() {
                     title="View"
                   >
                     <Eye className="h-3 w-3" />
-                  </a>
+                  </button>
                   <a
                     href={file.url}
                     download={file.fileName || file.name}
@@ -977,65 +1124,86 @@ export default function PlayerProfilePage() {
               {notes.map((note) => (
                 <div
                   key={note.id}
-                  className="rounded-lg border"
+                  className="rounded-xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl overflow-hidden"
                   style={{ 
                     backgroundColor: colorScheme.surface,
                     borderColor: colorScheme.border
                   }}
                 >
-                  {/* Note Header */}
-                  <div 
-                    className="flex items-center justify-between p-4 border-b"
-                    style={{ borderColor: colorScheme.border }}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
-                          <User className="h-3 w-3 text-gray-600" />
-                        </div>
-                        <span 
-                          className="text-sm font-medium"
-                          style={{ color: colorScheme.text }}
+                  {/* Header with Author Info */}
+                  <div className="px-4 sm:px-6 py-3 sm:py-4 border-b" style={{ borderColor: colorScheme.border }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {/* Avatar */}
+                        <div 
+                          className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-white text-sm sm:text-base"
+                          style={{ backgroundColor: colorScheme.primary }}
                         >
-                          {note.author.name}
-                        </span>
+                          {note.author.name?.charAt(0)?.toUpperCase() || note.author.email?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                        {/* Author Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm sm:text-base truncate" style={{ color: colorScheme.text }}>
+                            {note.author.name || note.author.email || 'Unknown Author'}
+                          </p>
+                          <p className="text-xs sm:text-sm truncate" style={{ color: colorScheme.textSecondary }}>
+                            {note.author.email || ''}
+                          </p>
+                        </div>
                       </div>
-                      <span 
-                        className="text-xs"
-                        style={{ color: colorScheme.textSecondary }}
-                      >
-                        {new Date(note.createdAt).toLocaleDateString()} 
-                        {note.updatedAt !== note.createdAt && ' (edited)'}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {note.isPinned && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <Pin className="h-3 w-3 mr-1" />
-                          PINNED
-                        </span>
-                      )}
-                      <button
-                        onClick={() => setEditingNote(note)}
-                        className="p-1 rounded transition-colors hover:opacity-70"
-                        style={{ color: colorScheme.textSecondary }}
-                        title="Edit Note"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteNote(note.id)}
-                        className="p-1 rounded transition-colors hover:opacity-70"
-                        style={{ color: colorScheme.textSecondary }}
-                        title="Delete Note"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {/* Date and Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="text-right">
+                          <span className="text-xs sm:text-sm font-medium whitespace-nowrap block" style={{ color: colorScheme.textSecondary }}>
+                            {new Date(note.createdAt).toLocaleDateString('en-GB', { 
+                              day: '2-digit', 
+                              month: '2-digit', 
+                              year: 'numeric' 
+                            })}
+                          </span>
+                          {note.updatedAt !== note.createdAt && (
+                            <span className="text-xs text-gray-500 whitespace-nowrap block">(edited)</span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {note.isPinned && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <Pin className="h-3 w-3 mr-1" />
+                              PINNED
+                            </span>
+                          )}
+                          <button
+                            onClick={() => setEditingNote(note)}
+                            className="p-1.5 rounded-lg transition-colors hover:bg-opacity-20"
+                            style={{ color: colorScheme.textSecondary }}
+                            title="Edit Note"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNote(note.id)}
+                            className="p-1.5 rounded-lg transition-colors hover:bg-opacity-20"
+                            style={{ color: colorScheme.error || '#EF4444' }}
+                            title="Delete Note"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
+                  {/* Title */}
+                  {note.title && (
+                    <div className="px-4 sm:px-6 pt-4 pb-2">
+                      <h4 className="font-semibold text-base sm:text-lg" style={{ color: colorScheme.text }}>
+                        {note.title}
+                      </h4>
+                    </div>
+                  )}
+
                   {/* Note Content */}
-                  <div className="p-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6">
                     {editingNote && editingNote.id === note.id ? (
                       <RichTextEditor
                         initialContent={note.content}
@@ -1055,7 +1223,7 @@ export default function PlayerProfilePage() {
                       />
                     ) : (
                       <div 
-                        className={`prose prose-sm max-w-none ${
+                        className={`text-sm sm:text-base prose prose-sm sm:prose-base max-w-none note-content ${
                           theme === 'dark' ? 'prose-invert' : ''
                         }`}
                         dangerouslySetInnerHTML={{ __html: note.content }}
@@ -1341,6 +1509,96 @@ export default function PlayerProfilePage() {
 
       {/* Chat Tab Content */}
       {activeTab === 'chats' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold" style={{ color: colorScheme.text }}>
+              Chat Rooms ({playerChatRooms.length})
+            </h3>
+            <button
+              onClick={async () => {
+                // Refresh chat rooms
+                const token = localStorage.getItem('token')
+                const headers = token ? {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                } : {
+                  'Content-Type': 'application/json'
+                }
+                const chatResponse = await fetch(`/api/players/${playerId}/chat-rooms`, { headers })
+                if (chatResponse.ok) {
+                  const chatData = await chatResponse.json()
+                  console.log('💬 Refreshed player chat rooms:', chatData)
+                  setPlayerChatRooms(Array.isArray(chatData) ? chatData : [])
+                }
+              }}
+              className="px-3 py-1 text-sm rounded-md transition-colors"
+              style={{
+                backgroundColor: colorScheme.primary,
+                color: colorScheme.primaryText || 'white'
+              }}
+            >
+              Refresh
+            </button>
+          </div>
+          
+          {playerChatRooms.length === 0 ? (
+            <div className="text-center py-8" style={{ color: colorScheme.textSecondary }}>
+              <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No chat rooms available</p>
+              <p className="text-sm mt-2">You need to be added to a chat room by an administrator</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {playerChatRooms.map((room: any) => (
+                <div
+                  key={room.id}
+                  className="p-4 rounded-lg border cursor-pointer hover:shadow-md transition-shadow"
+                  style={{
+                    backgroundColor: colorScheme.surface,
+                    borderColor: colorScheme.border
+                  }}
+                  onClick={() => {
+                    // Open chat in new window or navigate to chat
+                    window.open(`/dashboard/chat?room=${room.id}`, '_blank')
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-semibold" style={{ color: colorScheme.text }}>
+                        {room.name}
+                      </h4>
+                      <p className="text-sm mt-1" style={{ color: colorScheme.textSecondary }}>
+                        {room.participants?.length || 0} participants
+                      </p>
+                      {room.lastMessage && (
+                        <div className="mt-1 space-y-1">
+                          <p className="text-xs truncate" style={{ color: colorScheme.textSecondary }}>
+                            <span className="font-medium">{room.lastMessage.senderName || 'Unknown'}:</span> {room.lastMessage.content}
+                          </p>
+                          {room.lastMessage.timestamp && (
+                            <p className="text-xs" style={{ color: colorScheme.textSecondary }}>
+                              {new Date(room.lastMessage.timestamp).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <MessageCircle className="h-6 w-6 ml-4" style={{ color: colorScheme.primary }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Chat Tab Content - OLD */}
+      {false && activeTab === 'chats' && (
         <div className="p-4">
           <div className="mb-6">
             <h2 className="text-lg font-semibold mb-4" style={{ color: colorScheme.text }}>
@@ -1400,6 +1658,60 @@ export default function PlayerProfilePage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Preview Modal */}
+      {showPreviewModal && previewFile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-hidden w-full">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold truncate">{previewFile.fileName || previewFile.name}</h3>
+              <button
+                onClick={() => {
+                  setShowPreviewModal(false)
+                  setPreviewFile(null)
+                }}
+                className="flex items-center space-x-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors ml-4"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="text-sm">Back</span>
+              </button>
+            </div>
+            <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+              {(previewFile.fileType || previewFile.mimeType || '').includes('pdf') ? (
+                <div className="w-full" style={{ minHeight: '600px' }}>
+                  <PDFThumbnail
+                    pdfUrl={previewFile.url}
+                    fileName={previewFile.fileName || previewFile.name}
+                    className="w-full h-full"
+                    onLoad={() => console.log('✅ PDF thumbnail loaded successfully')}
+                    onError={() => console.error('❌ PDF thumbnail failed to load')}
+                  />
+                </div>
+              ) : (previewFile.fileType || previewFile.mimeType || '').startsWith('image/') ? (
+                <img
+                  src={previewFile.url}
+                  alt={previewFile.fileName || previewFile.name}
+                  className="max-w-full h-auto mx-auto"
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">Preview not available for this file type</p>
+                  <a
+                    href={previewFile.url}
+                    download={previewFile.fileName || previewFile.name}
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download File
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+        </>
       )}
     </div>
   )

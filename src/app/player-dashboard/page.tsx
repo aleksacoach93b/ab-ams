@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import ReadOnlyCalendar from '@/components/ReadOnlyCalendar'
 import TeamChat from '@/components/TeamChat'
 import RealTimeNotifications from '@/components/RealTimeNotifications'
+import ChatNotifications from '@/components/ChatNotifications'
 import PDFThumbnail from '@/components/PDFThumbnail'
 
 interface Event {
@@ -61,6 +62,11 @@ export default function PlayerDashboard() {
   const [isCheckingWellness, setIsCheckingWellness] = useState(false)
   const [showTeamChat, setShowTeamChat] = useState(false)
   const [showThemeDropdown, setShowThemeDropdown] = useState(false)
+  const [wellnessSettings, setWellnessSettings] = useState<{
+    csvUrl: string
+    surveyId: string
+    baseUrl: string
+  } | null>(null)
 
   const themes = [
     { name: 'Light', value: 'light', color: '#F8FAFC' },
@@ -83,6 +89,7 @@ export default function PlayerDashboard() {
   useEffect(() => {
     if (user?.role === 'PLAYER') {
       fetchPlayerData()
+      fetchWellnessSettings()
     }
   }, [user])
 
@@ -92,6 +99,27 @@ export default function PlayerDashboard() {
       checkWellnessSurveyCompletion()
     }
   }, [currentPlayer])
+
+  const fetchWellnessSettings = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      const response = await fetch('/api/wellness/settings', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setWellnessSettings(data.wellnessSettings)
+      }
+    } catch (error) {
+      console.error('Error fetching wellness settings:', error)
+    }
+  }
 
 
   const fetchPlayerData = async () => {
@@ -178,19 +206,24 @@ export default function PlayerDashboard() {
   }
 
   const checkWellnessSurveyCompletion = async () => {
-    if (!currentPlayer) return
+    if (!currentPlayer) {
+      console.log('⚠️ [WELLNESS] No currentPlayer, skipping wellness check')
+      return
+    }
     
+    console.log('🔍 [WELLNESS] Starting wellness check for player:', currentPlayer.id, currentPlayer.name)
     setIsCheckingWellness(true)
     try {
       // Get authentication token
       const token = localStorage.getItem('token')
       if (!token) {
-        console.error('No authentication token found')
+        console.error('❌ [WELLNESS] No authentication token found')
         setWellnessCompletedToday(false)
         return
       }
 
       // Check wellness survey completion from our API
+      console.log(`🔍 [WELLNESS] Fetching wellness status for player ${currentPlayer.id}`)
       const response = await fetch(`/api/wellness/status/${currentPlayer.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -200,17 +233,20 @@ export default function PlayerDashboard() {
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Wellness survey status:', data)
-        setWellnessCompletedToday(data.completed || false)
+        console.log('✅ [WELLNESS] Wellness survey status received:', data)
+        const isCompleted = data.completed || false
+        console.log(`📊 [WELLNESS] Setting wellnessCompletedToday to: ${isCompleted}`)
+        setWellnessCompletedToday(isCompleted)
       } else {
-        console.error('Failed to check wellness status:', response.status, response.statusText)
+        console.error('❌ [WELLNESS] Failed to check wellness status:', response.status, response.statusText)
         setWellnessCompletedToday(false)
       }
     } catch (error) {
-      console.error('Error checking wellness survey completion:', error)
+      console.error('❌ [WELLNESS] Error checking wellness survey completion:', error)
       setWellnessCompletedToday(false)
     } finally {
       setIsCheckingWellness(false)
+      console.log('✅ [WELLNESS] Wellness check completed')
     }
   }
 
@@ -511,38 +547,83 @@ export default function PlayerDashboard() {
           playerNotes.map((note) => (
             <div
               key={note.id}
-              className="p-4 rounded-lg border"
+              className="rounded-xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl overflow-hidden"
               style={{ 
                 backgroundColor: colorScheme.surface,
                 borderColor: colorScheme.border
               }}
             >
-              <div className="flex items-start justify-between mb-2">
-                <h4 className="font-medium" style={{ color: colorScheme.text }}>
-                  {note.title}
-                        </h4>
-                <span className="text-xs" style={{ color: colorScheme.textSecondary }}>
-                  {new Date(note.createdAt).toLocaleDateString()}
-                            </span>
-                          </div>
-              <div 
-                className="text-sm mb-3 prose prose-sm max-w-none"
-                    style={{ color: colorScheme.textSecondary }}
-                dangerouslySetInnerHTML={{ __html: note.content }}
-              />
-              <p className="text-xs" style={{ color: colorScheme.textSecondary }}>
-                By {note.author.name}
-                  </p>
+              {/* Header with Author Info */}
+              <div className="px-4 sm:px-6 py-3 sm:py-4 border-b" style={{ borderColor: colorScheme.border }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {/* Avatar */}
+                    <div 
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-white text-sm sm:text-base"
+                      style={{ backgroundColor: colorScheme.primary }}
+                    >
+                      {note.author.name?.charAt(0)?.toUpperCase() || note.author.email?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                    {/* Author Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm sm:text-base truncate" style={{ color: colorScheme.text }}>
+                        {note.author.name || note.author.email || 'Unknown Author'}
+                      </p>
+                      <p className="text-xs sm:text-sm truncate" style={{ color: colorScheme.textSecondary }}>
+                        {note.author.email || ''}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Date */}
+                  <div className="flex-shrink-0 text-right">
+                    <span className="text-xs sm:text-sm font-medium whitespace-nowrap" style={{ color: colorScheme.textSecondary }}>
+                      {new Date(note.createdAt).toLocaleDateString('en-GB', { 
+                        day: '2-digit', 
+                        month: '2-digit', 
+                        year: 'numeric' 
+                      })}
+                    </span>
+                  </div>
                 </div>
-          ))
+              </div>
+
+              {/* Title */}
+              {note.title && (
+                <div className="px-4 sm:px-6 pt-4 pb-2">
+                  <h4 className="font-semibold text-base sm:text-lg" style={{ color: colorScheme.text }}>
+                    {note.title}
+                  </h4>
+                </div>
               )}
+
+              {/* Content */}
+              <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+                <div 
+                  className="text-sm sm:text-base prose prose-sm sm:prose-base max-w-none note-content"
+                  style={{ color: colorScheme.textSecondary }}
+                  dangerouslySetInnerHTML={{ __html: note.content }}
+                />
+              </div>
             </div>
+          ))
+        )}
+      </div>
     </div>
     )
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: colorScheme.background }}>
+    <div 
+      className="min-h-screen" 
+      style={{ 
+        backgroundColor: colorScheme.background,
+        background: colorScheme.background,
+        minHeight: '100vh',
+        width: '100%',
+        margin: 0,
+        padding: 0
+      }}
+    >
       {/* Header */}
       <header className="shadow-sm" style={{ backgroundColor: colorScheme.surface }}>
         {/* Player Name - Top Row */}
@@ -653,18 +734,8 @@ export default function PlayerDashboard() {
             )}
           </div>
 
-          {/* Chat Button - Icon only */}
-          <button
-            onClick={() => setShowTeamChat(true)}
-            className="p-2 rounded-md transition-colors hover:scale-105"
-            style={{ 
-              backgroundColor: 'transparent',
-              color: colorScheme.text,
-            }}
-            title="Team Chat"
-          >
-            <MessageCircle className="h-5 w-5" style={{ color: colorScheme.text }} />
-          </button>
+          {/* Chat Button with Notifications */}
+          <ChatNotifications onOpenChat={() => setShowTeamChat(true)} />
 
           {/* Notifications - Like admin */}
           <div className="p-2 rounded-md transition-colors hover:scale-105">
@@ -728,10 +799,13 @@ export default function PlayerDashboard() {
                           return
                         }
                         
-                        // Use the same wellness survey ID for all players
-                        const wellnessPlayerId = 'cmg6klyig0004l704u1kd78zb'
+                        // Get wellness settings
+                        if (!wellnessSettings) {
+                          alert('Wellness settings not loaded. Please refresh the page.')
+                          return
+                        }
                         
-                        const wellnessUrl = `https://wellness-monitor-tan.vercel.app/kiosk/${wellnessPlayerId}`
+                        const wellnessUrl = `${wellnessSettings.baseUrl}/kiosk/${wellnessSettings.surveyId}`
                         console.log('Opening wellness kiosk URL:', wellnessUrl)
                         
                         // Open wellness app in new tab
@@ -787,29 +861,29 @@ export default function PlayerDashboard() {
                 
             {/* Modern Media, Notes, Wellness, RPE, and Reports Cards - Only show if wellness completed or still checking */}
             {(wellnessCompletedToday === true || wellnessCompletedToday === null) && (
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 md:gap-4 mb-6">
               {/* Media Card */}
               <button
                 onClick={() => setViewMode('media')}
-                className="group p-4 rounded-xl border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] text-left"
+                className="group p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] h-full flex flex-col items-center justify-center"
                 style={{ 
                   backgroundColor: colorScheme.surface,
-                  borderColor: colorScheme.border
+                  borderColor: `${colorScheme.border}E6`
                 }}
               >
-                <div className="flex flex-col items-center text-center space-y-3">
+                <div className="flex flex-col items-center justify-center text-center space-y-1 sm:space-y-2 md:space-y-3">
                   <div 
-                    className="p-4 rounded-2xl transition-all duration-300 group-hover:scale-110 shadow-lg"
+                    className="p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl transition-all duration-300 group-hover:scale-110 shadow-lg"
                     style={{ backgroundColor: '#DCFCE7' }}
                   >
-                    <Folder className="h-8 w-8" style={{ color: '#059669' }} />
+                    <Folder className="h-4 w-4 sm:h-6 sm:w-6 md:h-8 md:w-8" style={{ color: '#059669' }} />
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold mb-2" style={{ color: '#059669' }}>
+                  <div className="flex flex-col items-center text-center">
+                    <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold mb-0.5 sm:mb-1 md:mb-2" style={{ color: '#059669' }}>
                       Media
                     </h3>
-                    <p className="text-2xl font-bold" style={{ color: '#059669' }}>
-                      {mediaFiles.length}
+                    <p className="text-[9px] sm:text-[10px] md:text-xs font-medium leading-tight" style={{ color: '#059669' }}>
+                      View Media
                     </p>
                   </div>
                 </div>
@@ -818,25 +892,25 @@ export default function PlayerDashboard() {
               {/* Notes Card */}
               <button
                 onClick={() => setViewMode('notes')}
-                className="group p-4 rounded-xl border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] text-left"
+                className="group p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] h-full flex flex-col items-center justify-center"
                 style={{ 
                   backgroundColor: colorScheme.surface,
-                  borderColor: colorScheme.border
+                  borderColor: `${colorScheme.border}E6`
                 }}
               >
-                <div className="flex flex-col items-center text-center space-y-3">
+                <div className="flex flex-col items-center justify-center text-center space-y-1 sm:space-y-2 md:space-y-3">
                   <div 
-                    className="p-4 rounded-2xl transition-all duration-300 group-hover:scale-110 shadow-lg"
+                    className="p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl transition-all duration-300 group-hover:scale-110 shadow-lg"
                     style={{ backgroundColor: '#EDE9FE' }}
                   >
-                    <FileText className="h-8 w-8" style={{ color: '#7C3AED' }} />
+                    <FileText className="h-4 w-4 sm:h-6 sm:w-6 md:h-8 md:w-8" style={{ color: '#7C3AED' }} />
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold mb-2" style={{ color: '#7C3AED' }}>
+                  <div className="flex flex-col items-center text-center">
+                    <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold mb-0.5 sm:mb-1 md:mb-2" style={{ color: '#7C3AED' }}>
                       Notes
                     </h3>
-                    <p className="text-2xl font-bold" style={{ color: '#7C3AED' }}>
-                      {playerNotes.length}
+                    <p className="text-[9px] sm:text-[10px] md:text-xs font-medium leading-tight" style={{ color: '#7C3AED' }}>
+                      View Notes
                     </p>
                   </div>
                 </div>
@@ -855,16 +929,15 @@ export default function PlayerDashboard() {
                     return
                   }
                   
-                  // Use the same wellness survey ID for all players
-                  // This ensures all players (existing and future) use the correct wellness survey
-                  const wellnessPlayerId = 'cmg6klyig0004l704u1kd78zb'
+                  // Get wellness settings
+                  if (!wellnessSettings) {
+                    alert('Wellness settings not loaded. Please refresh the page.')
+                    return
+                  }
                   
-                  // Always open the wellness survey when card is clicked
-                  // (The wellness completion check is handled at the app level, not card level)
-                  
-                  const wellnessUrl = `https://wellness-monitor-tan.vercel.app/kiosk/${wellnessPlayerId}`
+                  const wellnessUrl = `${wellnessSettings.baseUrl}/kiosk/${wellnessSettings.surveyId}`
                   console.log('AB AMS Player ID:', currentPlayer.id)
-                  console.log('Wellness Player ID:', wellnessPlayerId)
+                  console.log('Wellness Survey ID:', wellnessSettings.surveyId)
                   console.log('Opening wellness kiosk URL:', wellnessUrl)
                   
                   // Open wellness app in new tab
@@ -883,33 +956,33 @@ export default function PlayerDashboard() {
                   // Clear interval after 10 minutes to avoid infinite checking
                   setTimeout(() => clearInterval(checkCompletion), 10 * 60 * 1000)
                 }}
-                className="group p-4 rounded-xl border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] text-left cursor-pointer"
+                className="group p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer h-full flex flex-col items-center justify-center"
                 style={{ 
                   backgroundColor: colorScheme.surface,
-                  borderColor: colorScheme.border
+                  borderColor: `${colorScheme.border}E6`
                 }}
               >
-                <div className="flex flex-col items-center text-center space-y-3">
+                <div className="flex flex-col items-center justify-center text-center space-y-1 sm:space-y-2 md:space-y-3">
                   <div 
-                    className="p-4 rounded-2xl transition-all duration-300 group-hover:scale-110 shadow-lg"
+                    className="p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl transition-all duration-300 group-hover:scale-110 shadow-lg"
                     style={{ backgroundColor: '#FEE2E2' }}
                   >
-                    <Heart className="h-8 w-8" style={{ color: '#EF4444' }} />
+                    <Heart className="h-4 w-4 sm:h-6 sm:w-6 md:h-8 md:w-8" style={{ color: '#EF4444' }} />
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold mb-2" style={{ color: '#EF4444' }}>
+                  <div className="flex flex-col items-center text-center">
+                    <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold mb-0.5 sm:mb-1 md:mb-2" style={{ color: '#EF4444' }}>
                       Wellness
                     </h3>
                     {wellnessCompletedToday === true ? (
-                      <p className="text-sm font-medium" style={{ color: '#059669' }}>
+                      <p className="text-[9px] sm:text-[10px] md:text-xs font-medium leading-tight" style={{ color: '#059669' }}>
                         ✅ Done
                       </p>
                     ) : wellnessCompletedToday === false ? (
-                      <p className="text-sm font-medium" style={{ color: '#EF4444' }}>
+                      <p className="text-[9px] sm:text-[10px] md:text-xs font-medium leading-tight" style={{ color: '#EF4444' }}>
                         ⚠️ Required
                       </p>
                     ) : (
-                      <p className="text-sm font-medium" style={{ color: '#EF4444' }}>
+                      <p className="text-[9px] sm:text-[10px] md:text-xs font-medium leading-tight" style={{ color: '#EF4444' }}>
                         {isCheckingWellness ? 'Checking...' : 'Survey'}
                       </p>
                     )}
@@ -944,24 +1017,24 @@ export default function PlayerDashboard() {
                   // Open RPE survey in new tab
                   window.open(rpeUrl, '_blank')
                 }}
-                className="group p-4 rounded-xl border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] text-left cursor-pointer"
+                className="group p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer h-full flex flex-col items-center justify-center"
                 style={{ 
                   backgroundColor: colorScheme.surface,
-                  borderColor: colorScheme.border
+                  borderColor: `${colorScheme.border}E6`
                 }}
               >
-                <div className="flex flex-col items-center text-center space-y-3">
+                <div className="flex flex-col items-center justify-center text-center space-y-1 sm:space-y-2 md:space-y-3">
                   <div 
-                    className="p-4 rounded-2xl transition-all duration-300 group-hover:scale-110 shadow-lg"
+                    className="p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl transition-all duration-300 group-hover:scale-110 shadow-lg"
                     style={{ backgroundColor: '#FEF3C7' }}
                   >
-                    <Activity className="h-8 w-8" style={{ color: '#D97706' }} />
+                    <Activity className="h-4 w-4 sm:h-6 sm:w-6 md:h-8 md:w-8" style={{ color: '#D97706' }} />
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold mb-2" style={{ color: '#D97706' }}>
+                  <div className="flex flex-col items-center text-center">
+                    <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold mb-0.5 sm:mb-1 md:mb-2" style={{ color: '#D97706' }}>
                       RPE
                     </h3>
-                    <p className="text-sm font-medium" style={{ color: '#D97706' }}>
+                    <p className="text-[9px] sm:text-[10px] md:text-xs font-medium leading-tight" style={{ color: '#D97706' }}>
                       Survey
                     </p>
                   </div>
@@ -974,24 +1047,24 @@ export default function PlayerDashboard() {
                   console.log('Players Reports clicked')
                   router.push('/player-dashboard/reports')
                 }}
-                className="group p-4 rounded-xl border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] text-left cursor-pointer"
+                className="group p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer h-full flex flex-col items-center justify-center"
                 style={{ 
                   backgroundColor: colorScheme.surface,
-                  borderColor: colorScheme.border
+                  borderColor: `${colorScheme.border}E6`
                 }}
               >
-                <div className="flex flex-col items-center text-center space-y-3">
+                <div className="flex flex-col items-center justify-center text-center space-y-1 sm:space-y-2 md:space-y-3">
                   <div 
-                    className="p-4 rounded-2xl transition-all duration-300 group-hover:scale-110 shadow-lg"
+                    className="p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl transition-all duration-300 group-hover:scale-110 shadow-lg"
                     style={{ backgroundColor: '#E0E7FF' }}
                   >
-                    <File className="h-8 w-8" style={{ color: '#4F46E5' }} />
+                    <File className="h-4 w-4 sm:h-6 sm:w-6 md:h-8 md:w-8" style={{ color: '#4F46E5' }} />
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold mb-2" style={{ color: '#4F46E5' }}>
+                  <div className="flex flex-col items-center text-center">
+                    <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold mb-0.5 sm:mb-1 md:mb-2" style={{ color: '#4F46E5' }}>
                       Reports
                     </h3>
-                    <p className="text-sm font-medium" style={{ color: '#4F46E5' }}>
+                    <p className="text-[9px] sm:text-[10px] md:text-xs font-medium leading-tight" style={{ color: '#4F46E5' }}>
                       View Reports
                     </p>
                   </div>
@@ -1002,17 +1075,11 @@ export default function PlayerDashboard() {
 
         {/* Modern Calendar Section - Only show if wellness completed or still checking */}
         {(wellnessCompletedToday === true || wellnessCompletedToday === null) && (
-          <div className="mb-6 w-full">
-            <h3 className="text-2xl font-bold mb-6" style={{ color: colorScheme.text }}>
-              📅 Your Schedule
-            </h3>
-            <div 
-              className="w-full rounded-3xl shadow-xl p-4 border-2 transition-all duration-300 hover:shadow-2xl"
-              style={{ 
-                backgroundColor: colorScheme.surface,
-                borderColor: colorScheme.border
-              }}
-            >
+          <div className="px-0 sm:px-6 mb-6">
+            <div className="w-full rounded-3xl shadow-xl p-0 sm:p-4 border-2 transition-all duration-300 hover:shadow-2xl overflow-hidden" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
+              <h2 className="text-xl font-semibold mb-4 px-4 sm:px-0" style={{ color: colorScheme.text }}>
+                Calendar
+              </h2>
               <div className="w-full">
                 <ReadOnlyCalendar userId={user?.id} userRole={user?.role} />
               </div>

@@ -125,7 +125,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
               location: event.location?.name || '',
               description: event.description || '',
               color: getEventColor(event.type),
-              icon: event.icon || 'Calendar',
+              icon: event.icon || event.iconName || 'Calendar', // Use icon or iconName, fallback to Calendar
               media: event.media || [],
               selectedPlayers,
               selectedStaff
@@ -166,7 +166,17 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
   }
 
   const getEventIcon = (event: Event) => {
-    return <CustomIcon name={event.icon || 'Calendar'} className="h-4 w-4" style={{ color: event.color }} />
+    // Use the event icon if available, otherwise use Calendar as fallback
+    const iconName = event.icon || 'Calendar'
+    console.log('🎨 [MobileCalendar] Rendering event icon:', { 
+      eventTitle: event.title, 
+      eventType: event.type,
+      iconName, 
+      hasIcon: !!event.icon,
+      iconField: event.icon,
+      iconNameField: (event as any).iconName
+    })
+    return <CustomIcon name={iconName} className="h-6 w-6" style={{ color: event.color }} />
   }
 
   const formatEventType = (type: string) => {
@@ -378,7 +388,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
     >
       {/* Enhanced Header with Gradient */}
       <div 
-        className="sticky top-0 px-2 sm:px-6 py-4 z-20 shadow-lg"
+        className="sticky top-0 px-0 sm:px-6 py-4 z-20 shadow-lg"
         style={{ 
           backgroundColor: colorScheme.surface,
           borderBottom: `1px solid ${colorScheme.border}`
@@ -417,7 +427,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
       </div>
 
       {/* Enhanced Month Navigation */}
-      <div className="px-2 sm:px-4 py-4 w-full shadow-sm" style={{ backgroundColor: colorScheme.surface }}>
+      <div className="px-0 sm:px-4 py-4 w-full shadow-sm" style={{ backgroundColor: colorScheme.surface }}>
         <div className="flex items-center justify-between">
           <button 
             onClick={() => navigateMonth('prev')} 
@@ -459,8 +469,8 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
       </div>
 
       {/* Enhanced Calendar Grid */}
-      <div className="px-2 sm:px-4 pb-4 w-full" style={{ backgroundColor: colorScheme.surface }}>
-        <div className="rounded-2xl shadow-lg mx-2 sm:mx-4" style={{ backgroundColor: colorScheme.surface }}>
+      <div className="px-0 sm:px-4 pb-4 w-full" style={{ backgroundColor: colorScheme.surface }}>
+        <div className="rounded-2xl shadow-lg mx-0 sm:mx-4" style={{ backgroundColor: colorScheme.surface }}>
           {/* Day headers */}
           <div 
             className="grid grid-cols-7 text-center text-xs font-semibold py-3"
@@ -472,7 +482,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
           </div>
 
           {/* Calendar days */}
-          <div className="grid grid-cols-7 gap-1 px-2 pb-2">
+          <div className="grid grid-cols-7 gap-1 px-1 sm:px-2 pb-2">
           {monthDays.map((day, index) => {
             if (!day) {
               return <div key={`empty-${index}`} className="h-14"></div>
@@ -534,7 +544,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
 
       {/* Enhanced Events Section */}
       <div 
-        className="px-2 sm:px-4 py-4 w-full"
+        className="px-0 sm:px-4 py-4 w-full"
         style={{ backgroundColor: colorScheme.surface }}
       >
         <div className="flex flex-col items-center justify-center mb-4 relative">
@@ -576,7 +586,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
               >
                 <div className="flex items-center space-x-3">
                   <div 
-                    className="w-8 h-8 rounded-lg"
+                    className="w-12 h-12 rounded-lg"
                     style={{ backgroundColor: colorScheme.border }}
                   ></div>
                   <div className="flex-1 space-y-2">
@@ -644,7 +654,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
                   />
                   
                   <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center shadow-md"
+                    className="w-12 h-12 rounded-lg flex items-center justify-center shadow-md flex-shrink-0"
                     style={{ backgroundColor: `${event.color}20` }}
                   >
                     <div style={{ color: event.color }}>

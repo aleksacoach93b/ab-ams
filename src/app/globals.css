@@ -36,11 +36,11 @@
 
 /* Theme-specific styles */
 .theme-dark {
-  --color-background: #111827;
-  --color-surface: #1F2937;
-  --color-text: #F9FAFB;
-  --color-text-secondary: #D1D5DB;
-  --color-border: #374151;
+  --color-background: #0F172A;
+  --color-surface: #1E293B;
+  --color-text: #F8FAFC;
+  --color-text-secondary: #CBD5E1;
+  --color-border: #334155;
 }
 
 .theme-blue {
@@ -71,10 +71,82 @@
   --color-border: #E9D5FF;
 }
 
+html {
+  background: var(--color-background) !important;
+  min-height: 100vh;
+  overflow-x: hidden;
+  width: 100%;
+}
+
 body {
-  background: var(--color-background);
+  background: var(--color-background) !important;
   color: var(--color-text);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Ensure no white edges */
+* {
+  box-sizing: border-box;
+}
+
+#__next {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--color-background);
+}
+
+/* Ensure root elements have dark background in dark theme */
+.theme-dark html,
+.theme-dark body {
+  background: #0F172A !important;
+}
+
+/* Prevent any white overflow */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Force dark background on all root elements in dark theme */
+html.theme-dark,
+body.theme-dark,
+html[class*="theme-dark"],
+body[class*="theme-dark"] {
+  background: #0F172A !important;
+  background-color: #0F172A !important;
+}
+
+/* Ensure no white background anywhere in dark theme */
+.theme-dark * {
+  --tw-bg-opacity: 1;
+}
+
+/* Override any potential white backgrounds */
+.theme-dark {
+  background: #0F172A !important;
+  background-color: #0F172A !important;
+}
+
+/* Next.js specific overrides */
+.next-error-h1,
+#__next,
+#__next > div {
+  background: var(--color-background) !important;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.theme-dark #__next,
+.theme-dark #__next > div {
+  background: #0F172A !important;
+  background-color: #0F172A !important;
 }
 
 /* Smooth transitions for theme changes */
@@ -136,4 +208,60 @@ body {
 .animate-bounce-delayed {
   animation: bounce-delayed 3s ease-in-out infinite;
   animation-delay: 1.5s;
+}
+
+/* Hide scrollbar for horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Player Notes Link Styling */
+.note-content a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  margin: 0.5rem 0;
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  color: white !important;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+  border: none;
+  cursor: pointer;
+}
+
+.note-content a:hover {
+  background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+  text-decoration: none !important;
+}
+
+.note-content a:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.note-content a:visited {
+  color: white !important;
+}
+
+/* Dark theme adjustments for links */
+.theme-dark .note-content a {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.4);
+}
+
+.theme-dark .note-content a:hover {
+  background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.5);
 }

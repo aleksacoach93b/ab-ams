@@ -86,7 +86,7 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
               location: event.location?.name || event.location || '',
               description: event.description || '',
               color: getEventColor(event.type),
-              icon: event.icon || 'Calendar',
+              icon: event.icon || event.iconName || 'Calendar',
               media: event.media || []
             }
           })
@@ -124,7 +124,16 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
   }
 
   const getEventIcon = (event: Event) => {
-    return <CustomIcon name={event.icon || 'Calendar'} className="h-4 w-4" style={{ color: event.color }} />
+    // Use the event icon if available, otherwise use Calendar as fallback
+    const iconName = event.icon || 'Calendar'
+    console.log('🎨 [ReadOnlyCalendar] Rendering event icon:', { 
+      eventTitle: event.title, 
+      eventType: event.type,
+      iconName, 
+      hasIcon: !!event.icon,
+      iconField: event.icon
+    })
+    return <CustomIcon name={iconName} className="h-6 w-6" style={{ color: event.color }} />
   }
 
   const formatEventType = (type: string) => {
@@ -237,23 +246,30 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
   return (
     <div 
       className="w-full"
-      style={{ backgroundColor: colorScheme.background }}
+      style={{ backgroundColor: colorScheme.surface }}
     >
       {/* Clean Month Navigation */}
-      <div className="px-0 sm:px-2 py-3 w-full" style={{ backgroundColor: colorScheme.surface }}>
-        <div className="flex items-center justify-between w-full">
+      <div className="px-0 sm:px-4 py-4 w-full shadow-sm" style={{ backgroundColor: colorScheme.surface }}>
+        <div className="flex items-center justify-between">
           <button 
             onClick={() => navigateMonth('prev')} 
-            className="p-2"
-            style={{ color: colorScheme.textSecondary }}
+            className="p-3 rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+            style={{ 
+              backgroundColor: colorScheme.background,
+              color: colorScheme.textSecondary,
+              border: `1px solid ${colorScheme.border}`
+            }}
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           
           <div className="text-center">
             <h2 
-              className="text-lg font-bold"
-              style={{ color: colorScheme.text }}
+              className="text-lg font-semibold tracking-tight"
+              style={{ 
+                color: colorScheme.text,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+              }}
             >
               {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
             </h2>
@@ -261,94 +277,115 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
           
           <button 
             onClick={() => navigateMonth('next')} 
-            className="p-2"
-            style={{ color: colorScheme.textSecondary }}
+            className="p-3 rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+            style={{ 
+              backgroundColor: colorScheme.background,
+              color: colorScheme.textSecondary,
+              border: `1px solid ${colorScheme.border}`
+            }}
           >
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
       </div>
 
-      {/* Clean Calendar Grid */}
-      <div className="px-0 sm:px-2 pb-4 w-full" style={{ backgroundColor: colorScheme.surface }}>
-        {/* Day headers */}
-        <div 
-          className="grid grid-cols-7 text-center text-xs font-medium py-2"
-          style={{ color: colorScheme.textSecondary }}
-        >
-          {days.map((day, index) => (
-            <div key={index} className="py-2">{day}</div>
-          ))}
-        </div>
+      {/* Enhanced Calendar Grid */}
+      <div className="px-0 sm:px-4 pb-4 w-full" style={{ backgroundColor: colorScheme.surface }}>
+        <div className="rounded-2xl shadow-lg mx-0 sm:mx-4 overflow-hidden" style={{ backgroundColor: colorScheme.surface }}>
+          {/* Day headers */}
+          <div 
+            className="grid grid-cols-7 text-center text-xs font-semibold py-3"
+            style={{ color: colorScheme.textSecondary }}
+          >
+            {days.map((day, index) => (
+              <div key={index} className="py-2">{day}</div>
+            ))}
+          </div>
 
-        {/* Calendar days */}
-        <div className="grid grid-cols-7 gap-1">
-          {monthDays.map((day, index) => {
-            if (!day) {
-              return <div key={`empty-${index}`} className="h-12"></div>
-            }
+          {/* Calendar days */}
+          <div className="grid grid-cols-7 gap-1 px-1 sm:px-2 pb-2">
+            {monthDays.map((day, index) => {
+              if (!day) {
+                return <div key={`empty-${index}`} className="h-14"></div>
+              }
 
-            const dayIsToday = isToday(day)
-            const dayIsSelected = isSelectedDate(day)
-            const dayEvents = getEventsForDate(day)
+              const dayIsToday = isToday(day)
+              const dayIsSelected = isSelectedDate(day)
+              const dayEvents = getEventsForDate(day)
 
-            return (
-              <div
-                key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
-                className="h-12 flex flex-col items-center justify-center cursor-pointer relative rounded-lg"
-                style={{
-                  backgroundColor: dayIsSelected ? colorScheme.primaryLight : 'transparent',
-                  border: dayIsSelected ? `1px solid ${colorScheme.primary}` : 'none'
-                }}
-                onClick={() => setSelectedDate(day)}
-              >
-                <div 
-                  className={`text-sm font-medium ${
-                    dayIsToday ? 'font-bold' : ''
-                  }`}
-                  style={{ 
-                    color: dayIsSelected 
-                      ? '#FFFFFF' 
+              return (
+                <div
+                  key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
+                  className="h-14 flex flex-col items-center justify-center cursor-pointer relative rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-md"
+                  style={{
+                    backgroundColor: dayIsSelected 
+                      ? colorScheme.primary 
                       : dayIsToday 
-                        ? colorScheme.primary 
-                        : colorScheme.text 
+                        ? `${colorScheme.primary}20`
+                        : 'transparent',
+                    border: dayIsSelected 
+                      ? `2px solid ${colorScheme.primary}` 
+                      : dayIsToday 
+                        ? `2px solid ${colorScheme.primary}`
+                        : 'none'
                   }}
+                  onClick={() => setSelectedDate(day)}
                 >
-                  {day.getDate()}
-                </div>
-                {dayEvents.length > 0 && (
-                  <div className="flex gap-0.5 mt-1">
-                    {dayEvents.slice(0, 3).map((event) => (
-                      <div
-                        key={event.id}
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: event.color }}
-                      ></div>
-                    ))}
+                  <div 
+                    className={`text-xs font-medium ${
+                      dayIsToday ? 'font-semibold' : ''
+                    }`}
+                    style={{ 
+                      color: dayIsSelected 
+                        ? '#FFFFFF' 
+                        : dayIsToday 
+                          ? colorScheme.primary 
+                          : colorScheme.text 
+                    }}
+                  >
+                    {day.getDate()}
                   </div>
-                )}
-              </div>
-            )
-          })}
+                  {dayEvents.length > 0 && (
+                    <div className="flex gap-0.5 mt-1">
+                      {dayEvents.slice(0, 3).map((event) => (
+                        <div
+                          key={event.id}
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: event.color }}
+                        ></div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Clean Events Section - NO ADD BUTTON */}
+      {/* Enhanced Events Section */}
       <div 
-        className="px-0 sm:px-2 py-4 w-full"
-        style={{ backgroundColor: colorScheme.background }}
+        className="px-0 sm:px-4 pt-4 pb-4 w-full"
+        style={{ backgroundColor: colorScheme.surface }}
       >
-        <div className="flex items-center justify-center mb-4">
-          <h3 
-            className="text-lg font-bold"
-            style={{ color: colorScheme.text }}
-          >
-            {todayEvents.length} Events
-          </h3>
+        <div className="flex flex-col items-center justify-center mb-4 relative mx-0 sm:mx-4">
+          <div className="flex flex-col items-center justify-center w-full">
+            <h3 
+              className="text-sm font-medium text-center mb-2 tracking-wide"
+              style={{ color: colorScheme.text }}
+            >
+              {selectedDate.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+              })} - {todayEvents.length} events
+            </h3>
+          </div>
         </div>
         
         {loading ? (
-          <div className="space-y-2">
+          <div className="space-y-2 px-2 sm:px-4 mx-0 sm:mx-4 pb-2">
             {[1, 2, 3].map((i) => (
               <div 
                 key={i}
@@ -357,7 +394,7 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
               >
                 <div className="flex items-center space-x-3">
                   <div 
-                    className="w-8 h-8 rounded-lg"
+                    className="w-12 h-12 rounded-lg"
                     style={{ backgroundColor: colorScheme.border }}
                   ></div>
                   <div className="flex-1 space-y-2">
@@ -376,7 +413,7 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
           </div>
         ) : todayEvents.length === 0 ? (
           <div 
-            className="text-center py-8 rounded-lg"
+            className="text-center py-8 rounded-lg mx-0 sm:mx-4 mb-2"
             style={{ backgroundColor: colorScheme.surface }}
           >
             <Calendar 
@@ -397,23 +434,16 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
             </p>
           </div>
         ) : (
-          <div className="space-y-2 px-2">
+          <div className="space-y-3 px-2 sm:px-4 mx-0 sm:mx-4 pb-2">
             {todayEvents.map((event, index) => (
               <div
                 key={event.id}
-                className="px-3 py-3 rounded-lg cursor-pointer transition-colors"
+                className="p-3 rounded-xl cursor-pointer transition-all duration-300 hover:shadow-lg shadow-md"
                 style={{ 
-                  backgroundColor: colorScheme.surface,
+                  background: `linear-gradient(135deg, ${colorScheme.surface}, ${colorScheme.background})`,
                   border: `1px solid ${colorScheme.border}`,
-                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
                 }}
                 onClick={() => handleEventClick(event)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = colorScheme.background
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = colorScheme.surface
-                }}
               >
                 <div className="flex items-center space-x-3">
                   <div 
@@ -422,7 +452,7 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
                   />
                   
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: `${event.color}20` }}
                   >
                     <div style={{ color: event.color }}>

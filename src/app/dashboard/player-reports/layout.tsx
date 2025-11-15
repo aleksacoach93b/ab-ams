@@ -335,7 +335,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             <div className="flex items-center space-x-4">
-              <ThemeSelector />
+              {/* Hide ThemeSelector when chat is open */}
+              {!showTeamChat && <ThemeSelector />}
               
               {/* Team Chat Button with Notifications */}
               <ChatNotifications onOpenChat={() => setShowTeamChat(true)} />

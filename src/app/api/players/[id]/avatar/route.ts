@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { readState, writeState } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function POST(
   request: NextRequest,
@@ -50,6 +53,40 @@ export async function POST(
         { message: 'File too large. Maximum size is 5MB.' },
         { status: 400 }
       )
+    }
+
+    // Local dev mode: save to state
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'avatars')
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true })
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now()
+      const fileExtension = file.name.split('.').pop()
+      const fileName = `player_${id}_${timestamp}.${fileExtension}`
+      const filePath = join(uploadsDir, fileName)
+
+      // Save file to disk
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      await writeFile(filePath, buffer)
+
+      const avatarUrl = `/uploads/avatars/${fileName}`
+      
+      // Update state
+      state.playerAvatars[id] = avatarUrl
+      await writeState(state)
+
+      return NextResponse.json({
+        message: 'Avatar uploaded successfully',
+        avatar: avatarUrl,
+        player: { id, imageUrl: avatarUrl }
+      })
     }
 
     // Create uploads directory if it doesn't exist

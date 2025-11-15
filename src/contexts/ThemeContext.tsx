@@ -121,14 +121,33 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light')
+  // Initialize theme state - check localStorage only on client side to avoid hydration mismatch
+  const [theme, setTheme] = useState<Theme>(() => {
+    // Only access localStorage on client side
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme') as Theme
+      if (savedTheme && colorSchemes[savedTheme]) {
+        return savedTheme
+      }
+    }
+    return 'light'
+  })
 
   useEffect(() => {
-    // Load theme from localStorage on mount
+    // Load theme from localStorage on mount (fallback check)
     const savedTheme = localStorage.getItem('theme') as Theme
-    if (savedTheme && colorSchemes[savedTheme]) {
+    if (savedTheme && colorSchemes[savedTheme] && savedTheme !== theme) {
       setTheme(savedTheme)
     }
+    
+    // Apply initial background immediately to prevent white flash
+    const root = document.documentElement
+    const initialTheme = savedTheme || 'light'
+    const scheme = colorSchemes[initialTheme]
+    root.style.backgroundColor = scheme.background
+    root.style.background = scheme.background
+    document.body.style.backgroundColor = scheme.background
+    document.body.style.background = scheme.background
   }, [])
 
   useEffect(() => {
@@ -152,6 +171,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty('--color-warning', scheme.warning)
     root.style.setProperty('--color-error', scheme.error)
     root.style.setProperty('--color-info', scheme.info)
+    
+    // Apply background directly to html and body to prevent white edges
+    root.style.backgroundColor = scheme.background
+    root.style.background = scheme.background
+    root.style.color = scheme.text
+    document.body.style.backgroundColor = scheme.background
+    document.body.style.background = scheme.background
+    document.body.style.color = scheme.text
+    
+    // Also set on any Next.js wrapper elements
+    const nextWrapper = document.getElementById('__next')
+    if (nextWrapper) {
+      nextWrapper.style.backgroundColor = scheme.background
+      nextWrapper.style.background = scheme.background
+    }
     
     // Update body classes for theme
     document.body.className = document.body.className.replace(/theme-\w+/g, '')

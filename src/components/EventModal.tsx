@@ -408,18 +408,27 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
       console.log('💾 API Response status:', response.status)
 
       if (response.ok) {
-        const updatedEvent = await response.json()
-        console.log('✅ Event updated successfully:', updatedEvent)
-        onEdit(updatedEvent.event)
+        const result = await response.json()
+        console.log('✅ Event updated successfully:', result)
+        const updatedEvent = result.event || result
+        onEdit(updatedEvent)
         setIsEditing(false)
       } else {
-        const errorData = await response.json()
-        console.error('❌ Failed to update event:', errorData)
-        alert(`Failed to update event: ${errorData.message || 'Unknown error'}`)
+        let errorMessage = 'Unknown error'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorData.error || errorMessage
+          console.error('❌ Failed to update event:', errorData)
+        } catch (parseError) {
+          console.error('❌ Failed to parse error response:', parseError)
+          errorMessage = response.statusText || 'Internal server error'
+        }
+        alert(`Failed to update event: ${errorMessage}`)
       }
     } catch (error) {
       console.error('💥 Error updating event:', error)
-      alert('An error occurred while updating the event.')
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while updating the event.'
+      alert(`Error: ${errorMessage}`)
     } finally {
       setIsLoading(false)
     }
@@ -882,16 +891,16 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
                       </button>
                     </div>
                   </div>
-                ) : (
+                ) : event ? (
                   <div className="space-y-6">
                     {/* Event Header */}
                     <div className="flex items-center space-x-4">
                       <div 
                         className="p-3 rounded-full"
-                        style={{ backgroundColor: event.color + '20' }}
+                        style={{ backgroundColor: (event.color || getEventColor(event.type)) + '20' }}
                       >
-                        <div style={{ color: event.color }}>
-                          {getEventIconComponent(event.icon || 'Calendar', event.color)}
+                        <div style={{ color: event.color || getEventColor(event.type) }}>
+                          {getEventIconComponent(event.icon || 'Calendar', event.color || getEventColor(event.type))}
                         </div>
                       </div>
                       <div>
@@ -1243,7 +1252,7 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
                       </div>
                     )}
                   </div>
-                )}
+                ) : null}
               </Dialog.Panel>
             </Transition.Child>
           </div>

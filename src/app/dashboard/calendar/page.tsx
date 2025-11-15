@@ -44,7 +44,7 @@ export default function CalendarPage() {
 
   return (
     <div className="w-full p-0 sm:p-4">
-      <div className="w-full rounded-3xl shadow-xl p-4 border-2 transition-all duration-300 hover:shadow-2xl" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
+      <div className="w-full rounded-3xl shadow-xl p-0 sm:p-4 border-2 transition-all duration-300 hover:shadow-2xl overflow-hidden" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
         <div className="w-full">
           <MobileCalendar 
             onEventClick={handleEventClick}

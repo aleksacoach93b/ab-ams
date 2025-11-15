@@ -1,21 +1,11 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run vercel-build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "JWT_SECRET": "@jwt_secret",
-    "NEXTAUTH_SECRET": "@nextauth_secret",
-    "NEXTAUTH_URL": "@nextauth_url",
-    "RESEND_API_KEY": "@resend_api_key",
-    "BLOB_READ_WRITE_TOKEN": "@blob_read_write_token",
-    "NEXT_PUBLIC_APP_URL": "@next_public_app_url",
-    "NEXT_PUBLIC_APP_NAME": "@next_public_app_name"
   }
 }

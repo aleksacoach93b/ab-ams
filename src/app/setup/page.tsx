@@ -35,7 +35,16 @@ export default function SetupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: colorScheme.background }}>
+    <div 
+      className="min-h-screen flex items-center justify-center px-4" 
+      style={{ 
+        backgroundColor: colorScheme.background,
+        background: colorScheme.background,
+        minHeight: '100vh',
+        width: '100%',
+        margin: 0
+      }}
+    >
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2" style={{ color: colorScheme.text }}>

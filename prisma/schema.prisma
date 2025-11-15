@@ -521,6 +521,7 @@ model users {
   report_visibility        report_visibility[]
   sessions                 sessions[]
   staff                    staff?
+  wellness_responses       Response[]                 // Wellness survey responses
 }
 
 enum UserRole {
@@ -622,4 +623,97 @@ enum WellnessDataType {
   MOOD
   ENERGY_LEVEL
   OTHER
+}
+
+// Wellness Survey Models
+model Survey {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String   // User ID who created the survey
+  
+  // Recurring survey fields
+  isRecurring     Boolean  @default(false)
+  startDate       DateTime?
+  endDate         DateTime?
+  dailyStartTime  String?  // Format: "06:00"
+  dailyEndTime    String?  // Format: "11:00"
+  timezone        String   @default("Europe/Belgrade")
+  
+  questions   Question[]
+  responses   Response[]
+  
+  @@map("surveys")
+}
+
+model Question {
+  id          String       @id @default(cuid())
+  surveyId    String
+  text        String
+  type        QuestionType
+  options     String?      // JSON string for multiple choice options
+  required    Boolean      @default(true)
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  
+  survey      Survey       @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  answers     Answer[]
+  
+  @@map("questions")
+}
+
+model Response {
+  id          String   @id @default(cuid())
+  surveyId    String
+  userId      String?  // Link to User (instead of Player)
+  playerName  String?  // Optional player identifier (for anonymous responses)
+  playerEmail String?  // Optional player email (for anonymous responses)
+  submittedAt DateTime @default(now())
+  
+  survey      Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  user        users?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  answers     Answer[]
+  
+  @@map("responses")
+}
+
+model Answer {
+  id         String @id @default(cuid())
+  responseId String
+  questionId String
+  value      String // Store answer as string (can be JSON for complex answers)
+  
+  response   Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  @@unique([responseId, questionId])
+  @@map("answers")
+}
+
+model KioskSettings {
+  id        String   @id @default(cuid())
+  password  String   @default("")
+  isEnabled Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("kiosk_settings")
+}
+
+enum QuestionType {
+  TEXT
+  NUMBER
+  EMAIL
+  SELECT
+  MULTIPLE_SELECT
+  SCALE
+  BOOLEAN
+  BODY_MAP
+  RATING_SCALE
+  RPE
+  SLIDER
+  TIME
 }

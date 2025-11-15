@@ -1,27 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 // GET /api/teams - Get all teams
 export async function GET() {
   try {
     console.log('🔍 Teams fetch request received')
-    
-    // Ensure database connection with retry
-    let retries = 3
-    while (retries > 0) {
-      try {
-        await prisma.$connect()
-        console.log('✅ Database connected for teams fetch')
-        break
-      } catch (error) {
-        retries--
-        console.log(`❌ Database connection failed, retries left: ${retries}`)
-        if (retries === 0) throw error
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
+    if (LOCAL_DEV_MODE) {
+      return NextResponse.json([
+        {
+          id: 'team-sepsi',
+          name: 'Sepsi OSK',
+          logo: null,
+          color: '#dc2626',
+          description: 'Sepsi OSK Football Team',
+          playerCount: 5,
+          coachCount: 3,
+          availablePlayers: 4,
+          unavailablePlayers: 1,
+          upcomingMatches: 1,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          players: [
+            { id: 'local-player-1', firstName: 'Boris', lastName: 'Cmiljanic', status: 'FULLY_AVAILABLE' },
+            { id: 'local-player-2', firstName: 'Mihajlo', lastName: 'Neskovic', status: 'FULLY_AVAILABLE' },
+            { id: 'local-player-3', firstName: 'Marko', lastName: 'Markovic', status: 'PHYSIO_THERAPY' },
+            { id: 'local-player-4', firstName: 'Tamas', lastName: 'Santa', status: 'FULLY_AVAILABLE' },
+            { id: 'local-player-5', firstName: 'Dino', lastName: 'Skorup', status: 'FULLY_AVAILABLE' }
+          ],
+          coaches: [
+            { coach: { id: 'staff-1', firstName: 'Sorin', lastName: 'Colceag' } },
+            { coach: { id: 'staff-2', firstName: 'Ovidiu', lastName: 'Burca' } },
+            { coach: { id: 'staff-3', firstName: 'Nikola', lastName: 'Stankovic' } }
+          ],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ])
     }
-
-    const teams = await prisma.team.findMany({
+    
+    // Prisma handles connection pooling automatically
+    const teams = await prisma.teams.findMany({
       include: {
         players: {
           select: {
@@ -91,21 +111,7 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Team creation request received')
     
-    // Ensure database connection with retry
-    let retries = 3
-    while (retries > 0) {
-      try {
-        await prisma.$connect()
-        console.log('✅ Database connected for team creation')
-        break
-      } catch (error) {
-        retries--
-        console.log(`❌ Database connection failed, retries left: ${retries}`)
-        if (retries === 0) throw error
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-    }
-    
+    // Prisma handles connection pooling automatically
     const body = await request.json()
     console.log('📝 Request body:', body)
     

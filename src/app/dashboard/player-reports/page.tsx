@@ -468,7 +468,17 @@ export default function PlayerReportsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: colorScheme.background }}>
+      <div 
+        className="min-h-screen flex items-center justify-center" 
+        style={{ 
+          backgroundColor: colorScheme.background,
+          background: colorScheme.background,
+          minHeight: '100vh',
+          width: '100%',
+          margin: 0,
+          padding: 0
+        }}
+      >
         <div className="text-center">
           <FolderOpen className="h-12 w-12 animate-pulse mx-auto mb-4" style={{ color: colorScheme.primary }} />
           <p style={{ color: colorScheme.text }}>Loading reports...</p>
@@ -486,7 +496,17 @@ export default function PlayerReportsPage() {
 
   if (!hasReportsPermission) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: colorScheme.background }}>
+      <div 
+        className="min-h-screen flex items-center justify-center" 
+        style={{ 
+          backgroundColor: colorScheme.background,
+          background: colorScheme.background,
+          minHeight: '100vh',
+          width: '100%',
+          margin: 0,
+          padding: 0
+        }}
+      >
         <div className="text-center">
           <FolderOpen className="h-12 w-12 mx-auto mb-4" style={{ color: colorScheme.textSecondary }} />
           <h1 className="text-2xl font-bold mb-2" style={{ color: colorScheme.text }}>Access Denied</h1>
@@ -512,31 +532,40 @@ export default function PlayerReportsPage() {
   }
 
   return (
-    <div className="min-h-screen p-4" style={{ backgroundColor: colorScheme.background }}>
+    <div 
+      className="min-h-screen p-0 sm:p-4" 
+      style={{ 
+        backgroundColor: colorScheme.background,
+        background: colorScheme.background,
+        minHeight: '100vh',
+        width: '100%',
+        margin: 0
+      }}
+    >
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2" style={{ color: colorScheme.text }}>
+      <div className="mb-4 sm:mb-6 px-4 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2" style={{ color: colorScheme.text }}>
               Player Reports Management
             </h1>
-            <div className="flex items-center space-x-2 text-sm" style={{ color: colorScheme.textSecondary }}>
+            <div className="flex items-center space-x-2 text-xs sm:text-sm flex-wrap" style={{ color: colorScheme.textSecondary }}>
               <span>📁</span>
               <span>Player Reports</span>
               {currentPath.map((folder, index) => (
                 <React.Fragment key={folder.id}>
                   <span>/</span>
-                  <span>{folder.name}</span>
+                  <span className="truncate max-w-[150px] sm:max-w-none">{folder.name}</span>
                 </React.Fragment>
               ))}
             </div>
           </div>
           {/* Only show admin controls for ADMIN and COACH roles */}
           {user?.role !== 'STAFF' && (
-            <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:gap-0">
               <button
                 onClick={() => setShowCreateFolder(true)}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors"
+                className="flex items-center justify-center sm:justify-start space-x-2 px-3 sm:px-4 py-2 rounded-lg border transition-colors text-sm sm:text-base"
                 style={{ 
                   backgroundColor: colorScheme.surface, 
                   borderColor: colorScheme.border,
@@ -548,7 +577,7 @@ export default function PlayerReportsPage() {
               </button>
               <button
                 onClick={() => setShowUploadReport(true)}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors"
+                className="flex items-center justify-center sm:justify-start space-x-2 px-3 sm:px-4 py-2 rounded-lg border transition-colors text-sm sm:text-base"
                 style={{ 
                   backgroundColor: colorScheme.surface, 
                   borderColor: colorScheme.border,
@@ -565,10 +594,10 @@ export default function PlayerReportsPage() {
 
       {/* Navigation */}
       {currentPath.length > 0 && (
-        <div className="mb-4">
+        <div className="mb-4 px-4 sm:px-0">
           <button
             onClick={navigateUp}
-            className="flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors"
+            className="flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors text-sm sm:text-base"
             style={{ 
               backgroundColor: colorScheme.surface, 
               borderColor: colorScheme.border,
@@ -582,19 +611,19 @@ export default function PlayerReportsPage() {
       )}
 
       {/* Folders Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 mb-6 px-4 sm:px-0">
         {folders.filter(folder => folder.parentId === (selectedFolder?.id || null)).map((folder) => (
           <div
             key={folder.id}
-            className="p-4 rounded-lg border cursor-pointer hover:shadow-lg transition-shadow"
+            className="p-3 sm:p-4 rounded-lg border cursor-pointer hover:shadow-lg transition-shadow"
             style={{ 
               backgroundColor: colorScheme.surface, 
               borderColor: colorScheme.border 
             }}
             onClick={() => navigateToFolder(folder)}
           >
-            <div className="flex items-start justify-between mb-3">
-              <FolderOpen className="h-8 w-8" style={{ color: '#7C3AED' }} />
+            <div className="flex items-start justify-between mb-2 sm:mb-3">
+              <FolderOpen className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0" style={{ color: '#7C3AED' }} />
               {/* Only show admin controls for ADMIN and COACH roles */}
               {user?.role !== 'STAFF' && (
                 <div className="flex space-x-1">
@@ -638,11 +667,11 @@ export default function PlayerReportsPage() {
                 </div>
               )}
             </div>
-            <h3 className="font-semibold mb-1" style={{ color: colorScheme.text }}>
+            <h3 className="font-semibold mb-1 text-sm sm:text-base truncate" style={{ color: colorScheme.text }}>
               {folder.name}
             </h3>
             {folder.description && (
-              <p className="text-sm mb-2" style={{ color: colorScheme.textSecondary }}>
+              <p className="text-xs sm:text-sm mb-2 line-clamp-2" style={{ color: colorScheme.textSecondary }}>
                 {folder.description}
               </p>
             )}
@@ -678,19 +707,19 @@ export default function PlayerReportsPage() {
       </div>
 
       {/* Reports Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 px-4 sm:px-0">
         {reports.map((report) => (
           <div
             key={report.id}
-            className="p-4 rounded-lg border hover:shadow-lg transition-shadow"
+            className="p-3 sm:p-4 rounded-lg border hover:shadow-lg transition-shadow"
             style={{ 
               backgroundColor: colorScheme.surface, 
               borderColor: colorScheme.border 
             }}
           >
-            <div className="flex items-start justify-between mb-3">
+            <div className="flex items-start justify-between mb-2 sm:mb-3">
               {report.fileType === 'application/pdf' ? (
-                <div className="w-12 h-16 rounded border overflow-hidden" style={{ backgroundColor: '#f3f4f6' }}>
+                <div className="w-10 h-14 sm:w-12 sm:h-16 rounded border overflow-hidden flex-shrink-0" style={{ backgroundColor: '#f3f4f6' }}>
                   <PDFThumbnail
                     pdfUrl={report.fileUrl}
                     fileName={report.name}
@@ -700,35 +729,35 @@ export default function PlayerReportsPage() {
                   />
                 </div>
               ) : (
-                <span className="text-2xl">{getFileIcon(report.fileType)}</span>
+                <span className="text-xl sm:text-2xl flex-shrink-0">{getFileIcon(report.fileType)}</span>
               )}
-              <div className="flex space-x-2">
+              <div className="flex space-x-1 sm:space-x-2 flex-shrink-0">
                 <button
                   onClick={() => {
                     trackFileAccess(report.id, 'view')
                     setPreviewFile(report)
                     setShowPreviewModal(true)
                   }}
-                  className="p-2 rounded hover:bg-gray-100"
+                  className="p-1 sm:p-2 rounded hover:bg-gray-100"
                 >
-                  <Eye className="h-5 w-5" style={{ color: colorScheme.textSecondary }} />
+                  <Eye className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: colorScheme.textSecondary }} />
                 </button>
                 {/* Only show delete button for ADMIN and COACH roles */}
                 {user?.role !== 'STAFF' && (
                   <button
                     onClick={() => handleDeleteReport(report.id)}
-                    className="p-2 rounded hover:bg-red-100 transition-colors text-red-600"
+                    className="p-1 sm:p-2 rounded hover:bg-red-100 transition-colors text-red-600"
                   >
-                    <Trash2 className="h-5 w-5" />
+                    <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
                 )}
               </div>
             </div>
-            <h3 className="font-semibold mb-1" style={{ color: colorScheme.text }}>
+            <h3 className="font-semibold mb-1 text-sm sm:text-base truncate" style={{ color: colorScheme.text }}>
               {report.name}
             </h3>
             {report.description && (
-              <p className="text-sm mb-2" style={{ color: colorScheme.textSecondary }}>
+              <p className="text-xs sm:text-sm mb-2 line-clamp-2" style={{ color: colorScheme.textSecondary }}>
                 {report.description}
               </p>
             )}

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { readState, writeState } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { roomId: string } }
+  context: { params: Promise<{ roomId: string }> }
 ) {
   try {
     // Check authentication
@@ -24,7 +27,43 @@ export async function DELETE(
       )
     }
 
-    const { roomId } = params
+    // Only system admins can delete chat rooms
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { message: 'Only admins can delete chat rooms' },
+        { status: 403 }
+      )
+    }
+
+    const { roomId } = await context.params
+
+    // Local dev mode: delete from localDevStore
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      const chatRooms = state.chatRooms || []
+      
+      const roomIndex = chatRooms.findIndex((room: any) => room.id === roomId)
+      
+      if (roomIndex === -1) {
+        return NextResponse.json(
+          { message: 'Chat room not found' },
+          { status: 404 }
+        )
+      }
+
+      // Remove chat room from state
+      chatRooms.splice(roomIndex, 1)
+      state.chatRooms = chatRooms
+      
+      await writeState(state)
+
+      console.log('✅ Chat room deleted successfully from local storage:', roomId)
+
+      return NextResponse.json({ 
+        message: 'Chat room deleted successfully',
+        roomId 
+      })
+    }
 
     // Check if user is admin of this room
     const participant = await prisma.chatRoomParticipant.findFirst({

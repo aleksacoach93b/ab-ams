@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { readState, writeState } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 const getEventColor = (type: string) => {
   switch (type) {
@@ -29,7 +32,34 @@ export async function DELETE(
 ) {
   try {
     const { id: eventId } = await params
+    console.log('🗑️ [DELETE EVENT] Request received for event:', eventId)
 
+    if (LOCAL_DEV_MODE) {
+      // Local dev mode: delete from localDevStore
+      const state = await readState()
+      const eventIndex = state.events?.findIndex(e => e.id === eventId)
+      
+      if (eventIndex === undefined || eventIndex === -1) {
+        console.error('❌ [DELETE EVENT] Event not found:', eventId)
+        return NextResponse.json(
+          { message: 'Event not found' },
+          { status: 404 }
+        )
+      }
+
+      // Remove the event from the array
+      state.events.splice(eventIndex, 1)
+      await writeState(state)
+
+      console.log('✅ [DELETE EVENT] Event deleted successfully from local state:', eventId)
+
+      return NextResponse.json(
+        { message: 'Event deleted successfully' },
+        { status: 200 }
+      )
+    }
+
+    // Database mode: use Prisma
     // Find the event first
     const event = await prisma.events.findUnique({
       where: { id: eventId }
@@ -52,7 +82,7 @@ export async function DELETE(
       { status: 200 }
     )
   } catch (error) {
-    console.error('Error deleting event:', error)
+    console.error('❌ Error deleting event:', error)
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }
@@ -67,7 +97,7 @@ export async function PUT(
   try {
     const { id: eventId } = await params
     const body = await request.json()
-    console.log('🔄 Event update request:', { eventId, body })
+    console.log('🔄 [UPDATE EVENT BY ID] Request received:', { eventId, body: { ...body, icon: body.icon } })
     
     const {
       title,
@@ -84,10 +114,99 @@ export async function PUT(
 
     // Validate required fields
     if (!title || !date) {
-      console.log('❌ Validation failed: missing title or date')
+      console.log('❌ [UPDATE EVENT BY ID] Validation failed: missing title or date')
       return NextResponse.json(
         { message: 'Title and date are required' },
         { status: 400 }
+      )
+    }
+
+    // Local dev mode: update in localDevStore
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      const eventIndex = state.events?.findIndex(e => e.id === eventId)
+      
+      if (eventIndex === undefined || eventIndex === -1) {
+        console.error('❌ [UPDATE EVENT BY ID] Event not found:', eventId)
+        return NextResponse.json(
+          { message: 'Event not found' },
+          { status: 404 }
+        )
+      }
+
+      const existingEvent = state.events[eventIndex]
+      console.log('✅ [UPDATE EVENT BY ID] Found event:', { 
+        id: existingEvent.id, 
+        title: existingEvent.title,
+        currentIcon: existingEvent.icon || existingEvent.iconName,
+        newIcon: icon
+      })
+
+      // Use provided icon or keep existing, ensure both icon and iconName are set
+      const finalIcon = icon !== undefined && icon !== null ? icon : (existingEvent.icon || existingEvent.iconName || 'Calendar')
+      
+      // Update participants if provided
+      let participants = existingEvent.participants || []
+      if (selectedPlayers.length > 0 || selectedStaff.length > 0) {
+        participants = [
+          ...selectedPlayers.map((playerId: string) => ({
+            id: `part_${eventId}_player_${playerId}_${Date.now()}`,
+            eventId,
+            playerId,
+            staffId: null,
+            role: null,
+            player: null,
+            staff: null
+          })),
+          ...selectedStaff.map((staffId: string) => ({
+            id: `part_${eventId}_staff_${staffId}_${Date.now()}`,
+            eventId,
+            playerId: null,
+            staffId,
+            role: null,
+            player: null,
+            staff: null
+          }))
+        ]
+      }
+
+      const updatedEvent = {
+        ...existingEvent,
+        title: title !== undefined ? title : existingEvent.title,
+        description: description !== undefined ? description : existingEvent.description,
+        type: type ? type.toUpperCase() : existingEvent.type,
+        date: date ? new Date(date).toISOString() : existingEvent.date,
+        startTime: startTime !== undefined ? startTime : existingEvent.startTime,
+        endTime: endTime !== undefined ? endTime : existingEvent.endTime,
+        location: location !== undefined ? location : existingEvent.location,
+        icon: finalIcon,
+        iconName: finalIcon, // Keep both fields in sync
+        color: type ? getEventColor(type.toUpperCase()) : existingEvent.color,
+        participants,
+        updatedAt: new Date().toISOString()
+      }
+
+      console.log('✅ [UPDATE EVENT BY ID] Updating event with:', { 
+        icon: updatedEvent.icon, 
+        iconName: updatedEvent.iconName,
+        title: updatedEvent.title
+      })
+
+      state.events[eventIndex] = updatedEvent
+      await writeState(state)
+
+      console.log('✅ [UPDATE EVENT BY ID] Event updated successfully:', updatedEvent.id)
+
+      return NextResponse.json(
+        { 
+          message: 'Event updated successfully', 
+          event: {
+            ...updatedEvent,
+            icon: updatedEvent.icon || updatedEvent.iconName,
+            iconName: updatedEvent.iconName || updatedEvent.icon
+          }
+        },
+        { status: 200 }
       )
     }
 

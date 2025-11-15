@@ -6,21 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Users fetch request received')
     
-    // Ensure database connection with retry
-    let retries = 3
-    while (retries > 0) {
-      try {
-        await prisma.$connect()
-        console.log('✅ Database connected for users fetch')
-        break
-      } catch (error) {
-        retries--
-        console.log(`❌ Database connection failed, retries left: ${retries}`)
-        if (retries === 0) throw error
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-    }
-
+    // Prisma handles connection pooling automatically
     // Check authentication
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) {

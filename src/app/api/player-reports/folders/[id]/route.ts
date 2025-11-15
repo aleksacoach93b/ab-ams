@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { readState, writeState } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function PUT(
   request: NextRequest,
@@ -8,6 +11,58 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
+
+    const body = await request.json()
+    const { name, description, playerAccess } = body
+
+    // Local dev mode: update in state
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      
+      // Find folder in all folder collections
+      let folderFound = false
+      let updatedFolder = null
+      const folderKeys = Object.keys(state.playerReportFolders)
+      
+      for (const key of folderKeys) {
+        const folderIndex = state.playerReportFolders[key].findIndex(f => f.id === id)
+        if (folderIndex !== -1) {
+          // Update folder name/description if provided
+          if (name !== undefined) {
+            state.playerReportFolders[key][folderIndex].name = name
+          }
+          if (description !== undefined) {
+            state.playerReportFolders[key][folderIndex].description = description
+          }
+          state.playerReportFolders[key][folderIndex].updatedAt = new Date().toISOString()
+          
+          // Update player access
+          if (playerAccess && Array.isArray(playerAccess)) {
+            state.playerReportFolders[key][folderIndex].visibleToPlayers = playerAccess.map((access: any) => ({
+              id: `access_${id}_${access.playerId}`,
+              playerId: access.playerId,
+              canView: access.canView,
+              player: null // Will be populated when needed
+            }))
+          }
+          
+          folderFound = true
+          updatedFolder = state.playerReportFolders[key][folderIndex]
+          await writeState(state)
+          break
+        }
+      }
+      
+      if (!folderFound) {
+        return NextResponse.json(
+          { message: 'Folder not found' },
+          { status: 404 }
+        )
+      }
+      
+      console.log(`✅ Updated player access for folder ${id}`)
+      return NextResponse.json(updatedFolder)
+    }
 
     // Check authentication
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -34,11 +89,8 @@ export async function PUT(
       )
     }
 
-    const body = await request.json()
-    const { name, description, playerAccess } = body
-
     // Check if folder exists
-    const existingFolder = await prisma.playerReportFolder.findUnique({
+    const existingFolder = await prisma.player_report_folders.findUnique({
       where: { id }
     })
 
@@ -60,34 +112,51 @@ export async function PUT(
     // Start a transaction to update folder and player access
     const result = await prisma.$transaction(async (tx) => {
       // Update the folder
-      const folder = await tx.playerReportFolder.update({
+      const folder = await tx.player_report_folders.update({
         where: { id },
         data: {
-          name,
-          description,
+          ...(name !== undefined && { name }),
+          ...(description !== undefined && { description }),
           updatedAt: new Date()
         },
         include: {
-          parent: true,
-          children: true,
-          reports: true
+          player_report_folders: true, // parent
+          other_player_report_folders: { where: { isActive: true } },
+          player_reports: { where: { isActive: true } },
+          player_report_player_access: {
+            include: {
+              players: {
+                select: { id: true, firstName: true, lastName: true, email: true }
+              }
+            }
+          },
+          _count: {
+            select: {
+              player_reports: { where: { isActive: true } },
+              other_player_report_folders: { where: { isActive: true } }
+            }
+          }
         }
       })
 
       // If playerAccess is provided, update player access
       if (playerAccess && Array.isArray(playerAccess)) {
         // Delete existing player access for this folder
-        await tx.playerReportPlayerAccess.deleteMany({
+        await tx.player_report_player_access.deleteMany({
           where: { folderId: id }
         })
 
         // Create new player access entries
         if (playerAccess.length > 0) {
-          await tx.playerReportPlayerAccess.createMany({
+          await tx.player_report_player_access.createMany({
             data: playerAccess.map((access: any) => ({
+              id: `access_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
               folderId: id,
               playerId: access.playerId,
-              canView: access.canView
+              canView: access.canView || true,
+              canEdit: false,
+              canDelete: false,
+              updatedAt: new Date()
             }))
           })
         }
@@ -96,11 +165,32 @@ export async function PUT(
       return folder
     })
 
-    return NextResponse.json(result)
+    // Transform for frontend
+    const transformedFolder = {
+      id: result.id,
+      name: result.name,
+      description: result.description,
+      parentId: result.parentId,
+      createdBy: result.createdBy,
+      createdAt: result.createdAt.toISOString(),
+      updatedAt: result.updatedAt.toISOString(),
+      parent: result.player_report_folders,
+      children: result.other_player_report_folders,
+      reports: result.player_reports,
+      visibleToPlayers: result.player_report_player_access.map((access: any) => ({
+        id: access.id,
+        playerId: access.playerId,
+        canView: access.canView,
+        player: access.players
+      })),
+      _count: result._count
+    }
+
+    return NextResponse.json(transformedFolder)
   } catch (error) {
     console.error('Error updating player report folder:', error)
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { message: 'Internal server error', error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

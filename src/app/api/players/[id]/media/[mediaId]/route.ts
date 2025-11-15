@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { unlink } from 'fs/promises'
 import { join } from 'path'
+import { readState, writeState } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
 export async function DELETE(
   request: NextRequest,
@@ -14,6 +17,33 @@ export async function DELETE(
       return NextResponse.json(
         { message: 'Player ID and Media ID are required' },
         { status: 400 }
+      )
+    }
+
+    // Local dev mode: delete from state
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      if (state.playerMediaFiles?.[playerId]) {
+        const mediaFile = state.playerMediaFiles[playerId].find((f: any) => f.id === mediaId)
+        
+        if (mediaFile) {
+          // Delete file from disk
+          try {
+            const filePath = join(process.cwd(), 'public', mediaFile.fileUrl)
+            await unlink(filePath)
+          } catch (fileError) {
+            console.warn('Failed to delete file from disk:', fileError)
+          }
+
+          // Remove from state
+          state.playerMediaFiles[playerId] = state.playerMediaFiles[playerId].filter((f: any) => f.id !== mediaId)
+          await writeState(state)
+        }
+      }
+
+      return NextResponse.json(
+        { message: 'Media file deleted successfully' },
+        { status: 200 }
       )
     }
 
@@ -30,7 +60,7 @@ export async function DELETE(
     }
 
     // Get the media file record
-    const mediaFile = await prisma.playersMedia.findUnique({
+    const mediaFile = await prisma.player_media.findUnique({
       where: { id: mediaId }
     })
 
@@ -59,7 +89,7 @@ export async function DELETE(
     }
 
     // Delete the media record from database
-    await prisma.playersMedia.delete({
+    await prisma.player_media.delete({
       where: { id: mediaId }
     })
 

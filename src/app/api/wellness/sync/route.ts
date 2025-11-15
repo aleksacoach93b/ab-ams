@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { readState } from '@/lib/localDevStore'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
+
+async function getWellnessSettings() {
+  if (LOCAL_DEV_MODE) {
+    const state = await readState()
+    return state.wellnessSettings || {
+      csvUrl: 'https://wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv',
+      surveyId: 'cmg6klyig0004l704u1kd78zb',
+      baseUrl: 'https://wellness-monitor-tan.vercel.app'
+    }
+  }
+  // Production mode - would use database
+  return {
+    csvUrl: process.env.WELLNESS_EXPORT_URL || 'https://wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv',
+    surveyId: 'cmg6klyig0004l704u1kd78zb',
+    baseUrl: 'https://wellness-monitor-tan.vercel.app'
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,8 +39,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 403 })
     }
 
+    // Get wellness settings (CSV URL)
+    const wellnessSettings = await getWellnessSettings()
+    const csvUrl = wellnessSettings.csvUrl
+    
+    console.log(`🔄 [WELLNESS SYNC] Fetching CSV from: ${csvUrl}`)
+
     // Fetch CSV data from external wellness app
-    const csvUrl = 'https://wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv'
     const response = await fetch(csvUrl)
     
     if (!response.ok) {
@@ -67,41 +92,47 @@ export async function POST(request: NextRequest) {
         continue
       }
 
-      // Find player by name
-      const player = await prisma.players.findFirst({
-        where: {
-          name: {
-            contains: playerName
-          }
-        }
-      })
-
-      if (!player) {
-        console.log(`Player not found: ${playerName}`)
+      if (LOCAL_DEV_MODE) {
+        // In local mode, do not write to DB; just count valid rows
+        syncedCount++
         continue
       }
 
-      // Mark wellness as completed for this date
-      await prisma.wellnessCompletion.upsert({
-        where: {
-          date_playerId: {
-            date: surveyDate,
-            playerId: player.id,
+      // DB mode: find player and upsert completion
+      try {
+        const player = await prisma.players.findFirst({
+          where: {
+            name: {
+              contains: playerName
+            }
+          }
+        })
+        if (!player) {
+          console.log(`Player not found: ${playerName}`)
+          continue
+        }
+        await prisma.wellnessCompletion.upsert({
+          where: {
+            date_playerId: {
+              date: surveyDate,
+              playerId: player.id,
+            },
           },
-        },
-        update: {
-          completed: true,
-          completedAt: new Date(submittedAt),
-        },
-        create: {
-          playerId: player.id,
-          date: surveyDate,
-          completed: true,
-          completedAt: new Date(submittedAt),
-        },
-      })
-
-      syncedCount++
+          update: {
+            completed: true,
+            completedAt: new Date(submittedAt),
+          },
+          create: {
+            playerId: player.id,
+            date: surveyDate,
+            completed: true,
+            completedAt: new Date(submittedAt),
+          },
+        })
+        syncedCount++
+      } catch (dbErr) {
+        console.error('DB write failed:', dbErr)
+      }
     }
 
     return NextResponse.json({

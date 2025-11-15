@@ -7,6 +7,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import MobileCalendar from '@/components/MobileCalendar'
 import EventAnalytics from '@/components/EventAnalytics'
 import PlayerStatusNotesModal from '@/components/PlayerStatusNotesModal'
+import SparklineChart from '@/components/SparklineChart'
+import ActivityFeed from '@/components/ActivityFeed'
+import DraggableStatsCards from '@/components/DraggableStatsCards'
+import DraggableActionCardsWrapper from '@/components/DraggableActionCardsWrapper'
+import DraggableSections from '@/components/DraggableSections'
 
 interface Player {
   id: string
@@ -116,47 +121,73 @@ function StaffNotesList() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {notes.slice(0, 3).map((note) => (
         <div
           key={note.id}
-          className="rounded-lg border p-3"
+          className="rounded-xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl overflow-hidden"
           style={{ 
-            backgroundColor: colorScheme.background,
+            backgroundColor: colorScheme.surface,
             borderColor: colorScheme.border
           }}
         >
-          <div className="flex items-start justify-between mb-2">
-            <h4 
-              className="font-medium text-sm"
-              style={{ color: colorScheme.text }}
-            >
-              {note.title}
-            </h4>
-            {note.isPinned && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                PINNED
-              </span>
-            )}
+          {/* Header with Author Info */}
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b" style={{ borderColor: colorScheme.border }}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {/* Avatar */}
+                <div 
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-white text-sm sm:text-base"
+                  style={{ backgroundColor: colorScheme.primary }}
+                >
+                  {note.author.name?.charAt(0)?.toUpperCase() || note.author.email?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+                {/* Author Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm sm:text-base truncate" style={{ color: colorScheme.text }}>
+                    {note.author.name || note.author.email || 'Unknown Author'}
+                  </p>
+                  <p className="text-xs sm:text-sm truncate" style={{ color: colorScheme.textSecondary }}>
+                    {note.author.email || ''}
+                  </p>
+                </div>
+              </div>
+              {/* Date and Pinned Badge */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {note.isPinned && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    PINNED
+                  </span>
+                )}
+                <div className="text-right">
+                  <span className="text-xs sm:text-sm font-medium whitespace-nowrap" style={{ color: colorScheme.textSecondary }}>
+                    {new Date(note.createdAt).toLocaleDateString('en-GB', { 
+                      day: '2-digit', 
+                      month: '2-digit', 
+                      year: 'numeric' 
+                    })}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div 
-            className="text-xs mb-2 line-clamp-2"
-            style={{ color: colorScheme.textSecondary }}
-            dangerouslySetInnerHTML={{ __html: note.content }}
-          />
-          <div className="flex items-center justify-between">
-            <span 
-              className="text-xs"
+
+          {/* Title */}
+          {note.title && (
+            <div className="px-4 sm:px-6 pt-4 pb-2">
+              <h4 className="font-semibold text-base sm:text-lg" style={{ color: colorScheme.text }}>
+                {note.title}
+              </h4>
+            </div>
+          )}
+
+          {/* Content */}
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+            <div 
+              className="text-xs sm:text-sm prose prose-sm max-w-none note-content line-clamp-2"
               style={{ color: colorScheme.textSecondary }}
-            >
-              by {note.author.name || note.author.email}
-            </span>
-            <span 
-              className="text-xs"
-              style={{ color: colorScheme.textSecondary }}
-            >
-              {new Date(note.createdAt).toLocaleDateString()}
-            </span>
+              dangerouslySetInnerHTML={{ __html: note.content }}
+            />
           </div>
         </div>
       ))}
@@ -317,10 +348,10 @@ function StaffReportsList() {
           {folders.slice(0, 3).map((folder) => (
             <div 
               key={folder.id}
-              className="rounded-lg border p-3 cursor-pointer hover:shadow-md transition-shadow"
+              className="rounded-lg border-2 p-3 cursor-pointer hover:shadow-md transition-shadow"
               style={{ 
                 backgroundColor: colorScheme.background,
-                borderColor: colorScheme.border
+                borderColor: `${colorScheme.border}E6`
               }}
               onClick={() => navigateToFolder(folder)}
             >
@@ -367,10 +398,10 @@ function StaffReportsList() {
           {reports.slice(0, 3).map((report) => (
             <div
               key={report.id}
-              className="rounded-lg border p-3 cursor-pointer hover:shadow-md transition-shadow"
+              className="rounded-lg border-2 p-3 cursor-pointer hover:shadow-md transition-shadow"
               style={{ 
                 backgroundColor: colorScheme.background,
-                borderColor: colorScheme.border
+                borderColor: `${colorScheme.border}E6`
               }}
                   onClick={() => {
                     if (typeof window !== 'undefined') {
@@ -477,6 +508,7 @@ export default function Dashboard() {
   const [showStaffNotesModal, setShowStaffNotesModal] = useState(false)
   const [showStaffReportsModal, setShowStaffReportsModal] = useState(false)
   const [showPlayerNotesModal, setShowPlayerNotesModal] = useState(false)
+  const [showActivityFeedModal, setShowActivityFeedModal] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [isSavingNotes, setIsSavingNotes] = useState(false)
   
@@ -484,6 +516,15 @@ export default function Dashboard() {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([])
   const [isUpdatingTags, setIsUpdatingTags] = useState(false)
   const [lastClickTime, setLastClickTime] = useState<{ [key: string]: number }>({})
+  
+  // Historical data for sparkline charts
+  const [availabilityHistory, setAvailabilityHistory] = useState<number[]>([])
+  const [totalPlayersHistory, setTotalPlayersHistory] = useState<number[]>([])
+  const [unavailableHistory, setUnavailableHistory] = useState<number[]>([])
+  const [availabilityPercentageHistory, setAvailabilityPercentageHistory] = useState<number[]>([])
+  
+  // Player availability percentages (calculated from all historical data)
+  const [playerAvailabilityPercentages, setPlayerAvailabilityPercentages] = useState<{ [playerId: string]: number }>({})
 
 
   useEffect(() => {
@@ -498,6 +539,14 @@ export default function Dashboard() {
     
     return () => clearInterval(interval)
   }, [user])
+
+  // Fetch availability history after players are loaded (only once, not on every players change)
+  useEffect(() => {
+    if (players.length > 0 && availabilityHistory.length === 0) {
+      fetchAvailabilityHistory()
+      fetchPlayerAvailabilityPercentages()
+    }
+  }, [players.length]) // Only depend on players.length, not the whole array
 
   const fetchPlayers = async () => {
     try {
@@ -532,6 +581,263 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Error fetching staff permissions:', error)
+    }
+  }
+
+  const fetchAvailabilityHistory = async () => {
+    try {
+      // Get last 5 days dates
+      const dates: string[] = []
+      for (let i = 4; i >= 0; i--) {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        date.setHours(0, 0, 0, 0)
+        dates.push(date.toISOString().split('T')[0])
+      }
+
+      // Fetch daily notes for last 5 days (API uses 'days' parameter)
+      const response = await fetch('/api/analytics/players-csv?days=5')
+      
+      if (response.ok) {
+        const csvText = await response.text()
+        const lines = csvText.split('\n').slice(1) // Skip header
+        
+        // Count players per day (available, unavailable, total)
+        const dailyAvailable: { [date: string]: Set<string> } = {}
+        const dailyUnavailable: { [date: string]: Set<string> } = {}
+        const dailyTotal: { [date: string]: Set<string> } = {}
+        
+        dates.forEach(date => {
+          dailyAvailable[date] = new Set()
+          dailyUnavailable[date] = new Set()
+          dailyTotal[date] = new Set()
+        })
+
+        lines.forEach(line => {
+          if (!line.trim()) return
+          const [dateStr, playerName, availabilityStatus] = line.split(',')
+          if (dateStr && playerName && availabilityStatus) {
+            const cleanDate = dateStr.replace(/"/g, '')
+            const cleanStatus = availabilityStatus.replace(/"/g, '').trim()
+            const cleanPlayerName = playerName.replace(/"/g, '')
+            
+            if (dailyTotal[cleanDate]) {
+              dailyTotal[cleanDate].add(cleanPlayerName)
+              
+              if (cleanStatus === 'FULLY_AVAILABLE' || cleanStatus === 'Fully Available') {
+                dailyAvailable[cleanDate].add(cleanPlayerName)
+              } else {
+                dailyUnavailable[cleanDate].add(cleanPlayerName)
+              }
+            }
+          }
+        })
+
+        // Convert to arrays for last 5 days
+        const availableHistory = dates.map(date => dailyAvailable[date]?.size || 0)
+        const unavailableHistory = dates.map(date => dailyUnavailable[date]?.size || 0)
+        const totalHistory = dates.map(date => dailyTotal[date]?.size || 0)
+        
+        // Calculate availability percentage history
+        const percentageHistory = dates.map((date, index) => {
+          const total = totalHistory[index] || 0
+          const available = availableHistory[index] || 0
+          return total > 0 ? Math.round((available / total) * 100) : 0
+        })
+        
+        // If we have no data, use current players data as fallback
+        const hasData = totalHistory.some(count => count > 0)
+        if (!hasData && players.length > 0) {
+          const currentActive = players.filter(p => p.availabilityStatus === 'FULLY_AVAILABLE' || p.availabilityStatus === 'Fully Available').length
+          const currentUnavailable = players.filter(p => 
+            p.availabilityStatus !== 'FULLY_AVAILABLE' && 
+            p.availabilityStatus !== 'Fully Available' &&
+            p.availabilityStatus !== 'ACTIVE'
+          ).length
+          const currentTotal = players.length
+          const currentPercentage = currentTotal > 0 ? Math.round((currentActive / currentTotal) * 100) : 0
+          
+          setAvailabilityHistory([currentActive, currentActive, currentActive, currentActive, currentActive])
+          setUnavailableHistory([currentUnavailable, currentUnavailable, currentUnavailable, currentUnavailable, currentUnavailable])
+          setTotalPlayersHistory([currentTotal, currentTotal, currentTotal, currentTotal, currentTotal])
+          setAvailabilityPercentageHistory([currentPercentage, currentPercentage, currentPercentage, currentPercentage, currentPercentage])
+        } else {
+          setAvailabilityHistory(availableHistory)
+          setUnavailableHistory(unavailableHistory)
+          setTotalPlayersHistory(totalHistory)
+          setAvailabilityPercentageHistory(percentageHistory)
+        }
+      } else {
+        // Fallback: use current players data if available
+        if (players.length > 0) {
+          const currentActive = players.filter(p => p.availabilityStatus === 'FULLY_AVAILABLE' || p.availabilityStatus === 'Fully Available').length
+          const currentUnavailable = players.filter(p => 
+            p.availabilityStatus !== 'FULLY_AVAILABLE' && 
+            p.availabilityStatus !== 'Fully Available' &&
+            p.availabilityStatus !== 'ACTIVE'
+          ).length
+          const currentTotal = players.length
+          const currentPercentage = currentTotal > 0 ? Math.round((currentActive / currentTotal) * 100) : 0
+          
+          setAvailabilityHistory([currentActive, currentActive, currentActive, currentActive, currentActive])
+          setUnavailableHistory([currentUnavailable, currentUnavailable, currentUnavailable, currentUnavailable, currentUnavailable])
+          setTotalPlayersHistory([currentTotal, currentTotal, currentTotal, currentTotal, currentTotal])
+          setAvailabilityPercentageHistory([currentPercentage, currentPercentage, currentPercentage, currentPercentage, currentPercentage])
+        } else {
+          setAvailabilityHistory([])
+          setUnavailableHistory([])
+          setTotalPlayersHistory([])
+          setAvailabilityPercentageHistory([])
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching availability history:', error)
+      // Fallback: use current players data if available
+      if (players.length > 0) {
+        const currentActive = players.filter(p => p.availabilityStatus === 'FULLY_AVAILABLE' || p.availabilityStatus === 'Fully Available').length
+        const currentUnavailable = players.filter(p => 
+          p.availabilityStatus !== 'FULLY_AVAILABLE' && 
+          p.availabilityStatus !== 'Fully Available' &&
+          p.availabilityStatus !== 'ACTIVE'
+        ).length
+        const currentTotal = players.length
+        const currentPercentage = currentTotal > 0 ? Math.round((currentActive / currentTotal) * 100) : 0
+        
+        setAvailabilityHistory([currentActive, currentActive, currentActive, currentActive, currentActive])
+        setUnavailableHistory([currentUnavailable, currentUnavailable, currentUnavailable, currentUnavailable, currentUnavailable])
+        setTotalPlayersHistory([currentTotal, currentTotal, currentTotal, currentTotal, currentTotal])
+        setAvailabilityPercentageHistory([currentPercentage, currentPercentage, currentPercentage, currentPercentage, currentPercentage])
+      } else {
+        setAvailabilityHistory([])
+        setUnavailableHistory([])
+        setTotalPlayersHistory([])
+        setAvailabilityPercentageHistory([])
+      }
+    }
+  }
+
+  // Helper function to parse CSV line properly (handles quoted strings)
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = []
+    let current = ''
+    let inQuotes = false
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          // Escaped quote
+          current += '"'
+          i++
+        } else {
+          // Toggle quote state
+          inQuotes = !inQuotes
+        }
+      } else if (char === ',' && !inQuotes) {
+        // End of field
+        result.push(current.trim())
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    
+    // Add last field
+    result.push(current.trim())
+    return result
+  }
+
+  const fetchPlayerAvailabilityPercentages = async () => {
+    if (players.length === 0) return // Wait for players to load
+    
+    try {
+      // Fetch all historical data (no limit - get all days)
+      const response = await fetch('/api/analytics/players-csv')
+
+      if (response.ok) {
+        const csvText = await response.text()
+        const lines = csvText.split('\n').filter(line => line.trim()) // Remove empty lines
+        if (lines.length <= 1) {
+          // Only header or no data
+          const percentages: { [playerId: string]: number } = {}
+          players.forEach(player => {
+            const isAvailable = player.availabilityStatus === 'FULLY_AVAILABLE' || player.availabilityStatus === 'Fully Available'
+            percentages[player.id] = isAvailable ? 100 : 0
+          })
+          setPlayerAvailabilityPercentages(percentages)
+          return
+        }
+
+        // Skip header
+        const dataLines = lines.slice(1)
+
+        // Count availability per player
+        const playerStats: { [playerName: string]: { total: number; available: number } } = {}
+
+        dataLines.forEach(line => {
+          if (!line.trim()) return
+          
+          try {
+            const fields = parseCSVLine(line)
+            if (fields.length >= 3) {
+              const dateStr = fields[0]?.replace(/"/g, '').trim()
+              const playerName = fields[1]?.replace(/"/g, '').trim()
+              const availabilityStatus = fields[2]?.replace(/"/g, '').trim()
+              
+              if (dateStr && playerName && availabilityStatus) {
+                if (!playerStats[playerName]) {
+                  playerStats[playerName] = { total: 0, available: 0 }
+                }
+
+                playerStats[playerName].total++
+
+                if (availabilityStatus === 'FULLY_AVAILABLE' || availabilityStatus === 'Fully Available') {
+                  playerStats[playerName].available++
+                }
+              }
+            }
+          } catch (parseError) {
+            console.warn('Error parsing CSV line:', line, parseError)
+            // Skip this line
+          }
+        })
+
+        // Calculate percentages and map to player IDs
+        const percentages: { [playerId: string]: number } = {}
+        
+        players.forEach(player => {
+          const stats = playerStats[player.name]
+          if (stats && stats.total > 0) {
+            percentages[player.id] = Math.round((stats.available / stats.total) * 100)
+          } else {
+            // If no historical data, use current status
+            const isAvailable = player.availabilityStatus === 'FULLY_AVAILABLE' || player.availabilityStatus === 'Fully Available'
+            percentages[player.id] = isAvailable ? 100 : 0
+          }
+        })
+
+        console.log('📊 Player availability percentages calculated:', percentages)
+        setPlayerAvailabilityPercentages(percentages)
+      } else {
+        console.warn('⚠️ Failed to fetch CSV, using current status')
+        // Fallback: use current status
+        const percentages: { [playerId: string]: number } = {}
+        players.forEach(player => {
+          const isAvailable = player.availabilityStatus === 'FULLY_AVAILABLE' || player.availabilityStatus === 'Fully Available'
+          percentages[player.id] = isAvailable ? 100 : 0
+        })
+        setPlayerAvailabilityPercentages(percentages)
+      }
+    } catch (error) {
+      console.error('❌ Error fetching player availability percentages:', error)
+      // Fallback: use current status
+      const percentages: { [playerId: string]: number } = {}
+      players.forEach(player => {
+        const isAvailable = player.availabilityStatus === 'FULLY_AVAILABLE' || player.availabilityStatus === 'Fully Available'
+        percentages[player.id] = isAvailable ? 100 : 0
+      })
+      setPlayerAvailabilityPercentages(percentages)
     }
   }
 
@@ -577,16 +883,29 @@ export default function Dashboard() {
           p.id === selectedPlayer.id ? { ...p, availabilityStatus: selectedPlayer.availabilityStatus } : p
         ))
         
+        // Refresh availability percentages after saving notes
+        setTimeout(() => {
+          fetchPlayerAvailabilityPercentages()
+        }, 500) // Small delay to ensure data is saved
+        
         setShowPlayerNotesModal(false)
         setSelectedPlayer(null)
       } else {
-        const errorData = await notesResponse.json()
-        console.error('Failed to save player notes:', errorData)
-        alert(`Failed to save notes: ${errorData.message}`)
+        let errorMessage = 'Unknown error'
+        try {
+          const errorData = await notesResponse.json()
+          errorMessage = errorData.message || errorData.error || errorMessage
+          console.error('❌ Failed to save player notes:', errorData)
+        } catch (parseError) {
+          console.error('❌ Failed to parse error response:', parseError)
+          errorMessage = notesResponse.statusText || 'Internal server error'
+        }
+        alert(`Failed to save notes: ${errorMessage}`)
       }
     } catch (error) {
-      console.error('Error saving player notes:', error)
-      alert('An error occurred while saving notes.')
+      console.error('❌ Error saving player notes:', error)
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while saving notes.'
+      alert(`Error: ${errorMessage}`)
     } finally {
       setIsSavingNotes(false)
     }
@@ -602,11 +921,13 @@ export default function Dashboard() {
   }
 
   const handleSelectPlayer = (playerId: string) => {
-    setSelectedPlayers(prev => 
-      prev.includes(playerId) 
+    setSelectedPlayers(prev => {
+      const isSelected = prev.includes(playerId)
+      const newSelection = isSelected
         ? prev.filter(id => id !== playerId)
         : [...prev, playerId]
-    )
+      return newSelection
+    })
   }
 
   const handleBulkUpdateTags = async (tag: string) => {
@@ -755,207 +1076,292 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen p-0 sm:p-4 space-y-2 sm:space-y-6" style={{ backgroundColor: colorScheme.background }}>
-      {/* Header */}
-      <div className="text-center px-0 sm:px-6">
-        <div className="relative inline-block group">
-          {/* Animated background particles */}
-          <div className="absolute inset-0 rounded-2xl overflow-hidden">
-            <div 
-              className="absolute top-0 left-0 w-2 h-2 rounded-full animate-ping opacity-60" 
-              style={{ backgroundColor: colorScheme.primary, animationDelay: '0s' }}
-            ></div>
-            <div 
-              className="absolute top-2 right-4 w-1 h-1 rounded-full animate-ping opacity-40" 
-              style={{ backgroundColor: colorScheme.primary, animationDelay: '1s' }}
-            ></div>
-            <div 
-              className="absolute bottom-2 left-4 w-1.5 h-1.5 rounded-full animate-ping opacity-50" 
-              style={{ backgroundColor: colorScheme.primary, animationDelay: '2s' }}
-            ></div>
-            <div 
-              className="absolute bottom-0 right-2 w-1 h-1 rounded-full animate-ping opacity-30" 
-              style={{ backgroundColor: colorScheme.primary, animationDelay: '0.5s' }}
-            ></div>
-          </div>
-          
+    <div 
+      className="min-h-screen p-0 sm:p-4 space-y-2 sm:space-y-6" 
+      style={{ 
+        backgroundColor: colorScheme.background,
+        background: colorScheme.background,
+        minHeight: '100vh',
+        width: '100%',
+        margin: 0,
+        padding: 0
+      }}
+    >
+      {/* Header - Compact Design */}
+      <div className="px-0 sm:px-6 mb-2 sm:mb-4">
+        <div className="flex items-center justify-start">
           <div 
-            className="relative px-6 py-4 rounded-2xl shadow-lg border backdrop-blur-sm transition-all duration-500 hover:scale-105 hover:shadow-2xl cursor-pointer"
+            className="relative inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl border transition-all duration-300 hover:shadow-md"
             style={{ 
-              backgroundColor: `${colorScheme.primary}15`,
-              borderColor: `${colorScheme.primary}30`,
-              boxShadow: `0 8px 32px ${colorScheme.primary}20`
+              backgroundColor: `${colorScheme.primary}08`,
+              borderColor: `${colorScheme.primary}25`,
+              boxShadow: `0 2px 8px ${colorScheme.primary}10`
             }}
           >
-            <h1 
-              className="text-2xl font-bold mb-1 transition-all duration-300"
-              style={{ 
-                color: colorScheme.text,
-                fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                textShadow: `0 0 20px ${colorScheme.primary}40`
-              }}
-            >
-              <span 
-                className="inline-block hover:scale-110 transition-transform duration-300"
-                style={{ color: colorScheme.primary }}
-              >
-                AB
-              </span> Athlete Management System
-            </h1>
-            <p 
-              className="text-sm opacity-80 transition-all duration-300 group-hover:opacity-100"
-              style={{ 
-                color: colorScheme.textSecondary, 
-                fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-              }}
-            >
-              Dashboard Overview
-            </p>
-            
-            {/* Shimmer effect */}
             <div 
-              className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-10 group-hover:animate-pulse"
-              style={{ color: colorScheme.primary }}
-            ></div>
+              className="relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg font-bold text-sm sm:text-base shadow-lg"
+              style={{ 
+                background: `linear-gradient(135deg, ${colorScheme.primary}, ${colorScheme.primary}DD)`,
+                color: '#FFFFFF',
+                boxShadow: `0 4px 12px ${colorScheme.primary}40, 0 2px 4px ${colorScheme.primary}20, inset 0 1px 0 rgba(255,255,255,0.2)`
+              }}
+            >
+              <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-white/20 to-transparent opacity-50"></div>
+              <span className="relative z-10 drop-shadow-sm">AB</span>
+            </div>
+            <div className="flex flex-col">
+              <h1 
+                className="text-base sm:text-lg font-semibold leading-tight"
+                style={{ 
+                  color: colorScheme.text,
+                  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                }}
+              >
+                Athlete Management System
+              </h1>
+            </div>
           </div>
-          
-          {/* Enhanced glow effect */}
-          <div 
-            className="absolute inset-0 rounded-2xl blur-xl opacity-20 transition-all duration-500 group-hover:opacity-40 group-hover:blur-2xl"
-            style={{ backgroundColor: colorScheme.primary }}
-          ></div>
-          
-          {/* Outer ring effect */}
-          <div 
-            className="absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-30 transition-all duration-500"
-            style={{ 
-              backgroundImage: `linear-gradient(45deg, ${colorScheme.primary}, ${colorScheme.primary}80, ${colorScheme.primary}60, ${colorScheme.primary})`,
-              backgroundSize: '400% 400%',
-              animation: 'gradient 3s ease infinite'
-            }}
-          ></div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 px-0 sm:px-6">
-        <div className="p-6 rounded-lg border" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
-          <div className="flex items-center">
-            <Users className="h-8 w-8 mr-3" style={{ color: colorScheme.primary }} />
-            <div>
-              <p className="text-sm font-medium" style={{ color: colorScheme.textSecondary }}>Total Players</p>
-              <p className="text-2xl font-bold" style={{ color: colorScheme.text }}>{totalPlayers}</p>
+      {/* All Sections with Drag & Drop */}
+      <DraggableSections
+        storageKey="dashboard-sections-order"
+        sections={[
+          {
+            id: 'stats-cards',
+            shouldShow: true,
+            element: (
+              <div className="px-0 sm:px-6 mb-3 sm:mb-4">
+        <DraggableStatsCards storageKey="dashboard-stats-cards-order">
+          <div className="p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
+            <div className="flex items-center justify-between flex-1">
+              <div className="flex items-center min-w-0 flex-1">
+                <Users className="h-5 w-5 sm:h-6 sm:w-6 mr-2 flex-shrink-0" style={{ color: colorScheme.primary }} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-medium truncate" style={{ color: colorScheme.textSecondary }}>Total Players</p>
+                  <p className="text-lg sm:text-xl font-bold" style={{ color: colorScheme.text }}>{totalPlayers}</p>
+                </div>
+              </div>
+              {/* Mini Sparkline Chart - Real data for last 5 days trend */}
+              <div className="ml-2 flex-shrink-0">
+                {totalPlayersHistory.length > 0 ? (
+                  <SparklineChart 
+                    data={totalPlayersHistory}
+                    color={colorScheme.primary}
+                    width={60}
+                    height={24}
+                  />
+                ) : (
+                  <div className="w-[60px] h-[24px] flex items-center justify-center">
+                    <div className="animate-pulse w-full h-full bg-gray-200 rounded" style={{ backgroundColor: colorScheme.border + '40' }}></div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Spacer to match Availability card height */}
+            <div className="mt-auto pt-1">
+              <p className="text-[10px] sm:text-xs opacity-0">placeholder</p>
             </div>
           </div>
-        </div>
 
-        <div className="p-6 rounded-lg border" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
-          <div className="flex items-center">
-            <TrendingUp className="h-8 w-8 mr-3" style={{ color: '#10B981' }} />
-            <div>
-              <p className="text-sm font-medium" style={{ color: colorScheme.textSecondary }}>Active Players</p>
-              <p className="text-2xl font-bold" style={{ color: '#10B981' }}>{activePlayers}</p>
+          <div className="p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
+            <div className="flex items-center justify-between flex-1">
+              <div className="flex items-center min-w-0 flex-1">
+                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 mr-2 flex-shrink-0" style={{ color: '#10B981' }} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-medium truncate" style={{ color: colorScheme.textSecondary }}>Available</p>
+                  <p className="text-lg sm:text-xl font-bold" style={{ color: '#10B981' }}>{activePlayers}</p>
+                </div>
+              </div>
+              {/* Mini Sparkline Chart - Real data for last 5 days trend */}
+              <div className="ml-2 flex-shrink-0">
+                {availabilityHistory.length > 0 ? (
+                  <SparklineChart 
+                    data={availabilityHistory}
+                    color="#10B981"
+                    width={60}
+                    height={24}
+                  />
+                ) : (
+                  <div className="w-[60px] h-[24px] flex items-center justify-center">
+                    <div className="animate-pulse w-full h-full bg-gray-200 rounded" style={{ backgroundColor: colorScheme.border + '40' }}></div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Spacer to match Availability card height */}
+            <div className="mt-auto pt-1">
+              <p className="text-[10px] sm:text-xs opacity-0">placeholder</p>
             </div>
           </div>
-        </div>
 
-        <div className="p-6 rounded-lg border" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
-          <div className="flex items-center">
-            <AlertTriangle className="h-8 w-8 mr-3" style={{ color: '#EF4444' }} />
-            <div>
-              <p className="text-sm font-medium" style={{ color: colorScheme.textSecondary }}>Unavailable Players</p>
-              <p className="text-2xl font-bold" style={{ color: '#EF4444' }}>{notAvailablePlayers}</p>
+          <div className="p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
+            <div className="flex items-center justify-between flex-1">
+              <div className="flex items-center min-w-0 flex-1">
+                <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 mr-2 flex-shrink-0" style={{ color: '#EF4444' }} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-medium truncate" style={{ color: colorScheme.textSecondary }}>Unavailable</p>
+                  <p className="text-lg sm:text-xl font-bold" style={{ color: '#EF4444' }}>{notAvailablePlayers}</p>
+                </div>
+              </div>
+              {/* Mini Sparkline Chart - Real data for last 5 days trend */}
+              <div className="ml-2 flex-shrink-0">
+                {unavailableHistory.length > 0 ? (
+                  <SparklineChart 
+                    data={unavailableHistory}
+                    color="#EF4444"
+                    width={60}
+                    height={24}
+                  />
+                ) : (
+                  <div className="w-[60px] h-[24px] flex items-center justify-center">
+                    <div className="animate-pulse w-full h-full bg-gray-200 rounded" style={{ backgroundColor: colorScheme.border + '40' }}></div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Spacer to match Availability card height */}
+            <div className="mt-auto pt-1">
+              <p className="text-[10px] sm:text-xs opacity-0">placeholder</p>
             </div>
           </div>
-        </div>
 
-        <div className="p-6 rounded-lg border" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
-          <div className="flex items-center">
-            <Percent className="h-8 w-8 mr-3" style={{ color: getAvailabilityColor(availabilityPercentage) }} />
-            <div>
-              <p className="text-sm font-medium" style={{ color: colorScheme.textSecondary }}>Daily Availability</p>
-              <p className="text-2xl font-bold" style={{ color: getAvailabilityColor(availabilityPercentage) }}>{availabilityPercentage}%</p>
-              <p className="text-xs" style={{ color: colorScheme.textSecondary }}>
-                {activePlayers} of {totalPlayers} players fully available
+          <div className="p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
+            <div className="flex items-center justify-between flex-1">
+              <div className="flex items-center min-w-0 flex-1">
+                <Percent className="h-5 w-5 sm:h-6 sm:w-6 mr-2 flex-shrink-0" style={{ color: getAvailabilityColor(availabilityPercentage) }} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-medium truncate" style={{ color: colorScheme.textSecondary }}>Availability</p>
+                  <p className="text-lg sm:text-xl font-bold" style={{ color: getAvailabilityColor(availabilityPercentage) }}>{availabilityPercentage}%</p>
+                </div>
+              </div>
+              {/* Mini Sparkline Chart - Real data for last 5 days trend */}
+              <div className="ml-2 flex-shrink-0">
+                {availabilityPercentageHistory.length > 0 ? (
+                  <SparklineChart 
+                    data={availabilityPercentageHistory}
+                    color={getAvailabilityColor(availabilityPercentage)}
+                    width={60}
+                    height={24}
+                  />
+                ) : (
+                  <div className="w-[60px] h-[24px] flex items-center justify-center">
+                    <div className="animate-pulse w-full h-full bg-gray-200 rounded" style={{ backgroundColor: colorScheme.border + '40' }}></div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Additional info - always at bottom, same height for all cards */}
+            <div className="mt-auto pt-1">
+              <p className="text-[10px] sm:text-xs" style={{ color: colorScheme.textSecondary }}>
+                {activePlayers}/{totalPlayers} available
               </p>
             </div>
           </div>
-        </div>
-
-        {/* Reports Card - Only visible to Coaches, Admins, and Staff with permission (NEVER to players) */}
-        {user?.role !== 'PLAYER' && ((user?.role === 'COACH' || user?.role === 'ADMIN') || (user?.role === 'STAFF' && staffPermissions?.canViewReports)) && (
-          <div 
-            className="p-6 rounded-lg border cursor-pointer hover:shadow-lg transition-shadow" 
-            style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}
-            onClick={() => {
-              if (user?.role === 'STAFF') {
-                // For staff, show a modal with their assigned reports
-                setShowStaffReportsModal(true)
-              } else {
-                // For coaches/admins, go to the full reports page
-                window.location.href = '/dashboard/reports'
-              }
-            }}
-          >
-            <div className="flex items-center">
-              <FolderOpen className="h-8 w-8 mr-3" style={{ color: '#7C3AED' }} />
-              <div>
-                <p className="text-sm font-medium" style={{ color: colorScheme.textSecondary }}>Reports</p>
-                <p className="text-2xl font-bold" style={{ color: '#7C3AED' }}>&nbsp;</p>
+        </DraggableStatsCards>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Notes Card - Only visible to Coaches, Admins, and Staff with permission (NEVER to players) */}
-        {user?.role !== 'PLAYER' && ((user?.role === 'COACH' || user?.role === 'ADMIN') || (user?.role === 'STAFF' && staffPermissions?.canViewReports)) && (
-          <div 
-            className="p-6 rounded-lg border cursor-pointer hover:shadow-lg transition-shadow" 
-            style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}
-            onClick={() => {
-              if (user?.role === 'STAFF') {
-                // For staff, show a modal with their assigned notes
-                setShowStaffNotesModal(true)
-              } else {
-                // For coaches/admins, go to the full notes page
-                window.location.href = '/dashboard/notes'
-              }
-            }}
-          >
-            <div className="flex items-center">
-              <StickyNote className="h-8 w-8 mr-3" style={{ color: '#F59E0B' }} />
-              <div>
-                <p className="text-sm font-medium" style={{ color: colorScheme.textSecondary }}>Notes</p>
-                <p className="text-2xl font-bold" style={{ color: '#F59E0B' }}>&nbsp;</p>
+            )
+          },
+          {
+            id: 'action-cards',
+            shouldShow: true,
+            element: (
+              <div className="px-0 sm:px-6 mb-3 sm:mb-4">
+        <DraggableActionCardsWrapper
+          storageKey="dashboard-action-cards-order"
+          cards={[
+            {
+              id: 'reports',
+              shouldShow: ((user?.role === 'COACH' || user?.role === 'ADMIN') || (user?.role === 'STAFF' && staffPermissions?.canViewReports)) || false,
+              element: (
+                <div 
+                  className="p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
+                  style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}
+                  onClick={() => {
+                    if (user?.role === 'STAFF') {
+                      setShowStaffReportsModal(true)
+                    } else {
+                      window.location.href = '/dashboard/reports'
+                    }
+                  }}
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <FolderOpen className="h-6 w-6 sm:h-7 sm:w-7 md:h-10 md:w-10 mb-2" style={{ color: '#7C3AED' }} />
+                    <p className="text-xs sm:text-sm md:text-base font-medium" style={{ color: colorScheme.textSecondary }}>Reports</p>
+                  </div>
+                </div>
+              )
+            },
+            {
+              id: 'notes',
+              shouldShow: ((user?.role === 'COACH' || user?.role === 'ADMIN') || (user?.role === 'STAFF' && staffPermissions?.canViewReports)) || false,
+              element: (
+                <div 
+                  className="p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
+                  style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}
+                  onClick={() => {
+                    if (user?.role === 'STAFF') {
+                      setShowStaffNotesModal(true)
+                    } else {
+                      window.location.href = '/dashboard/notes'
+                    }
+                  }}
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <StickyNote className="h-6 w-6 sm:h-7 sm:w-7 md:h-10 md:w-10 mb-2" style={{ color: '#F59E0B' }} />
+                    <p className="text-xs sm:text-sm md:text-base font-medium" style={{ color: colorScheme.textSecondary }}>Notes</p>
+                  </div>
+                </div>
+              )
+            },
+            {
+              id: 'player-reports',
+              shouldShow: (user?.role === 'COACH' || user?.role === 'ADMIN') || false,
+              element: (
+                <div 
+                  className="p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
+                  style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}
+                  onClick={() => {
+                    window.location.href = '/dashboard/player-reports'
+                  }}
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <FolderOpen className="h-6 w-6 sm:h-7 sm:w-7 md:h-10 md:w-10 mb-2" style={{ color: '#10B981' }} />
+                    <p className="text-xs sm:text-sm md:text-base font-medium" style={{ color: colorScheme.textSecondary }}>Player Reports</p>
+                  </div>
+                </div>
+              )
+            },
+            {
+              id: 'activity',
+              shouldShow: true,
+              element: (
+                <div 
+                  className="p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
+                  style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}
+                  onClick={() => {
+                    setShowActivityFeedModal(true)
+                  }}
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <Activity className="h-6 w-6 sm:h-7 sm:w-7 md:h-10 md:w-10 mb-2" style={{ color: colorScheme.primary }} />
+                    <p className="text-xs sm:text-sm md:text-base font-medium" style={{ color: colorScheme.textSecondary }}>Activity</p>
+                  </div>
+                </div>
+              )
+            }
+          ]}
+        />
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Player Reports Card - Only visible to Coaches and Admins */}
-        {(user?.role === 'COACH' || user?.role === 'ADMIN') && (
-          <div 
-            className="p-6 rounded-lg border cursor-pointer hover:shadow-lg transition-shadow" 
-            style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}
-            onClick={() => {
-              window.location.href = '/dashboard/player-reports'
-            }}
-          >
-            <div className="flex items-center">
-              <FolderOpen className="h-8 w-8 mr-3" style={{ color: '#10B981' }} />
-              <div>
-                <p className="text-sm font-medium" style={{ color: colorScheme.textSecondary }}>Player Reports</p>
-                <p className="text-2xl font-bold" style={{ color: '#10B981' }}>&nbsp;</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </div>
-
-      {/* Players Section */}
-      <div className="px-0 sm:px-6">
-        <div className="rounded-lg border p-6" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
+            )
+          },
+          {
+            id: 'players-section',
+            shouldShow: true,
+            element: (
+              <div className="px-0 sm:px-6">
+        <div className="rounded-lg border-2 p-6" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold" style={{ color: colorScheme.text }}>
               Players Overview
@@ -1119,7 +1525,7 @@ export default function Dashboard() {
                                 : `linear-gradient(135deg, #F8FAFC, #F1F5F9, #E2E8F0)`,
                     borderColor: selectedPlayers.includes(player.id) 
                       ? `${colorScheme.primary}80` 
-                      : currentStatusOption.color,  // Always use availability status color
+                      : `${colorScheme.border}E6`,  // Use same border color as other cards
                     ringColor: `${colorScheme.primary}60`,
                     boxShadow: selectedPlayers.includes(player.id) 
                       ? `0 8px 20px -4px ${colorScheme.primary}30, 0 0 0 1px ${colorScheme.primary}20, 0 0 15px ${colorScheme.primary}25, 0 0 25px ${colorScheme.primary}15`
@@ -1267,27 +1673,42 @@ export default function Dashboard() {
                   <div className="flex items-center mb-3 relative z-10">
                     <div className="relative">
                       {player.imageUrl ? (
-                        <img
-                          src={player.imageUrl}
-                          alt={player.name}
-                          className={`w-12 h-12 sm:w-12 sm:h-12 rounded-full object-cover mr-3 ring-2 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-lg ${
-                            selectedPlayers.includes(player.id) ? 'ring-opacity-50' : 'ring-opacity-15 group-hover:ring-opacity-30'
-                          }`}
-                          style={{ ringColor: colorScheme.primary }}
-                        />
-                    ) : (
-                      <div 
-                          className={`w-12 h-12 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-white text-base sm:text-base mr-3 ring-2 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-lg ${
-                            selectedPlayers.includes(player.id) ? 'ring-opacity-50' : 'ring-opacity-15 group-hover:ring-opacity-30'
-                          }`}
-                        style={{ 
-                            background: `linear-gradient(135deg, ${colorScheme.primary}, ${colorScheme.primary}CC)`,
-                            ringColor: colorScheme.primary
-                        }}
-                      >
-                        {player.name ? player.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'P'}
-                      </div>
-                    )}
+                        <>
+                          <img
+                            src={player.imageUrl}
+                            alt={player.name}
+                            className={`w-12 h-12 sm:w-12 sm:h-12 rounded-full object-cover mr-3 border-2 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-lg`}
+                            style={{ borderColor: `${colorScheme.border}E6` }}
+                            onError={(e) => {
+                              console.error('❌ Player image failed to load:', player.imageUrl, 'for player:', player.name)
+                              e.currentTarget.style.display = 'none'
+                              const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                              if (fallback) {
+                                fallback.style.display = 'flex'
+                              }
+                            }}
+                          />
+                          <div 
+                            className={`w-12 h-12 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-white text-base sm:text-base mr-3 border-2 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-lg hidden`}
+                            style={{ 
+                              background: `linear-gradient(135deg, ${colorScheme.primary}, ${colorScheme.primary}CC)`,
+                              borderColor: `${colorScheme.border}E6`
+                            }}
+                          >
+                            {player.name ? player.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'P'}
+                          </div>
+                        </>
+                      ) : (
+                        <div 
+                            className={`w-12 h-12 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-white text-base sm:text-base mr-3 border-2 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-lg`}
+                          style={{ 
+                              background: `linear-gradient(135deg, ${colorScheme.primary}, ${colorScheme.primary}CC)`,
+                              borderColor: `${colorScheme.border}E6`
+                          }}
+                        >
+                          {player.name ? player.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'P'}
+                        </div>
+                      )}
                       {/* Avatar Glow */}
                       <div 
                         className={`absolute inset-0 rounded-full transition-opacity duration-300 blur-md ${
@@ -1297,11 +1718,24 @@ export default function Dashboard() {
                       ></div>
                   </div>
                     <div className="flex-1">
-                      <h3 className={`text-sm sm:text-sm mb-1 transition-all duration-200 group-hover:scale-105 ${
-                        selectedPlayers.includes(player.id) ? 'text-opacity-100 scale-105' : 'group-hover:text-opacity-90'
-                      }`} style={{ color: colorScheme.text }}>
-                    {player.name}
-                  </h3>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className={`text-sm sm:text-sm transition-all duration-200 group-hover:scale-105 ${
+                          selectedPlayers.includes(player.id) ? 'text-opacity-100 scale-105' : 'group-hover:text-opacity-90'
+                        }`} style={{ color: colorScheme.text }}>
+                          {player.name}
+                        </h3>
+                        {playerAvailabilityPercentages[player.id] !== undefined && (
+                          <span 
+                            className="text-xs font-semibold px-1.5 py-0.5 rounded"
+                            style={{ 
+                              color: getAvailabilityColor(playerAvailabilityPercentages[player.id]),
+                              backgroundColor: `${getAvailabilityColor(playerAvailabilityPercentages[player.id])}15`
+                            }}
+                          >
+                            {playerAvailabilityPercentages[player.id]}%
+                          </span>
+                        )}
+                      </div>
                       {player.position && (
                         <p className={`text-xs sm:text-xs transition-all duration-200 group-hover:scale-105 ${
                           selectedPlayers.includes(player.id) ? 'opacity-100 scale-105' : 'opacity-70 group-hover:opacity-100'
@@ -1484,19 +1918,25 @@ export default function Dashboard() {
             })}
           </div>
         </div>
-      </div>
-
-      {/* Event Analytics - Only for Admin and Staff */}
-      {user && ['ADMIN', 'COACH', 'STAFF'].includes(user.role) && (
-        <div className="px-0 sm:px-6">
-          <EventAnalytics userId={user.id} userRole={user.role} />
-        </div>
-      )}
-
-      {/* Calendar - Read Only */}
-      <div className="px-0 sm:px-6">
-        <div className="w-full rounded-3xl shadow-xl p-4 border-2 transition-all duration-300 hover:shadow-2xl" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
-          <h2 className="text-xl font-semibold mb-4" style={{ color: colorScheme.text }}>
+              </div>
+            )
+          },
+          {
+            id: 'event-analytics',
+            shouldShow: user && ['ADMIN', 'COACH', 'STAFF'].includes(user.role) || false,
+            element: (
+              <div className="px-0 sm:px-6">
+                <EventAnalytics userId={user?.id || ''} userRole={user?.role || 'PLAYER'} />
+              </div>
+            )
+          },
+          {
+            id: 'calendar',
+            shouldShow: true,
+            element: (
+              <div className="px-0 sm:px-6">
+        <div className="w-full rounded-3xl shadow-xl p-0 sm:p-4 border-2 transition-all duration-300 hover:shadow-2xl overflow-hidden" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
+          <h2 className="text-xl font-semibold mb-4 px-4 sm:px-0" style={{ color: colorScheme.text }}>
             Calendar
           </h2>
           <div className="w-full">
@@ -1507,7 +1947,11 @@ export default function Dashboard() {
             />
           </div>
         </div>
-      </div>
+              </div>
+            )
+          }
+        ]}
+      />
 
       {/* Staff Notes Modal */}
       {showStaffNotesModal && (
@@ -1573,6 +2017,32 @@ export default function Dashboard() {
           onSave={handleSavePlayerNotes}
           isLoading={isSavingNotes}
         />
+      )}
+
+      {/* Activity Feed Modal */}
+      {showActivityFeedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            style={{ backgroundColor: colorScheme.surface }}
+          >
+            <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: colorScheme.border }}>
+              <h2 className="text-xl font-semibold" style={{ color: colorScheme.text }}>
+                Activity Feed
+              </h2>
+              <button
+                onClick={() => setShowActivityFeedModal(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                style={{ color: colorScheme.textSecondary }}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <ActivityFeed limit={50} showHeader={false} showViewAll={false} compact={false} />
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

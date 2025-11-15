@@ -135,23 +135,28 @@ export default function NewEventPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ backgroundColor: colorScheme.background, minHeight: '100vh', padding: '1.5rem' }}>
       <div className="flex items-center space-x-4">
         <button
           onClick={() => router.back()}
-          className={`p-2 rounded-md transition-colors ${
-            theme === 'dark' 
-              ? 'hover:bg-gray-700 text-gray-300' 
-              : 'hover:bg-gray-100 text-gray-600'
-          }`}
+          className="p-2 rounded-md transition-colors"
+          style={{
+            backgroundColor: colorScheme.surface,
+            color: colorScheme.text,
+            border: `1px solid ${colorScheme.border}`
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = colorScheme.primaryLight || colorScheme.surface
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = colorScheme.surface
+          }}
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className={`text-2xl font-semibold ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>Add New Event</h1>
-          <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+          <h1 style={{ color: colorScheme.text }} className="text-2xl font-semibold">Add New Event</h1>
+          <p style={{ color: colorScheme.textSecondary }}>
             Create a new training session, match, or meeting
           </p>
         </div>
@@ -159,12 +164,8 @@ export default function NewEventPage() {
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Event Type */}
-        <div className={`rounded-lg shadow p-6 ${
-          theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-        }`}>
-          <h3 className={`text-lg font-medium mb-6 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>Event Type</h3>
+        <div className="rounded-lg shadow p-6" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
+          <h3 style={{ color: colorScheme.text }} className="text-lg font-medium mb-6">Event Type</h3>
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
             {[
@@ -194,13 +195,16 @@ export default function NewEventPage() {
                   // Keep the current icon when changing type - don't override user selection
                   icon: prev.icon
                 }))}
-                className={`p-4 border-2 rounded-lg text-center ${
-                  formData.type === type
-                    ? 'border-red-500 bg-red-50 text-red-700'
-                    : theme === 'dark'
-                      ? 'border-gray-600 bg-gray-700 text-gray-300'
-                      : 'border-gray-300 bg-white text-gray-700'
-                }`}
+                style={{
+                  border: `2px solid ${formData.type === type ? colorScheme.error : colorScheme.border}`,
+                  backgroundColor: formData.type === type 
+                    ? `${colorScheme.error}20` 
+                    : colorScheme.surface,
+                  color: formData.type === type 
+                    ? colorScheme.error 
+                    : colorScheme.text
+                }}
+                className="p-4 rounded-lg text-center transition-colors"
               >
                 <div className="font-medium">{label}</div>
               </button>
@@ -209,9 +213,7 @@ export default function NewEventPage() {
 
               {/* Custom Event Icon */}
               <div>
-                <h4 className={`text-md font-medium mb-3 ${
-                  theme === 'dark' ? 'text-white' : 'text-gray-900'
-                }`}>Event Icon</h4>
+                <h4 style={{ color: colorScheme.text }} className="text-md font-medium mb-3">Event Icon</h4>
                 <EventIconSelector 
                   selectedIcon={formData.icon}
                   onIconSelect={(icon) => setFormData(prev => ({ ...prev, icon }))}
@@ -221,17 +223,11 @@ export default function NewEventPage() {
 
         {/* Match Day Tag - Only visible to Admin */}
         {user?.role === 'ADMIN' && (
-          <div className={`rounded-lg shadow p-6 ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-          }`}>
-            <h3 className={`text-lg font-medium mb-6 ${
-              theme === 'dark' ? 'text-white' : 'text-gray-900'
-            }`}>Match Day Tag</h3>
+          <div className="rounded-lg shadow p-6" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
+            <h3 style={{ color: colorScheme.text }} className="text-lg font-medium mb-6">Match Day Tag</h3>
             
             <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Select Match Day Tag
               </label>
               <MatchDayTagSelector
@@ -244,18 +240,12 @@ export default function NewEventPage() {
         )}
 
         {/* Event Details */}
-        <div className={`rounded-lg shadow p-6 ${
-          theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-        }`}>
-          <h3 className={`text-lg font-medium mb-6 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>Event Details</h3>
+        <div className="rounded-lg shadow p-6" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
+          <h3 style={{ color: colorScheme.text }} className="text-lg font-medium mb-6">Event Details</h3>
           
           <div className="space-y-6">
             <div>
-              <label htmlFor="title" className={`block text-sm font-medium mb-2 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label htmlFor="title" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Title *
               </label>
               <input
@@ -265,17 +255,18 @@ export default function NewEventPage() {
                 value={formData.title}
                 onChange={handleInputChange}
                 required
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                }`}
+                className="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{
+                  backgroundColor: colorScheme.surface,
+                  borderColor: colorScheme.border,
+                  color: colorScheme.text
+                }}
                 placeholder="Enter event title"
               />
             </div>
 
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="description" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Description
               </label>
               <textarea
@@ -284,18 +275,23 @@ export default function NewEventPage() {
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{
+                  backgroundColor: colorScheme.surface,
+                  borderColor: colorScheme.border,
+                  color: colorScheme.text
+                }}
                 placeholder="Enter event description"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="date" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                   Date *
                 </label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: colorScheme.textSecondary }} />
                   <input
                     type="date"
                     id="date"
@@ -303,42 +299,57 @@ export default function NewEventPage() {
                     value={formData.date}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2"
+                    style={{
+                      backgroundColor: colorScheme.surface,
+                      borderColor: colorScheme.border,
+                      color: colorScheme.text
+                    }}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="startTime" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                     Start Time
                   </label>
                   <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: colorScheme.textSecondary }} />
                     <input
                       type="time"
                       id="startTime"
                       name="startTime"
                       value={formData.startTime}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      className="w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: colorScheme.surface,
+                        borderColor: colorScheme.border,
+                        color: colorScheme.text
+                      }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="endTime" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                     End Time
                   </label>
                   <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: colorScheme.textSecondary }} />
                     <input
                       type="time"
                       id="endTime"
                       name="endTime"
                       value={formData.endTime}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      className="w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: colorScheme.surface,
+                        borderColor: colorScheme.border,
+                        color: colorScheme.text
+                      }}
                     />
                   </div>
                 </div>
@@ -346,18 +357,23 @@ export default function NewEventPage() {
             </div>
 
             <div>
-              <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="location" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Location
               </label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: colorScheme.textSecondary }} />
                 <input
                   type="text"
                   id="location"
                   name="location"
                   value={formData.location}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2"
+                  style={{
+                    backgroundColor: colorScheme.surface,
+                    borderColor: colorScheme.border,
+                    color: colorScheme.text
+                  }}
                   placeholder="Enter location or venue"
                 />
               </div>
@@ -366,16 +382,16 @@ export default function NewEventPage() {
         </div>
 
         {/* Event Settings */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-6">Event Settings</h3>
+        <div className="rounded-lg shadow p-6" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
+          <h3 style={{ color: colorScheme.text }} className="text-lg font-medium mb-6">Event Settings</h3>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <label htmlFor="isAllDay" className="text-sm font-medium text-gray-700">
+                <label htmlFor="isAllDay" style={{ color: colorScheme.text }} className="text-sm font-medium">
                   All Day Event
                 </label>
-                <p className="text-xs text-gray-500">Event lasts the entire day</p>
+                <p style={{ color: colorScheme.textSecondary }} className="text-xs">Event lasts the entire day</p>
               </div>
               <input
                 type="checkbox"
@@ -383,16 +399,20 @@ export default function NewEventPage() {
                 name="isAllDay"
                 checked={formData.isAllDay}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
+                style={{
+                  accentColor: colorScheme.primary,
+                  borderColor: colorScheme.border
+                }}
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <label htmlFor="isRecurring" className="text-sm font-medium text-gray-700">
+                <label htmlFor="isRecurring" style={{ color: colorScheme.text }} className="text-sm font-medium">
                   Recurring Event
                 </label>
-                <p className="text-xs text-gray-500">Event repeats on a schedule</p>
+                <p style={{ color: colorScheme.textSecondary }} className="text-xs">Event repeats on a schedule</p>
               </div>
               <input
                 type="checkbox"
@@ -400,16 +420,20 @@ export default function NewEventPage() {
                 name="isRecurring"
                 checked={formData.isRecurring}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
+                style={{
+                  accentColor: colorScheme.primary,
+                  borderColor: colorScheme.border
+                }}
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <label htmlFor="allowPlayerCreation" className="text-sm font-medium text-gray-700">
+                <label htmlFor="allowPlayerCreation" style={{ color: colorScheme.text }} className="text-sm font-medium">
                   Allow Players to Create Events
                 </label>
-                <p className="text-xs text-gray-500">Players can create their own events</p>
+                <p style={{ color: colorScheme.textSecondary }} className="text-xs">Players can create their own events</p>
               </div>
               <input
                 type="checkbox"
@@ -417,16 +441,20 @@ export default function NewEventPage() {
                 name="allowPlayerCreation"
                 checked={formData.allowPlayerCreation}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
+                style={{
+                  accentColor: colorScheme.primary,
+                  borderColor: colorScheme.border
+                }}
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <label htmlFor="allowPlayerReschedule" className="text-sm font-medium text-gray-700">
+                <label htmlFor="allowPlayerReschedule" style={{ color: colorScheme.text }} className="text-sm font-medium">
                   Allow Players to Reschedule
                 </label>
-                <p className="text-xs text-gray-500">Players can reschedule this event</p>
+                <p style={{ color: colorScheme.textSecondary }} className="text-xs">Players can reschedule this event</p>
               </div>
               <input
                 type="checkbox"
@@ -434,48 +462,75 @@ export default function NewEventPage() {
                 name="allowPlayerReschedule"
                 checked={formData.allowPlayerReschedule}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
+                style={{
+                  accentColor: colorScheme.primary,
+                  borderColor: colorScheme.border
+                }}
               />
             </div>
           </div>
         </div>
 
         {/* Players and Staff Selection */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-6">Participants</h3>
+        <div className="rounded-lg shadow p-6" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
+          <h3 style={{ color: colorScheme.text }} className="text-lg font-medium mb-6">Participants</h3>
           
           {loadingData ? (
-            <div className="text-center py-4">Loading players and staff...</div>
+            <div style={{ color: colorScheme.textSecondary }} className="text-center py-4">Loading players and staff...</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Players Selection */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-md font-medium text-gray-700">
+                  <h4 style={{ color: colorScheme.text }} className="text-md font-medium">
                     Players ({formData.selectedPlayers.length} selected)
                   </h4>
                   <button
                     type="button"
                     onClick={handleSelectAllPlayers}
-                    className="text-xs text-red-600 hover:text-red-700 font-medium"
+                    style={{ color: colorScheme.error }}
+                    className="text-xs hover:opacity-80 font-medium transition-opacity"
                   >
                     {formData.selectedPlayers.length === players.length ? 'Deselect All' : 'Select All'}
                   </button>
                 </div>
-                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md p-3 space-y-2">
+                <div className="max-h-48 overflow-y-auto border rounded-md p-3 space-y-2" style={{ borderColor: colorScheme.border }}>
                   {players.map((player) => (
-                    <label key={player.id} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                    <label 
+                      key={player.id} 
+                      className="flex items-center space-x-3 cursor-pointer p-2 rounded transition-colors"
+                      style={{
+                        backgroundColor: formData.selectedPlayers.includes(player.id) 
+                          ? `${colorScheme.primary}20` 
+                          : 'transparent'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!formData.selectedPlayers.includes(player.id)) {
+                          e.currentTarget.style.backgroundColor = `${colorScheme.primary}10`
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!formData.selectedPlayers.includes(player.id)) {
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                        }
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={formData.selectedPlayers.includes(player.id)}
                         onChange={() => handlePlayerToggle(player.id)}
-                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                        className="h-4 w-4 rounded"
+                        style={{
+                          accentColor: colorScheme.primary,
+                          borderColor: colorScheme.border
+                        }}
                       />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p style={{ color: colorScheme.text }} className="text-sm font-medium">
                           {player.firstName} {player.lastName}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p style={{ color: colorScheme.textSecondary }} className="text-xs">
                           {player.position || 'No position'} • #{player.jerseyNumber || 'N/A'}
                         </p>
                       </div>
@@ -487,31 +542,54 @@ export default function NewEventPage() {
               {/* Staff Selection */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-md font-medium text-gray-700">
+                  <h4 style={{ color: colorScheme.text }} className="text-md font-medium">
                     Staff ({formData.selectedStaff.length} selected)
                   </h4>
                   <button
                     type="button"
                     onClick={handleSelectAllStaff}
-                    className="text-xs text-red-600 hover:text-red-700 font-medium"
+                    style={{ color: colorScheme.error }}
+                    className="text-xs hover:opacity-80 font-medium transition-opacity"
                   >
                     {formData.selectedStaff.length === staff.length ? 'Deselect All' : 'Select All'}
                   </button>
                 </div>
-                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md p-3 space-y-2">
+                <div className="max-h-48 overflow-y-auto border rounded-md p-3 space-y-2" style={{ borderColor: colorScheme.border }}>
                   {staff.map((staffMember) => (
-                    <label key={staffMember.id} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                    <label 
+                      key={staffMember.id} 
+                      className="flex items-center space-x-3 cursor-pointer p-2 rounded transition-colors"
+                      style={{
+                        backgroundColor: formData.selectedStaff.includes(staffMember.id) 
+                          ? `${colorScheme.primary}20` 
+                          : 'transparent'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!formData.selectedStaff.includes(staffMember.id)) {
+                          e.currentTarget.style.backgroundColor = `${colorScheme.primary}10`
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!formData.selectedStaff.includes(staffMember.id)) {
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                        }
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={formData.selectedStaff.includes(staffMember.id)}
                         onChange={() => handleStaffToggle(staffMember.id)}
-                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                        className="h-4 w-4 rounded"
+                        style={{
+                          accentColor: colorScheme.primary,
+                          borderColor: colorScheme.border
+                        }}
                       />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p style={{ color: colorScheme.text }} className="text-sm font-medium">
                           {staffMember.firstName} {staffMember.lastName}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p style={{ color: colorScheme.textSecondary }} className="text-xs">
                           {staffMember.position || 'Staff Member'} • {staffMember.department || 'General'}
                         </p>
                       </div>
@@ -528,14 +606,39 @@ export default function NewEventPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            className="px-6 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors"
+            style={{
+              backgroundColor: colorScheme.surface,
+              borderColor: colorScheme.border,
+              color: colorScheme.text
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = colorScheme.primaryLight || colorScheme.surface
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = colorScheme.surface
+            }}
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: colorScheme.error,
+              color: '#FFFFFF'
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.filter = 'brightness(0.9)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.filter = 'none'
+              }
+            }}
           >
             <Save className="h-4 w-4 mr-2" />
             {isLoading ? 'Creating...' : 'Save Event'}

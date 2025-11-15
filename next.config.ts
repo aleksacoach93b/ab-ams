@@ -7,18 +7,21 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Production optimizations
+  // Image configuration
   images: {
-    domains: ['vercel.com'],
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**.vercel.app',
-      },
+    domains: [
+      'localhost',
+      'vercel.app',
+      '*.vercel.app',
+      'blob.vercel-storage.com',
     ],
+    // Use unoptimized for local dev, optimized for production
+    unoptimized: process.env.NODE_ENV === 'development',
   },
   // External packages for server components
   serverExternalPackages: ['@prisma/client'],
+  // Output configuration
+  output: 'standalone',
 };
 
 export default nextConfig;

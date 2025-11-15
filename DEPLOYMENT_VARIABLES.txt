@@ -1,0 +1,16 @@
+# Environment Variables za Vercel Deployment
+
+DATABASE_URL=postgresql://postgres.kvhmwohqznwfbsmpqqup:Teodor06052025@aws-1-eu-north-1.pooler.supabase.com:6543/postgres
+DIRECT_URL=postgresql://postgres:Teodor06052025@db.kvhmwohqznwfbsmpqqup.supabase.co:5432/postgres
+
+# Generate these with: openssl rand -base64 32
+JWT_SECRET=
+NEXTAUTH_SECRET=
+
+# Update after deployment
+NEXTAUTH_URL=https://your-app.vercel.app
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+NEXT_PUBLIC_APP_NAME=AB AMS
+
+LOCAL_DEV_MODE=false
+

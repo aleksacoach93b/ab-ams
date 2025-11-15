@@ -18,7 +18,9 @@ import {
   MoreVertical,
   LogOut,
   MessageCircle,
-  Heart
+  Heart,
+  HeartPulse,
+  Activity
 } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -38,7 +40,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [showTeamChat, setShowTeamChat] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
-  const { colorScheme } = useTheme()
+  const { colorScheme, theme } = useTheme()
   const { user, logout, isAuthenticated, isLoading } = useAuth()
 
   useEffect(() => {
@@ -172,6 +174,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         current: pathname === '/dashboard/wellness',
         show: true
       })
+      
+      // Daily Wellness - show for admin and coach
+      baseNavigation.push({
+        name: 'Daily Wellness',
+        href: '/dashboard/daily-wellness',
+        icon: Calendar,
+        current: pathname === '/dashboard/daily-wellness',
+        show: true
+      })
+      
+      // RPE Analysis - show for admin and coach
+      baseNavigation.push({
+        name: 'RPE Analysis',
+        href: '/dashboard/rpe-analysis',
+        icon: Activity,
+        current: pathname === '/dashboard/rpe-analysis',
+        show: true
+      })
     }
 
     // Admin Area - only for admin
@@ -194,10 +214,69 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navigation = getNavigation()
 
+  const quickAccessButtons = [
+    {
+      key: 'dashboard',
+      icon: LayoutDashboard,
+      label: 'Main Dashboard',
+      onClick: () => router.push('/dashboard'),
+      show: true
+    },
+    {
+      key: 'players',
+      icon: Users,
+      label: 'Players',
+      onClick: () => router.push('/dashboard/players'),
+      show:
+        user?.role === 'ADMIN' ||
+        user?.role === 'COACH' ||
+        (user?.role === 'STAFF' && userPermissions?.canViewAllPlayers)
+    },
+    {
+      key: 'wellness',
+      icon: Heart,
+      label: 'Wellness',
+      onClick: () => router.push('/dashboard/wellness'),
+      show: user?.role === 'ADMIN' || user?.role === 'COACH'
+    },
+    {
+      key: 'dailyWellness',
+      icon: HeartPulse,
+      label: 'Daily Wellness',
+      onClick: () => router.push('/dashboard/daily-wellness'),
+      show: user?.role === 'ADMIN'
+    },
+    {
+      key: 'rpeAnalysis',
+      icon: Activity,
+      label: 'RPE Analysis',
+      onClick: () => router.push('/dashboard/rpe-analysis'),
+      show: user?.role === 'ADMIN' || user?.role === 'COACH'
+    },
+    {
+      key: 'calendar',
+      icon: Calendar,
+      label: 'Calendar',
+      onClick: () => router.push('/dashboard/calendar'),
+      show:
+        user?.role === 'ADMIN' ||
+        user?.role === 'COACH' ||
+        (user?.role === 'STAFF' && userPermissions?.canViewCalendar)
+    }
+  ]
+
   return (
     <div 
-      className="min-h-screen"
-      style={{ backgroundColor: colorScheme.background }}
+      className="min-h-screen w-full"
+      style={{ 
+        backgroundColor: colorScheme.background,
+        background: colorScheme.background,
+        minHeight: '100vh',
+        width: '100%',
+        overflowX: 'hidden',
+        margin: 0,
+        padding: 0
+      }}
     >
       {/* Sidebar backdrop */}
       {sidebarOpen && (
@@ -205,7 +284,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           className="fixed inset-0 z-40"
           onClick={() => setSidebarOpen(false)}
         >
-          <div className="absolute inset-0 bg-gray-600 opacity-75"></div>
+          <div 
+            className="absolute inset-0 opacity-75"
+            style={{ backgroundColor: theme === 'dark' ? '#000000' : '#4B5563' }}
+          ></div>
         </div>
       )}
 
@@ -300,11 +382,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           className="shadow-sm"
           style={{ backgroundColor: colorScheme.background }}
         >
-          <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:flex-1 sm:justify-start">
               {/* 3 Dots Menu Button */}
               <button
-                className="p-2 rounded-md transition-colors mr-4"
+                className="p-2 rounded-md transition-colors"
                 style={{ 
                   backgroundColor: colorScheme.surface,
                   color: colorScheme.text,
@@ -315,8 +397,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <MoreVertical className="h-5 w-5" />
               </button>
 
-              {/* Search bar */}
-              <div className="hidden md:block">
+              {/* Search bar (desktop only) */}
+              <div className="hidden md:block md:ml-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: colorScheme.textSecondary }} />
                   <input
@@ -332,10 +414,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                 </div>
               </div>
+
+              {/* Quick Access Buttons */}
+              <div className="flex flex-1 flex-wrap items-center justify-center gap-2 sm:flex-none sm:justify-start sm:ml-4">
+                {quickAccessButtons.filter(btn => btn.show).map((btn) => (
+                  <button
+                    key={btn.key}
+                    onClick={btn.onClick}
+                    className="flex items-center justify-center w-12 h-12 rounded-lg transition-colors hover:opacity-90 shadow-sm sm:w-9 sm:h-9"
+                    style={{
+                      backgroundColor: colorScheme.surface,
+                      color: colorScheme.text,
+                      border: `1px solid ${colorScheme.border}`
+                    }}
+                    title={btn.label}
+                  >
+                    <btn.icon className="h-5 w-5 sm:h-4 sm:w-4" />
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <ThemeSelector />
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:flex-nowrap sm:justify-end sm:gap-4">
+              {/* Hide ThemeSelector when chat is open */}
+              {!showTeamChat && <ThemeSelector />}
               
               {/* Team Chat Button with Notifications */}
               <ChatNotifications onOpenChat={() => setShowTeamChat(true)} />
@@ -365,6 +467,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <LogOut className="h-5 w-5" />
                 </button>
               </div>
+
               {/* Role-based Add new dropdown */}
               {((user?.role === 'ADMIN' || user?.role === 'COACH') || 
                 (user?.role === 'STAFF' && (userPermissions?.canCreateEvents || userPermissions?.canEditPlayers))) && (
@@ -480,7 +583,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-0 sm:p-6">
           {children}
         </main>
       </div>
@@ -488,7 +591,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Team Chat Modal */}
       <TeamChat 
         isOpen={showTeamChat} 
-        onClose={() => setShowTeamChat(false)} 
+        onClose={() => {
+          setShowTeamChat(false)
+          // Trigger notification refresh after closing chat
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('chat-closed'))
+          }
+        }} 
       />
     </div>
   )
