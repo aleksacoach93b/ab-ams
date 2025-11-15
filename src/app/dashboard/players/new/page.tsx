@@ -3,9 +3,11 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Upload, X, User } from 'lucide-react'
+import { useTheme } from '@/contexts/ThemeContext'
 
 export default function NewPlayerPage() {
   const router = useRouter()
+  const { colorScheme } = useTheme()
   const [isLoading, setIsLoading] = useState(false)
   const [uploadingPhoto] = useState(false)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
@@ -146,41 +148,67 @@ export default function NewPlayerPage() {
 
         router.push('/dashboard/players')
       } else {
-        const errorData = await response.json()
-        console.error('Failed to create player:', errorData.message)
-        alert(`Failed to create player: ${errorData.message}`)
+        let errorMessage = 'Failed to create player'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorData.error || errorMessage
+          console.error('Failed to create player:', errorData)
+        } catch (jsonError) {
+          // If response is not JSON, try to get text
+          try {
+            const errorText = await response.text()
+            console.error('Failed to create player (non-JSON response):', errorText)
+            errorMessage = errorText || errorMessage
+          } catch (textError) {
+            console.error('Failed to create player (no response body):', response.status, response.statusText)
+            errorMessage = `Failed to create player: ${response.status} ${response.statusText}`
+          }
+        }
+        alert(errorMessage)
       }
     } catch (error) {
       console.error('Error creating player:', error)
-      alert('An error occurred while creating the player. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while creating the player. Please try again.'
+      alert(`An error occurred while creating the player: ${errorMessage}`)
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ backgroundColor: colorScheme.background, minHeight: '100vh', padding: '1.5rem' }}>
       <div className="flex items-center space-x-4">
         <button
           onClick={() => router.back()}
-          className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+          className="p-2 rounded-md transition-colors"
+          style={{ 
+            backgroundColor: colorScheme.surface,
+            color: colorScheme.text,
+            border: `1px solid ${colorScheme.border}`
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = colorScheme.primaryLight || colorScheme.surface
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = colorScheme.surface
+          }}
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Add New Player</h1>
-          <p className="text-gray-600">Create a new player profile</p>
+          <h1 style={{ color: colorScheme.text }} className="text-2xl font-semibold">Add New Player</h1>
+          <p style={{ color: colorScheme.textSecondary }}>Create a new player profile</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Profile Section */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-6">Profile</h3>
+        <div className="rounded-lg shadow p-6" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
+          <h3 style={{ color: colorScheme.text }} className="text-lg font-medium mb-6">Profile</h3>
           
           {/* Photo Upload */}
           <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Photo</h4>
+            <h4 style={{ color: colorScheme.text }} className="text-sm font-medium mb-2">Photo</h4>
             <div className="flex items-center space-x-4">
               {/* Photo Display */}
               <div className="relative">
@@ -189,19 +217,27 @@ export default function NewPlayerPage() {
                     <img
                       src={photoPreview}
                       alt="Player preview"
-                      className="w-32 h-32 rounded-lg object-cover border-2 border-gray-300"
+                      className="w-32 h-32 rounded-lg object-cover"
+                      style={{ border: `2px solid ${colorScheme.border}` }}
                     />
                     <button
                       type="button"
                       onClick={handleRemovePhoto}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ backgroundColor: colorScheme.error, color: '#FFFFFF' }}
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </div>
                 ) : (
-                  <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
-                    <User className="h-8 w-8 text-gray-400" />
+                  <div 
+                    className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center"
+                    style={{ 
+                      borderColor: colorScheme.border,
+                      backgroundColor: colorScheme.background
+                    }}
+                  >
+                    <User className="h-8 w-8" style={{ color: colorScheme.textSecondary }} />
                   </div>
                 )}
               </div>
@@ -219,7 +255,23 @@ export default function NewPlayerPage() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingPhoto}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  style={{ 
+                    backgroundColor: colorScheme.error,
+                    color: '#FFFFFF'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!uploadingPhoto) {
+                      e.currentTarget.style.backgroundColor = colorScheme.error
+                      e.currentTarget.style.filter = 'brightness(0.9)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!uploadingPhoto) {
+                      e.currentTarget.style.backgroundColor = colorScheme.error
+                      e.currentTarget.style.filter = 'none'
+                    }
+                  }}
                 >
                   {uploadingPhoto ? (
                     <>
@@ -233,7 +285,7 @@ export default function NewPlayerPage() {
                     </>
                   )}
                 </button>
-                <p className="text-xs text-gray-500 mt-2">
+                <p style={{ color: colorScheme.textSecondary }} className="text-xs mt-2">
                   JPG, PNG, GIF or WebP. Max size 5MB.
                 </p>
               </div>
@@ -242,7 +294,7 @@ export default function NewPlayerPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="firstName" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 First Name *
               </label>
               <input
@@ -252,12 +304,18 @@ export default function NewPlayerPage() {
                 value={formData.firstName}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`,
+                  focusRingColor: colorScheme.primary
+                }}
               />
             </div>
 
             <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="lastName" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Last Name *
               </label>
               <input
@@ -267,12 +325,17 @@ export default function NewPlayerPage() {
                 value={formData.lastName}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Email *
               </label>
               <input
@@ -282,13 +345,18 @@ export default function NewPlayerPage() {
                 value={formData.email}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
                 placeholder="athlete@example.com"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Password *
               </label>
               <input
@@ -298,17 +366,22 @@ export default function NewPlayerPage() {
                 value={formData.password}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
                 placeholder="Enter login password"
                 minLength={6}
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p style={{ color: colorScheme.textSecondary }} className="text-xs mt-1">
                 Minimum 6 characters. This will be used for athlete login.
               </p>
             </div>
 
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="phone" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Phone Number
               </label>
               <input
@@ -317,12 +390,17 @@ export default function NewPlayerPage() {
                 name="phone"
                 value={formData.phone}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               />
             </div>
 
             <div>
-              <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="dateOfBirth" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Date of Birth
               </label>
               <input
@@ -331,12 +409,17 @@ export default function NewPlayerPage() {
                 name="dateOfBirth"
                 value={formData.dateOfBirth}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               />
             </div>
 
             <div>
-              <label htmlFor="nationality" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="nationality" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Nationality
               </label>
               <input
@@ -345,20 +428,25 @@ export default function NewPlayerPage() {
                 name="nationality"
                 value={formData.nationality}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               />
             </div>
           </div>
         </div>
 
         {/* Sports Details */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-6">Sports Details</h3>
-          <p className="text-sm text-gray-600 mb-6">Information regarding the sport player is involved in</p>
+        <div className="rounded-lg shadow p-6" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
+          <h3 style={{ color: colorScheme.text }} className="text-lg font-medium mb-6">Sports Details</h3>
+          <p style={{ color: colorScheme.textSecondary }} className="text-sm mb-6">Information regarding the sport player is involved in</p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="position" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Position
               </label>
               <select
@@ -366,7 +454,12 @@ export default function NewPlayerPage() {
                 name="position"
                 value={formData.position}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               >
                 <option value="">Select position</option>
                 <option value="Goalkeeper">Goalkeeper</option>
@@ -377,7 +470,7 @@ export default function NewPlayerPage() {
             </div>
 
             <div>
-              <label htmlFor="jerseyNumber" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="jerseyNumber" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Jersey Number
               </label>
               <input
@@ -386,12 +479,17 @@ export default function NewPlayerPage() {
                 name="jerseyNumber"
                 value={formData.jerseyNumber}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               />
             </div>
 
             <div>
-              <label htmlFor="height" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="height" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Height (cm)
               </label>
               <input
@@ -401,12 +499,17 @@ export default function NewPlayerPage() {
                 value={formData.height}
                 onChange={handleInputChange}
                 placeholder="e.g. 180"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               />
             </div>
 
             <div>
-              <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="weight" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Weight (kg)
               </label>
               <input
@@ -416,12 +519,17 @@ export default function NewPlayerPage() {
                 value={formData.weight}
                 onChange={handleInputChange}
                 placeholder="e.g. 80"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               />
             </div>
 
             <div>
-              <label htmlFor="preferredFoot" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="preferredFoot" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Preferred Foot/Arm
               </label>
               <select
@@ -429,7 +537,12 @@ export default function NewPlayerPage() {
                 name="preferredFoot"
                 value={formData.preferredFoot}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               >
                 <option value="">Select preference</option>
                 <option value="Left">Left</option>
@@ -439,7 +552,7 @@ export default function NewPlayerPage() {
             </div>
 
             <div>
-              <label htmlFor="birthCity" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="birthCity" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Birth City and Country
               </label>
               <input
@@ -448,19 +561,24 @@ export default function NewPlayerPage() {
                 name="birthCity"
                 value={formData.birthCity}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               />
             </div>
           </div>
         </div>
 
         {/* Medical Information */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-6">Medical Information</h3>
+        <div className="rounded-lg shadow p-6" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
+          <h3 style={{ color: colorScheme.text }} className="text-lg font-medium mb-6">Medical Information</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="bloodType" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="bloodType" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Blood Type
               </label>
               <select
@@ -468,7 +586,12 @@ export default function NewPlayerPage() {
                 name="bloodType"
                 value={formData.bloodType}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               >
                 <option value="">Select blood type</option>
                 <option value="A+">A+</option>
@@ -483,7 +606,7 @@ export default function NewPlayerPage() {
             </div>
 
             <div>
-              <label htmlFor="currentAddress" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="currentAddress" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                 Current Address
               </label>
               <input
@@ -492,13 +615,18 @@ export default function NewPlayerPage() {
                 name="currentAddress"
                 value={formData.currentAddress}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: colorScheme.surface,
+                  color: colorScheme.text,
+                  border: `1px solid ${colorScheme.border}`
+                }}
               />
             </div>
           </div>
 
           <div className="mt-6">
-            <label htmlFor="medicalNotes" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="medicalNotes" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
               Medical Notes
             </label>
             <textarea
@@ -507,8 +635,13 @@ export default function NewPlayerPage() {
               value={formData.medicalNotes}
               onChange={handleInputChange}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2"
               placeholder="Any medical conditions, allergies, or important notes..."
+              style={{ 
+                backgroundColor: colorScheme.surface,
+                color: colorScheme.text,
+                border: `1px solid ${colorScheme.border}`
+              }}
             />
           </div>
         </div>
@@ -518,14 +651,39 @@ export default function NewPlayerPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            className="px-6 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors"
+            style={{ 
+              backgroundColor: colorScheme.surface,
+              color: colorScheme.text,
+              borderColor: colorScheme.border
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = colorScheme.primaryLight || colorScheme.surface
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = colorScheme.surface
+            }}
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ 
+              backgroundColor: colorScheme.error,
+              color: '#FFFFFF'
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.filter = 'brightness(0.9)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.filter = 'none'
+              }
+            }}
           >
             <Save className="h-4 w-4 mr-2" />
             {isLoading ? 'Creating...' : 'Save Player'}
