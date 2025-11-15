@@ -64,21 +64,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(transformedPlayers)
     }
     
-    // Ensure database connection with retry
-    let retries = 3
-    while (retries > 0) {
-      try {
-        await prisma.$connect()
-        console.log('✅ Database connected for players fetch')
-        break
-      } catch (error) {
-        retries--
-        console.log(`❌ Database connection failed, retries left: ${retries}`)
-        if (retries === 0) throw error
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-    }
-
+    // Prisma handles connection pooling automatically
     const players = await prisma.players.findMany({
       include: {
         users: true,
@@ -229,21 +215,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Ensure database connection with retry
-    let retries = 3
-    while (retries > 0) {
-      try {
-        await prisma.$connect()
-        console.log('✅ Database connected')
-        break
-      } catch (error) {
-        retries--
-        console.log(`❌ Database connection failed, retries left: ${retries}`)
-        if (retries === 0) throw error
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-    }
-    
+    // Prisma handles connection pooling automatically
     const body = await request.json()
     console.log('📝 Request body:', body)
     
@@ -354,7 +326,5 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
