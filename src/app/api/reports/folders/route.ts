@@ -246,7 +246,11 @@ export async function GET(request: NextRequest) {
         id: v.id,
         userId: v.userId,
         canView: v.canView,
-        user: v.users
+        staff: v.users ? {
+          id: v.users.id,
+          name: `${v.users.firstName} ${v.users.lastName}`.trim() || v.users.email,
+          email: v.users.email
+        } : null
       })),
       _count: folder._count
     }))
@@ -404,7 +408,11 @@ export async function POST(request: NextRequest) {
         id: v.id,
         userId: v.userId,
         canView: v.canView,
-        user: v.users
+        staff: v.users ? {
+          id: v.users.id,
+          name: `${v.users.firstName} ${v.users.lastName}`.trim() || v.users.email,
+          email: v.users.email
+        } : null
       })),
       _count: createdFolder!._count
     }
