@@ -50,10 +50,10 @@ export async function GET(request: NextRequest) {
       whereClause.folderId = null
     }
 
-    const reports = await prisma.playersReport.findMany({
+    const reports = await prisma.player_reports.findMany({
       where: whereClause,
       include: {
-        folder: {
+        player_report_folders: {
           include: {
             player_report_player_access: {
               include: {
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       if (player) {
         // Players can only see reports from folders they have access to
         filteredReports = reports.filter(report => 
-          !report.folder || report.folder.player_report_player_access.some(access => 
+          !report.player_report_folders || report.player_report_folders.player_report_player_access.some(access => 
             access.playerId === player.id && access.canView
           )
         )
@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
     })
     
     // Create report in database (schema uses 'title' not 'name', and requires 'id')
-    const report = await prisma.playersReport.create({
+    const report = await prisma.player_reports.create({
       data: {
         id: reportId,
         title: name, // Schema uses 'title' field
@@ -323,7 +323,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(), // Required field
       },
       include: {
-        folder: {
+        player_report_folders: {
           include: {
             player_report_player_access: {
               include: {
