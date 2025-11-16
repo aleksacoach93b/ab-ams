@@ -4,8 +4,10 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { readState, writeState } from '@/lib/localDevStore'
+import { put } from '@vercel/blob'
 
 const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
+const USE_BLOB_STORAGE = process.env.BLOB_READ_WRITE_TOKEN && !LOCAL_DEV_MODE
 
 export async function POST(
   request: NextRequest,
@@ -89,34 +91,48 @@ export async function POST(
       })
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'avatars')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-    }
-
     // Generate unique filename
     const timestamp = Date.now()
     const fileExtension = file.name.split('.').pop()
     const fileName = `player_${id}_${timestamp}.${fileExtension}`
-    const filePath = join(uploadsDir, fileName)
+    
+    let avatarUrl: string
 
-    // Save file to disk
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    // Use Vercel Blob Storage in production
+    if (USE_BLOB_STORAGE) {
+      console.log('📸 Uploading to Vercel Blob Storage...')
+      const bytes = await file.arrayBuffer()
+      const blob = await put(`avatars/${fileName}`, bytes, {
+        access: 'public',
+        contentType: file.type,
+      })
+      avatarUrl = blob.url
+      console.log('✅ Uploaded to Blob Storage:', avatarUrl)
+    } else {
+      // Fallback to local filesystem (for local dev or if blob storage not configured)
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'avatars')
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true })
+      }
 
-    // Update player imageUrl in database
-    const avatarUrl = `/uploads/avatars/${fileName}`
-    console.log('📸 Updating player with imageUrl:', avatarUrl)
+      const filePath = join(uploadsDir, fileName)
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      await writeFile(filePath, buffer)
+      avatarUrl = `/uploads/avatars/${fileName}`
+    }
+
+    // Update player avatar in database
+    console.log('📸 Updating player with avatar URL:', avatarUrl)
     
     const updatedPlayer = await prisma.players.update({
       where: { id },
-      data: { imageUrl: avatarUrl },
+      data: { avatar: avatarUrl },
       select: {
         id: true,
-        name: true,
-        imageUrl: true,
+        firstName: true,
+        lastName: true,
+        avatar: true,
       },
     })
 
@@ -125,7 +141,13 @@ export async function POST(
     return NextResponse.json({
       message: 'Avatar uploaded successfully',
       avatar: avatarUrl,
-      player: updatedPlayer,
+      imageUrl: avatarUrl, // For backward compatibility
+      player: {
+        id: updatedPlayer.id,
+        name: `${updatedPlayer.firstName} ${updatedPlayer.lastName}`,
+        imageUrl: avatarUrl,
+        avatar: avatarUrl,
+      },
     })
   } catch (error) {
     console.error('💥 Error uploading avatar:', error)
@@ -160,10 +182,10 @@ export async function DELETE(
       )
     }
 
-    // Get current player to find imageUrl path
+    // Get current player to find avatar path
     const player = await prisma.players.findUnique({
       where: { id },
-      select: { imageUrl: true },
+      select: { avatar: true },
     })
 
     if (!player) {
@@ -173,24 +195,30 @@ export async function DELETE(
       )
     }
 
-    // Remove imageUrl from database
+    // Remove avatar from database
     const updatedPlayer = await prisma.players.update({
       where: { id },
-      data: { imageUrl: null },
+      data: { avatar: null },
       select: {
         id: true,
-        name: true,
-        imageUrl: true,
+        firstName: true,
+        lastName: true,
+        avatar: true,
       },
     })
 
-    // Optionally delete the file from disk
-    if (player.imageUrl) {
+    // Optionally delete the file from blob storage or disk
+    if (player.avatar) {
       try {
-        const { unlink } = await import('fs/promises')
-        const filePath = join(process.cwd(), 'public', player.imageUrl)
-        if (existsSync(filePath)) {
-          await unlink(filePath)
+        // If it's a blob storage URL, we could delete it, but for now just remove from DB
+        // Vercel Blob Storage has automatic cleanup for old files
+        if (!player.avatar.startsWith('http')) {
+          // Local file - try to delete
+          const { unlink } = await import('fs/promises')
+          const filePath = join(process.cwd(), 'public', player.avatar)
+          if (existsSync(filePath)) {
+            await unlink(filePath)
+          }
         }
       } catch (fileError) {
         console.error('Error deleting avatar file:', fileError)

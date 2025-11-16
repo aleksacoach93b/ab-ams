@@ -7,9 +7,11 @@ import { logFileAccess, getClientInfo } from '@/lib/fileAccessLogger'
 import { NotificationService } from '@/lib/notificationService'
 import { verifyToken } from '@/lib/auth'
 import { readState, writeState } from '@/lib/localDevStore'
+import { put } from '@vercel/blob'
 // import { RealPDFThumbnail } from '@/lib/realPdfThumbnail' // Removed - using client-side thumbnails
 
 const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
+const USE_BLOB_STORAGE = process.env.BLOB_READ_WRITE_TOKEN && !LOCAL_DEV_MODE
 
 export async function GET(
   request: NextRequest,
@@ -238,13 +240,6 @@ export async function POST(
       )
     }
 
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'players', id)
-    
-    // Create upload directory if it doesn't exist
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-    }
-
     const uploadedFiles = []
 
     for (const file of files) {
@@ -255,24 +250,39 @@ export async function POST(
       // Generate unique filename
       const timestamp = Date.now()
       const fileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-      const filePath = join(uploadDir, fileName)
 
-      console.log(`📁 Generated filename: ${fileName}`)
-      console.log(`📁 File path: ${filePath}`)
+      let fileUrl: string
 
-      let mediaFile
-      try {
-        // Save file to disk
-        console.log(`📁 Saving file to disk...`)
+      // Use Vercel Blob Storage in production
+      if (USE_BLOB_STORAGE) {
+        console.log(`📁 Uploading to Vercel Blob Storage...`)
+        const bytes = await file.arrayBuffer()
+        const blob = await put(`players/${id}/${fileName}`, bytes, {
+          access: 'public',
+          contentType: file.type,
+        })
+        fileUrl = blob.url
+        console.log(`✅ Uploaded to Blob Storage:`, fileUrl)
+      } else {
+        // Fallback to local filesystem
+        const uploadDir = join(process.cwd(), 'public', 'uploads', 'players', id)
+        if (!existsSync(uploadDir)) {
+          await mkdir(uploadDir, { recursive: true })
+        }
+        const filePath = join(uploadDir, fileName)
         const bytes = await file.arrayBuffer()
         const buffer = Buffer.from(bytes)
         await writeFile(filePath, buffer)
-        console.log(`✅ File saved to disk successfully`)
+        fileUrl = `/uploads/players/${id}/${fileName}`
+        console.log(`✅ File saved to disk:`, fileUrl)
+      }
 
-        // Note: Thumbnails are generated client-side using PDFThumbnail component
-        // No server-side thumbnail generation needed
-        let thumbnailUrl = null
+      // Note: Thumbnails are generated client-side using PDFThumbnail component
+      // No server-side thumbnail generation needed
+      let thumbnailUrl = null
 
+      let mediaFile
+      try {
         // Save file info to database
         console.log(`📁 Saving file info to database...`)
         mediaFile = await prisma.player_media.create({
@@ -280,7 +290,7 @@ export async function POST(
             id: `media_${id}_${timestamp}`,
             playerId: id,
             fileName: file.name,
-            fileUrl: `/uploads/players/${id}/${fileName}`,
+            fileUrl: fileUrl,
             fileType: file.type,
             fileSize: file.size,
             tags: tags || null,
