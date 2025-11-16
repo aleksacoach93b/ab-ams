@@ -46,17 +46,18 @@ export async function GET(request: NextRequest) {
     // Get all staff members with user information
     const staff = await prisma.staff.findMany({
       include: {
-        user: {
+        users: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             role: true
           }
         }
       },
       orderBy: {
-        name: 'asc'
+        firstName: 'asc'
       }
     })
 
@@ -75,11 +76,13 @@ export async function GET(request: NextRequest) {
 
     // Add staff members
     staff.forEach(staffMember => {
-      const userName = staffMember.user?.name || staffMember.name || `${staffMember.firstName || ''} ${staffMember.lastName || ''}`.trim() || staffMember.user?.email || staffMember.email || 'Unknown Staff'
+      const userName = staffMember.users 
+        ? `${staffMember.users.firstName || ''} ${staffMember.users.lastName || ''}`.trim() 
+        : `${staffMember.firstName || ''} ${staffMember.lastName || ''}`.trim() || staffMember.email || 'Unknown Staff'
       allUsers.push({
         id: staffMember.userId, // Use the userId for foreign key constraint
         name: userName,
-        email: staffMember.user?.email || staffMember.email,
+        email: staffMember.users?.email || staffMember.email,
         role: 'STAFF',
         userId: staffMember.userId
       })
@@ -87,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     // Add coaches
     coaches.forEach(coach => {
-      const userName = coach.name || `${coach.firstName || ''} ${coach.lastName || ''}`.trim() || coach.email || 'Unknown Coach'
+      const userName = `${coach.firstName || ''} ${coach.lastName || ''}`.trim() || coach.email || 'Unknown Coach'
       allUsers.push({
         id: coach.id,
         name: userName,
