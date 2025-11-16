@@ -136,27 +136,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Database mode: use Prisma
-    // Get saved daily analytics data
-    const dailyAnalytics = await prisma.daily_event_analytics.findMany({
-      where: {
-        date: {
-          gte: startDate,
-          lte: endDate
-        }
-      },
-      orderBy: {
-        date: 'asc'
-      }
-    })
-
-    // Always get live data for today and any missing days
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    // Get all saved analytics data
-    const savedDates = dailyAnalytics.map(item => item.date.toISOString().split('T')[0])
-    
-    // Generate all dates in range
+    // Note: daily_event_analytics model doesn't exist in schema, so we'll use only live events data
+    // Get all dates in range
     const allDates: string[] = []
     const currentDate = new Date(startDate)
     while (currentDate <= endDate) {
@@ -164,10 +145,10 @@ export async function GET(request: NextRequest) {
       currentDate.setDate(currentDate.getDate() + 1)
     }
     
-    // Find missing dates (dates without saved data)
-    const missingDates = allDates.filter(date => !savedDates.includes(date))
+    // We'll process all dates as "missing" since we don't have saved analytics
+    const missingDates = allDates
     
-    console.log(`📊 Found ${missingDates.length} missing dates:`, missingDates)
+    console.log(`📊 Processing ${missingDates.length} dates from events data`)
     
     // Map event type values to labels (same as in dropdown)
     const eventTypeMap: { [key: string]: string } = {
@@ -197,13 +178,13 @@ export async function GET(request: NextRequest) {
       
       const dayEvents = await prisma.events.findMany({
         where: {
-          date: {
+          startTime: {
             gte: dateStart,
             lte: dateEnd
           }
         },
         include: {
-          participants: true
+          event_participants: true
         }
       })
 
@@ -242,17 +223,21 @@ export async function GET(request: NextRequest) {
         // Calculate duration
         let duration = 0
         if (event.startTime && event.endTime) {
-          const start = new Date(`2000-01-01T${event.startTime}`)
-          const end = new Date(`2000-01-01T${event.endTime}`)
+          const start = new Date(event.startTime)
+          const end = new Date(event.endTime)
           duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60))
         }
+        
+        // Format startTime and endTime for CSV
+        const startTimeStr = event.startTime ? new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A'
+        const endTimeStr = event.endTime ? new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A'
         
         dayData.push({
           date: dateStart,
           eventType: typeLabel,
           eventTitle: event.title || 'Untitled Event',
-          startTime: event.startTime || 'N/A',
-          endTime: event.endTime || 'N/A',
+          startTime: startTimeStr,
+          endTime: endTimeStr,
           duration: duration,
           matchDayTag: event.matchDayTag || 'N/A'
         })
@@ -261,19 +246,8 @@ export async function GET(request: NextRequest) {
       liveData.push(...dayData)
     }
 
-    // Map event type values to labels for saved data as well
-    const processedDailyAnalytics = dailyAnalytics.map(item => ({
-      ...item,
-      eventType: eventTypeMap[item.eventType] || item.eventType,
-      eventTitle: 'N/A', // Saved data doesn't have individual titles
-      startTime: 'N/A',
-      endTime: 'N/A',
-      duration: item.avgDuration || 0,
-      matchDayTag: 'N/A' // Saved data doesn't have individual match day tags
-    }))
-
-    // Combine saved and live data
-    const allData = [...processedDailyAnalytics, ...liveData]
+    // Since we don't have saved daily analytics, use only live data
+    const allData = liveData
 
     // Generate CSV content
     let csvContent = 'Date,Event Type,Event Title,Start Time,End Time,Duration (minutes),Match Day Tag\n'
