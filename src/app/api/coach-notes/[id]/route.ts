@@ -101,6 +101,9 @@ export async function PUT(
     }
 
     // Update the note and handle staff access
+    console.log('📝 [COACH NOTES PUT] Updating note:', id)
+    console.log('📝 [COACH NOTES PUT] Staff access data:', JSON.stringify(staffAccess, null, 2))
+    
     const updatedNote = await prisma.$transaction(async (tx) => {
       // Update the note
       const note = await tx.coach_notes.update({
@@ -124,8 +127,18 @@ export async function PUT(
         
         for (const access of staffAccess) {
           if (access.canView && access.staffId) {
+            // Verify staff exists
+            const staffExists = await tx.staff.findUnique({
+              where: { id: access.staffId }
+            })
+            
+            if (!staffExists) {
+              console.warn(`⚠️ [COACH NOTES PUT] Staff member not found: ${access.staffId}`)
+              continue
+            }
+            
             // Generate unique ID for access record
-            const accessId = `access_${id}_${access.staffId}_${Date.now()}`
+            const accessId = `access_${id}_${access.staffId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
             
             accessRecords.push({
               id: accessId,
@@ -136,10 +149,20 @@ export async function PUT(
           }
         }
 
+        console.log(`📝 [COACH NOTES PUT] Creating ${accessRecords.length} staff access records`)
+
         if (accessRecords.length > 0) {
-          await tx.coach_note_staff_access.createMany({
-            data: accessRecords
-          })
+          // Use individual creates to avoid potential unique constraint issues
+          for (const record of accessRecords) {
+            try {
+              await tx.coach_note_staff_access.create({
+                data: record
+              })
+            } catch (error) {
+              console.error(`❌ [COACH NOTES PUT] Error creating access record:`, error)
+              // Continue with other records
+            }
+          }
         }
       }
 
@@ -199,9 +222,14 @@ export async function PUT(
       }))
     }
 
+    console.log('✅ [COACH NOTES PUT] Note updated successfully')
     return NextResponse.json(transformedNote)
   } catch (error) {
-    console.error('Error updating coach note:', error)
+    console.error('❌ [COACH NOTES PUT] Error updating coach note:', error)
+    console.error('❌ [COACH NOTES PUT] Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return NextResponse.json(
       { 
         message: 'Internal server error',
