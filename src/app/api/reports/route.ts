@@ -429,10 +429,14 @@ export async function POST(request: NextRequest) {
     // No thumbnail generation - keep it simple
     const thumbnailUrl = null
     
-    // Create the report
+    // Generate unique ID for report
+    const reportId = `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // Create the report (schema uses 'title' not 'name')
     const report = await prisma.reports.create({
       data: {
-        name: name,
+        id: reportId,
+        title: name, // Schema uses 'title' field
         description: description || null,
         fileName: file.name,
         fileType: file.type,
@@ -449,7 +453,7 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Report created:', { 
       id: report.id, 
-      name: report.name, 
+      title: report.title, 
       folderId: report.folderId,
       fileUrl: report.fileUrl 
     })

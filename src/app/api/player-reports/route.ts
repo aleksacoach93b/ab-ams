@@ -260,10 +260,14 @@ export async function POST(request: NextRequest) {
       console.log('✅ File saved to disk:', fileUrl)
     }
 
-    // Create report in database
+    // Generate unique ID for player report
+    const reportId = `player_report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // Create report in database (schema uses 'title' not 'name', and requires 'id')
     const report = await prisma.playersReport.create({
       data: {
-        name: name,
+        id: reportId,
+        title: name, // Schema uses 'title' field
         description: description,
         fileName: file.name,
         fileUrl,
