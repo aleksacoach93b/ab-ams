@@ -115,7 +115,7 @@ export async function PUT(
     }
 
     // Check if folder exists and user has permission to edit it
-    const existingFolder = await prisma.reportFolder.findUnique({
+    const existingFolder = await prisma.report_folders.findUnique({
       where: { id }
     })
 
@@ -137,50 +137,71 @@ export async function PUT(
     // Update the folder and handle staff access
     const folder = await prisma.$transaction(async (tx) => {
       // Update the folder
-      const updatedFolder = await tx.reportFolder.update({
+      const updatedFolder = await tx.report_folders.update({
         where: { id },
         data: {
           name,
-          description,
+          description: description || null,
           updatedAt: new Date()
         }
       })
 
-      // Delete existing staff access records
-      await tx.reportFolderStaffAccess.deleteMany({
+      // Delete existing visibility records for this folder
+      await tx.report_visibility.deleteMany({
         where: { folderId: id }
       })
 
-      // Create new staff access records if provided
+      // Create new visibility records if provided
+      // Note: staffAccess contains staffId, but we need to get userId from staff
       if (staffAccess && Array.isArray(staffAccess)) {
-        const accessData = staffAccess
-          .filter(access => access.canView)
-          .map(access => ({
-            folderId: id,
-            staffId: access.staffId,
-            canView: true
-          }))
+        const accessRecords = []
+        
+        for (const access of staffAccess) {
+          if (access.canView && access.staffId) {
+            // Get staff member to find their userId
+            const staffMember = await tx.staff.findUnique({
+              where: { id: access.staffId },
+              select: { userId: true }
+            })
+            
+            if (staffMember && staffMember.userId) {
+              // Generate unique ID for visibility record
+              const visibilityId = `visibility_${id}_${staffMember.userId}_${Date.now()}`
+              
+              accessRecords.push({
+                id: visibilityId,
+                folderId: id,
+                userId: staffMember.userId,
+                canView: true,
+                canEdit: false,
+                canDelete: false,
+                updatedAt: new Date()
+              })
+            }
+          }
+        }
 
-        if (accessData.length > 0) {
-          await tx.reportFolderStaffAccess.createMany({
-            data: accessData
+        if (accessRecords.length > 0) {
+          await tx.report_visibility.createMany({
+            data: accessRecords
           })
         }
       }
 
       // Return the updated folder with relations
-      return await tx.reportFolder.findUnique({
+      return await tx.report_folders.findUnique({
         where: { id },
         include: {
-          parent: true,
-          children: true,
+          report_folders: true, // parent
+          other_report_folders: true, // children
           reports: true,
-          visibleToStaff: {
+          report_visibility: {
             include: {
-              staff: {
+              users: {
                 select: {
                   id: true,
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true
                 }
               }
@@ -190,7 +211,23 @@ export async function PUT(
       })
     })
 
-    return NextResponse.json(folder)
+    // Transform response to match frontend expectations
+    const transformedFolder = {
+      ...folder,
+      parent: folder.report_folders,
+      children: folder.other_report_folders,
+      visibleToStaff: folder.report_visibility.map(access => ({
+        id: access.id,
+        canView: access.canView,
+        staff: access.users ? {
+          id: access.users.id,
+          name: `${access.users.firstName} ${access.users.lastName}`.trim(),
+          email: access.users.email
+        } : null
+      }))
+    }
+
+    return NextResponse.json(transformedFolder)
   } catch (error) {
     console.error('Error updating folder:', error)
     return NextResponse.json(
@@ -310,7 +347,7 @@ export async function DELETE(
     }
 
     // Check if folder exists and user has permission to delete it
-    const existingFolder = await prisma.reportFolder.findUnique({
+    const existingFolder = await prisma.report_folders.findUnique({
       where: { id }
     })
 
@@ -329,7 +366,7 @@ export async function DELETE(
       )
     }
 
-    await prisma.reportFolder.delete({
+    await prisma.report_folders.delete({
       where: { id }
     })
 
