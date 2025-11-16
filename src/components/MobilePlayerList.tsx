@@ -33,38 +33,51 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
   const [deleting, setDeleting] = useState<string | null>(null)
 
   // Fetch players from API
-  useEffect(() => {
-    const fetchPlayers = async () => {
-      try {
-        const response = await fetch('/api/players')
-        if (response.ok) {
-          const data = await response.json()
-          const transformedPlayers = data.map((player: any) => ({
-            id: player.id,
-            name: player.name || 'Unknown Player',
-            position: player.position || 'Not specified',
-            dateOfBirth: player.dateOfBirth ? new Date(player.dateOfBirth).toLocaleDateString() : 'Not specified',
-            team: player.team?.name || 'No team',
-            status: player.availabilityStatus || player.status || 'Unknown',
-            username: player.email || player.user?.email || 'No email',
-            accountSetup: 'Complete',
-            mobileUsed: 'Unknown',
-            lastUsed: 'Unknown',
-            avatar: player.imageUrl || player.avatar || null,
-            age: player.dateOfBirth ? new Date().getFullYear() - new Date(player.dateOfBirth).getFullYear() : 0,
-            height: player.height ? `${player.height} cm` : 'Not specified',
-            weight: player.weight ? `${player.weight} kg` : 'Not specified'
-          }))
-          setPlayers(transformedPlayers)
-        }
-      } catch (error) {
-        console.error('Error fetching players:', error)
-      } finally {
-        setLoading(false)
+  const fetchPlayers = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/players')
+      if (response.ok) {
+        const data = await response.json()
+        const transformedPlayers = data.map((player: any) => ({
+          id: player.id,
+          name: player.name || 'Unknown Player',
+          position: player.position || 'Not specified',
+          dateOfBirth: player.dateOfBirth ? new Date(player.dateOfBirth).toLocaleDateString() : 'Not specified',
+          team: player.team?.name || 'No team',
+          status: player.availabilityStatus || player.status || 'Unknown',
+          username: player.email || player.user?.email || 'No email',
+          accountSetup: 'Complete',
+          mobileUsed: 'Unknown',
+          lastUsed: 'Unknown',
+          avatar: player.imageUrl || player.avatar || null,
+          age: player.dateOfBirth ? new Date().getFullYear() - new Date(player.dateOfBirth).getFullYear() : 0,
+          height: player.height ? `${player.height} cm` : 'Not specified',
+          weight: player.weight ? `${player.weight} kg` : 'Not specified'
+        }))
+        setPlayers(transformedPlayers)
       }
+    } catch (error) {
+      console.error('Error fetching players:', error)
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchPlayers()
+    
+    // Listen for player status updates to refresh the list
+    const handleStatusUpdate = () => {
+      console.log('🔄 Refreshing players list after status update...')
+      fetchPlayers()
+    }
+    
+    window.addEventListener('playerStatusUpdated', handleStatusUpdate)
+    
+    return () => {
+      window.removeEventListener('playerStatusUpdated', handleStatusUpdate)
+    }
   }, [])
 
   const handleDeletePlayer = async (playerId: string) => {

@@ -1782,6 +1782,11 @@ export default function Dashboard() {
                                 } : p
                               ))
                               console.log('✅ Status updated successfully:', responseData)
+                              
+                              // Dispatch custom event to refresh player lists in other components
+                              window.dispatchEvent(new CustomEvent('playerStatusUpdated', { 
+                                detail: { playerId: player.id, status: newStatus } 
+                              }))
                             } else {
                               const errorData = await response.json()
                               console.error('Failed to update player status:', errorData)
