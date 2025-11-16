@@ -160,7 +160,11 @@ export async function POST(request: NextRequest) {
     // Get player info
     const player = await prisma.players.findUnique({
       where: { id: playerId },
-      select: { name: true }
+      select: { 
+        id: true,
+        firstName: true,
+        lastName: true
+      }
     })
 
     if (!player) {
@@ -169,6 +173,8 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
+    
+    const playerName = `${player.firstName} ${player.lastName}`.trim()
 
     // Get today's date (YYYY-MM-DD format)
     const today = new Date()
@@ -179,30 +185,40 @@ export async function POST(request: NextRequest) {
     const finalReason = isFullyAvailable ? '' : reason
     const finalNotes = isFullyAvailable ? null : (notes || null)
     
-    // Upsert daily notes (update if exists for today, create if not)
-    const dailyNote = await prisma.dailyPlayerNotes.upsert({
+    // Check if note exists for today
+    const existingNote = await prisma.daily_player_notes.findFirst({
       where: {
-        date_playerId: {
-          date: today,
-          playerId: playerId
+        playerId: playerId,
+        date: {
+          gte: new Date(today.setHours(0, 0, 0, 0)),
+          lt: new Date(today.setHours(23, 59, 59, 999))
         }
-      },
-      update: {
-        status,
-        reason: finalReason,
-        notes: finalNotes,
-        updatedAt: new Date()
-      },
-      create: {
-        date: today,
-        playerId,
-        playerName: player.name,
-        status,
-        reason: finalReason,
-        notes: finalNotes,
-        createdBy
       }
     })
+    
+    let dailyNote
+    if (existingNote) {
+      // Update existing note
+      dailyNote = await prisma.daily_player_notes.update({
+        where: { id: existingNote.id },
+        data: {
+          reason: finalReason || null,
+          notes: finalNotes || null
+        }
+      })
+    } else {
+      // Create new note
+      const noteId = `daily_note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      dailyNote = await prisma.daily_player_notes.create({
+        data: {
+          id: noteId,
+          date: today,
+          playerId,
+          reason: finalReason || null,
+          notes: finalNotes || null
+        }
+      })
+    }
     
     if (isFullyAvailable) {
       console.log('🧹 [PLAYER NOTES] Automatically cleared reason and notes for FULLY_AVAILABLE status')
@@ -286,23 +302,39 @@ export async function GET(request: NextRequest) {
       whereClause.date = targetDate
     }
 
-    const notes = await prisma.dailyPlayerNotes.findMany({
+    const notes = await prisma.daily_player_notes.findMany({
       where: whereClause,
       orderBy: {
         date: 'desc'
       },
       include: {
-        player: {
+        players: {
           select: {
             id: true,
-            name: true,
-            availabilityStatus: true
+            firstName: true,
+            lastName: true,
+            status: true
           }
         }
       }
     })
+    
+    // Transform notes to match frontend expectations
+    const transformedNotes = notes.map(note => ({
+      id: note.id,
+      date: note.date,
+      playerId: note.playerId,
+      reason: note.reason,
+      notes: note.notes,
+      createdAt: note.createdAt,
+      player: note.players ? {
+        id: note.players.id,
+        name: `${note.players.firstName} ${note.players.lastName}`.trim(),
+        availabilityStatus: note.players.status
+      } : null
+    }))
 
-    return NextResponse.json(notes)
+    return NextResponse.json(transformedNotes)
 
   } catch (error) {
     console.error('❌ Error fetching daily player notes:', error)
