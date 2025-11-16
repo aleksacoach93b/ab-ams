@@ -735,6 +735,7 @@ export async function POST(request: NextRequest) {
       endTime: endDateTime, // DateTime object
       locationId: location || null, // Use locationId instead of location
       icon: icon || getDefaultIcon(finalEventType), // Use icon instead of iconName
+      matchDayTag: matchDayTag || null,
       isRecurring: body.isRecurring || false,
       isAllDay: body.isAllDay || false,
       allowPlayerCreation: body.allowPlayerCreation || false,
