@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
         position: player.position || '',
         status: player.status,
         availabilityStatus: player.status, // Use status as availabilityStatus
-        matchDayTag: null, // Not in schema
+        matchDayTag: player.matchDayTag || null,
         teamId: player.teamId,
         imageUrl: player.avatar || null,
         phone: player.phone || '',

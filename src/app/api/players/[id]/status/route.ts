@@ -146,27 +146,42 @@ export async function PUT(
       )
     }
 
-    console.log(`🔄 Updating player ${id} availabilityStatus to: ${body.status}`)
+    console.log(`🔄 Updating player ${id} status to: ${body.status}`)
     
     // Get player info before update for notification
     const playerBefore = await prisma.players.findUnique({
       where: { id },
-      select: { name: true, availabilityStatus: true }
+      select: { 
+        id: true,
+        firstName: true,
+        lastName: true,
+        status: true
+      }
     })
     
-    // Update the availabilityStatus field instead of status
+    if (!playerBefore) {
+      return NextResponse.json(
+        { message: 'Player not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Update the status field
     const updatedPlayer = await prisma.players.update({
       where: { id },
-      data: { availabilityStatus: body.status },
+      data: { 
+        status: body.status,
+        updatedAt: new Date()
+      },
       select: {
         id: true,
-        name: true,
-        availabilityStatus: true,
+        firstName: true,
+        lastName: true,
         status: true
       }
     })
 
-    console.log(`✅ Successfully updated player ${id} availabilityStatus to: ${body.status}`)
+    console.log(`✅ Successfully updated player ${id} status to: ${body.status}`)
 
     // If status is FULLY_AVAILABLE, automatically clear reason and notes for today
     const isFullyAvailable = body.status === 'FULLY_AVAILABLE' || body.status === 'Fully Available'
@@ -176,27 +191,22 @@ export async function PUT(
       
       // Update today's note if it exists
       try {
-        const todayNote = await prisma.dailyPlayerNotes.findUnique({
+        const todayNote = await prisma.daily_player_notes.findFirst({
           where: {
-            date_playerId: {
-              date: today,
-              playerId: id
+            playerId: id,
+            date: {
+              gte: new Date(today.setHours(0, 0, 0, 0)),
+              lt: new Date(today.setHours(23, 59, 59, 999))
             }
           }
         })
         
         if (todayNote) {
-          await prisma.dailyPlayerNotes.update({
-            where: {
-              date_playerId: {
-                date: today,
-                playerId: id
-              }
-            },
+          await prisma.daily_player_notes.update({
+            where: { id: todayNote.id },
             data: {
-              reason: '',
-              notes: null,
-              updatedAt: new Date()
+              reason: null,
+              notes: null
             }
           })
           console.log('🧹 [STATUS UPDATE] Automatically cleared reason and notes for FULLY_AVAILABLE status')
@@ -208,11 +218,12 @@ export async function PUT(
     }
 
     // Create notification for player status change
-    if (playerBefore && playerBefore.availabilityStatus !== body.status) {
+    const playerName = `${playerBefore.firstName} ${playerBefore.lastName}`.trim()
+    if (playerBefore && playerBefore.status !== body.status) {
       try {
         await NotificationService.notifyPlayerStatusChanged(
           id,
-          playerBefore.name || 'Unknown Player',
+          playerName || 'Unknown Player',
           body.status
         )
         console.log(`📢 Created notification for player ${id} status change`)
@@ -222,11 +233,22 @@ export async function PUT(
       }
     }
 
+    // Transform response to match frontend expectations
+    const fullName = `${updatedPlayer.firstName} ${updatedPlayer.lastName}`.trim()
+    const transformedPlayer = {
+      id: updatedPlayer.id,
+      name: fullName,
+      firstName: updatedPlayer.firstName,
+      lastName: updatedPlayer.lastName,
+      status: updatedPlayer.status,
+      availabilityStatus: updatedPlayer.status // Map status to availabilityStatus for frontend compatibility
+    }
+
     return NextResponse.json({
       message: 'Player status updated successfully',
       playerId: id,
       status: body.status,
-      player: updatedPlayer
+      player: transformedPlayer
     })
 
   } catch (error) {
