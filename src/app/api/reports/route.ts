@@ -445,6 +445,7 @@ export async function POST(request: NextRequest) {
         thumbnailUrl,
         folderId,
         createdBy: user.userId,
+        updatedAt: new Date(), // Required field
       },
       include: {
         folder: true

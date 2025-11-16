@@ -274,7 +274,8 @@ export async function POST(request: NextRequest) {
         fileType: file.type,
         fileSize: file.size,
         folderId,
-        createdBy: user.userId
+        createdBy: user.userId,
+        updatedAt: new Date(), // Required field
       }
     })
 
