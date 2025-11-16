@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         isActive: true
       },
       include: {
-        user: {
+        users: {
           select: {
             id: true,
             firstName: true,
@@ -70,13 +70,13 @@ export async function GET(request: NextRequest) {
 
     const staffList = staffMembers.map(s => ({
       id: s.id,
-      name: `${s.firstName} ${s.lastName}`,
-      email: s.email,
-      user: s.user ? {
-        id: s.user.id,
-        name: `${s.user.firstName} ${s.user.lastName}`,
-        email: s.user.email,
-        role: s.user.role
+      name: `${s.firstName} ${s.lastName}`.trim(),
+      email: s.email || s.users?.email || '',
+      user: s.users ? {
+        id: s.users.id,
+        name: `${s.users.firstName} ${s.users.lastName}`.trim(),
+        email: s.users.email,
+        role: s.users.role
       } : null
     }))
 
