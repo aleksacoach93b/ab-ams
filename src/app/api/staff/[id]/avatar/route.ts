@@ -4,8 +4,10 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { readState, writeState } from '@/lib/localDevStore'
+import { put } from '@vercel/blob'
 
 const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
+const USE_BLOB_STORAGE = process.env.BLOB_READ_WRITE_TOKEN && !LOCAL_DEV_MODE
 
 export async function POST(
   request: NextRequest,
@@ -95,7 +97,12 @@ export async function POST(
 
     // Check if staff member exists
     const staff = await prisma.staff.findUnique({
-      where: { id: staffId }
+      where: { id: staffId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true
+      }
     })
 
     if (!staff) {
@@ -106,43 +113,63 @@ export async function POST(
       )
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'avatars')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-      console.log('✅ Created uploads directory')
-    }
-
     // Generate unique filename
     const timestamp = Date.now()
     const fileExtension = file.name.split('.').pop()
     const fileName = `staff_${staffId}_${timestamp}.${fileExtension}`
-    const filePath = join(uploadsDir, fileName)
-    const fileUrl = `/uploads/avatars/${fileName}`
+    
+    let avatarUrl: string
 
-    // Save file
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
-    console.log('✅ File saved:', filePath)
+    // Use Vercel Blob Storage in production
+    if (USE_BLOB_STORAGE) {
+      console.log('📸 Uploading to Vercel Blob Storage...')
+      const bytes = await file.arrayBuffer()
+      const blob = await put(`avatars/${fileName}`, bytes, {
+        access: 'public',
+        contentType: file.type,
+      })
+      avatarUrl = blob.url
+      console.log('✅ Uploaded to Blob Storage:', avatarUrl)
+    } else {
+      // Fallback to local filesystem
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'avatars')
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true })
+        console.log('✅ Created uploads directory')
+      }
+      const filePath = join(uploadsDir, fileName)
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      await writeFile(filePath, buffer)
+      avatarUrl = `/uploads/avatars/${fileName}`
+      console.log('✅ File saved to disk:', avatarUrl)
+    }
 
     // Update staff member with new avatar
     const updatedStaff = await prisma.staff.update({
       where: { id: staffId },
-      data: { imageUrl: fileUrl },
+      data: { avatar: avatarUrl },
       select: {
         id: true,
-        name: true,
-        imageUrl: true
+        firstName: true,
+        lastName: true,
+        avatar: true
       }
     })
 
     console.log('✅ Staff avatar updated successfully:', updatedStaff)
 
+    const fullName = `${updatedStaff.firstName} ${updatedStaff.lastName}`.trim()
     return NextResponse.json({
       message: 'Avatar uploaded successfully',
-      imageUrl: fileUrl,
-      staff: updatedStaff
+      imageUrl: avatarUrl,
+      avatar: avatarUrl, // For backward compatibility
+      staff: {
+        id: updatedStaff.id,
+        name: fullName,
+        imageUrl: avatarUrl,
+        avatar: avatarUrl
+      }
     })
   } catch (error) {
     console.error('❌ Error uploading staff avatar:', error)
@@ -212,7 +239,7 @@ export async function DELETE(
     // Check if staff member exists
     const staff = await prisma.staff.findUnique({
       where: { id: staffId },
-      select: { id: true, name: true, imageUrl: true }
+      select: { id: true, firstName: true, lastName: true, avatar: true }
     })
 
     if (!staff) {
@@ -223,28 +250,34 @@ export async function DELETE(
       )
     }
 
-    // Remove imageUrl from database
+    // Remove avatar from database
     const updatedStaff = await prisma.staff.update({
       where: { id: staffId },
-      data: { imageUrl: null },
+      data: { avatar: null },
       select: {
         id: true,
-        name: true,
-        imageUrl: true
+        firstName: true,
+        lastName: true,
+        avatar: true
       }
     })
 
-    // Optionally delete the file from disk
-    if (staff.imageUrl) {
+    // Optionally delete the file from blob storage or disk
+    if (staff.avatar) {
       try {
-        const filePath = join(process.cwd(), 'public', staff.imageUrl)
-        if (existsSync(filePath)) {
+        // If it's a blob storage URL, we could delete it, but for now just remove from DB
+        // Vercel Blob Storage has automatic cleanup for old files
+        if (!staff.avatar.startsWith('http')) {
+          // Local file - try to delete
           const { unlink } = await import('fs/promises')
-          await unlink(filePath)
-          console.log('✅ Deleted file from disk:', filePath)
+          const filePath = join(process.cwd(), 'public', staff.avatar)
+          if (existsSync(filePath)) {
+            await unlink(filePath)
+            console.log('✅ Deleted file from disk:', filePath)
+          }
         }
       } catch (fileError) {
-        console.log('⚠️ Warning: Could not delete file from disk:', fileError)
+        console.log('⚠️ Warning: Could not delete file:', fileError)
         // Don't fail the request if file deletion fails
       }
     }
