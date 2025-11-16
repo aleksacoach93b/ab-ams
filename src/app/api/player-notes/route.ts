@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Production mode: use database
-    // Get player info
+    // Get player info (using firstName and lastName, not name)
     const player = await prisma.players.findUnique({
       where: { id: playerId },
       select: { 
