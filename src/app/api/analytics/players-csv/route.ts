@@ -218,18 +218,18 @@ export async function GET(request: NextRequest) {
 
     // Database mode: use Prisma
     // Get ALL daily player analytics (no date limit) - PRIMARY DATA SOURCE
-    const savedAnalytics = await prisma.dailyPlayerAnalytics.findMany({
+    const savedAnalytics = await prisma.daily_player_analytics.findMany({
       orderBy: [
         { date: 'asc' },
-        { playerName: 'asc' }
+        { playerId: 'asc' }
       ]
     })
 
     // Get ALL daily player notes (no date limit) - for reason and notes only
-    const dailyNotes = await prisma.dailyPlayerNotes.findMany({
+    const dailyNotes = await prisma.daily_player_notes.findMany({
       orderBy: [
         { date: 'asc' },
-        { playerName: 'asc' }
+        { playerId: 'asc' }
       ]
     })
 
@@ -259,16 +259,21 @@ export async function GET(request: NextRequest) {
     const allPlayers = await prisma.players.findMany({
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         matchDayTag: true,
-        availabilityStatus: true
+        status: true
       }
     })
 
     // Create a map of players by ID for quick lookup
     const playersMap = new Map()
     allPlayers.forEach(player => {
-      playersMap.set(player.id, player)
+      playersMap.set(player.id, {
+        ...player,
+        name: `${player.firstName} ${player.lastName}`.trim(),
+        availabilityStatus: player.status
+      })
     })
 
     // Find the earliest date from analytics (PRIMARY SOURCE)
@@ -282,11 +287,11 @@ export async function GET(request: NextRequest) {
     today.setHours(0, 0, 0, 0)
 
     // Create a map of analytics by date and player (PRIMARY DATA SOURCE)
-    const analyticsMap = new Map<string, { activity: string; date: Date }>()
+    const analyticsMap = new Map<string, { status: string; date: Date }>()
     savedAnalytics.forEach(analytics => {
       const key = `${analytics.date.toISOString().split('T')[0]}_${analytics.playerId}`
       analyticsMap.set(key, {
-        activity: analytics.activity || 'Unknown',
+        status: analytics.status || 'Unknown',
         date: analytics.date
       })
     })
@@ -295,10 +300,9 @@ export async function GET(request: NextRequest) {
     const notesMap = new Map<string, { reason: string; notes: string | null }>()
     dailyNotes.forEach(note => {
       const key = `${note.date.toISOString().split('T')[0]}_${note.playerId}`
-      const isFullyAvailable = note.status === 'FULLY_AVAILABLE' || note.status === 'Fully Available'
       notesMap.set(key, {
-        reason: isFullyAvailable ? '' : (note.reason || ''),
-        notes: isFullyAvailable ? null : (note.notes || null)
+        reason: note.reason || '',
+        notes: note.notes || null
       })
     })
 
@@ -312,7 +316,7 @@ export async function GET(request: NextRequest) {
       const analyticsDate = analytics.date
       analyticsDate.setHours(0, 0, 0, 0)
       const playerId = analytics.playerId
-      const statusLabel = analytics.activity || 'Unknown'
+      const statusLabel = analytics.status || 'Unknown'
       
       // Update last known status for this player
       const lastStatus = playerLastStatus.get(playerId)
@@ -327,7 +331,8 @@ export async function GET(request: NextRequest) {
     // For each player, generate data for all days from earliest date to today
     allPlayers.forEach(player => {
       const playerId = player.id
-      const currentStatus = statusMap[player.availabilityStatus] || player.availabilityStatus || 'Fully Available'
+      const playerData = playersMap.get(playerId)
+      const currentStatus = statusMap[playerData?.availabilityStatus || player.status] || playerData?.availabilityStatus || player.status || 'Fully Available'
       
       // Start from earliest date or player's first analytics date
       let startDate = earliestDate
@@ -349,7 +354,7 @@ export async function GET(request: NextRequest) {
           return a.date.getTime() - b.date.getTime()
         })
         const firstAnalytics = sortedPlayerAnalytics[0]
-        lastKnownStatus = firstAnalytics.activity || 'Fully Available'
+        lastKnownStatus = statusMap[firstAnalytics.status] || firstAnalytics.status || 'Fully Available'
       }
       
       for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
@@ -360,14 +365,15 @@ export async function GET(request: NextRequest) {
         const analytics = analyticsMap.get(key)
         if (analytics) {
           // Use status from analytics and update lastKnownStatus
-          lastKnownStatus = analytics.activity || 'Unknown'
+          const statusLabel = statusMap[analytics.status] || analytics.status || 'Unknown'
+          lastKnownStatus = statusLabel
           // Get reason and notes from notes if available
           const note = notesMap.get(key)
           const isFullyAvailable = lastKnownStatus === 'Fully Available'
           allData.push({
             date: new Date(d),
             playerId,
-            playerName: player.name,
+            playerName: playerData?.name || `${player.firstName} ${player.lastName}`.trim(),
             activity: lastKnownStatus,
             availabilityStatus: lastKnownStatus,
             reason: note ? (isFullyAvailable ? '' : (note.reason || '')) : '',
@@ -381,7 +387,7 @@ export async function GET(request: NextRequest) {
           allData.push({
             date: new Date(d),
             playerId,
-            playerName: player.name,
+            playerName: playerData?.name || `${player.firstName} ${player.lastName}`.trim(),
             activity: lastKnownStatus,
             availabilityStatus: lastKnownStatus,
             reason: note ? (isFullyAvailable ? '' : (note.reason || '')) : '',
