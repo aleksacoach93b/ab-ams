@@ -761,19 +761,29 @@ function VisibilityManagerModal({
       })
 
       if (response.ok) {
+        const updatedNote = await response.json()
+        console.log('✅ Visibility updated successfully:', updatedNote)
         onCancel()
         // Refresh data to show updated visibility without page reload
         if (onSuccess) {
           await onSuccess()
         }
       } else {
-        const errorData = await response.json()
-        console.error('Error updating visibility:', errorData.message)
-        alert(`Failed to update visibility: ${errorData.message}`)
+        let errorMessage = 'Unknown error'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorData.error || 'Unknown error'
+          console.error('❌ Error updating visibility:', errorData)
+        } catch (e) {
+          console.error('❌ Error parsing error response:', e)
+          errorMessage = `Server error: ${response.status} ${response.statusText}`
+        }
+        alert(`Failed to update visibility: ${errorMessage}`)
       }
     } catch (error) {
-      console.error('Error updating visibility:', error)
-      alert('Error updating visibility')
+      console.error('❌ Error updating visibility:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      alert(`Error updating visibility: ${errorMessage}`)
     }
   }
 
