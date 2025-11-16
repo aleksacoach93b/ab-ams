@@ -76,8 +76,7 @@ export async function GET(
     const player = await prisma.players.findUnique({
       where: { id },
       include: {
-        user: true,
-        team: true
+        users: true
       }
     })
 
@@ -88,7 +87,51 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(player)
+    // Fetch team separately if teamId exists
+    let team = null
+    if (player.teamId) {
+      try {
+        const teamData = await prisma.teams.findUnique({
+          where: { id: player.teamId }
+        })
+        if (teamData) {
+          team = { id: teamData.id, name: teamData.name }
+        }
+      } catch (teamError) {
+        console.error('Error fetching team:', teamError)
+        // Continue without team data
+      }
+    }
+
+    // Transform player data to match frontend expectations
+    const fullName = `${player.firstName} ${player.lastName}`.trim()
+    
+    return NextResponse.json({
+      id: player.id,
+      firstName: player.firstName,
+      lastName: player.lastName,
+      name: fullName,
+      email: player.users?.email || player.email || '',
+      position: player.position || '',
+      status: player.status,
+      availabilityStatus: player.status,
+      teamId: player.teamId,
+      imageUrl: player.avatar || null,
+      avatar: player.avatar || null,
+      phone: player.phone || '',
+      dateOfBirth: player.dateOfBirth,
+      nationality: player.nationality || '',
+      height: player.height,
+      weight: player.weight,
+      preferredFoot: player.preferredFoot || '',
+      jerseyNumber: player.jerseyNumber,
+      medicalInfo: player.medicalNotes || null,
+      emergencyContact: player.emergencyContact || null,
+      team: team,
+      user: player.users,
+      createdAt: player.createdAt,
+      updatedAt: player.updatedAt
+    })
   } catch (error) {
     console.error('Error fetching player:', error)
     return NextResponse.json(
@@ -208,7 +251,7 @@ export async function PUT(
     // First, get the player to find the associated user
     const existingPlayer = await prisma.players.findUnique({
       where: { id },
-      include: { user: true }
+      include: { users: true }
     })
 
     if (!existingPlayer) {
@@ -236,30 +279,86 @@ export async function PUT(
       })
     }
 
+    // Parse name into firstName and lastName if provided
+    let firstName = existingPlayer.firstName
+    let lastName = existingPlayer.lastName
+    
+    if (name) {
+      const nameParts = name.split(' ')
+      firstName = nameParts[0] || firstName
+      lastName = nameParts.slice(1).join(' ') || lastName
+    }
+
     // Update player data
     const player = await prisma.players.update({
       where: { id },
       data: {
-        name,
-        email,
-        phone,
+        firstName,
+        lastName,
+        email: email || existingPlayer.email || null,
+        phone: phone || null,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        position,
+        position: position || null,
         jerseyNumber: jerseyNumber ? parseInt(jerseyNumber) : null,
-        status
+        status: status || existingPlayer.status,
+        updatedAt: new Date()
       },
       include: {
-        user: true,
-        team: true
+        users: true
       }
     })
+
+    // Fetch team separately if teamId exists
+    let team = null
+    if (player.teamId) {
+      try {
+        const teamData = await prisma.teams.findUnique({
+          where: { id: player.teamId }
+        })
+        if (teamData) {
+          team = { id: teamData.id, name: teamData.name }
+        }
+      } catch (teamError) {
+        console.error('Error fetching team:', teamError)
+        // Continue without team data
+      }
+    }
+
+    // Transform response to match frontend expectations
+    const fullName = `${player.firstName} ${player.lastName}`.trim()
+    const transformedPlayer = {
+      id: player.id,
+      firstName: player.firstName,
+      lastName: player.lastName,
+      name: fullName,
+      email: player.users?.email || player.email || '',
+      position: player.position || '',
+      status: player.status,
+      availabilityStatus: player.status,
+      teamId: player.teamId,
+      imageUrl: player.avatar || null,
+      avatar: player.avatar || null,
+      phone: player.phone || '',
+      dateOfBirth: player.dateOfBirth,
+      nationality: player.nationality || '',
+      height: player.height,
+      weight: player.weight,
+      preferredFoot: player.preferredFoot || '',
+      jerseyNumber: player.jerseyNumber,
+      medicalInfo: player.medicalNotes || null,
+      emergencyContact: player.emergencyContact || null,
+      team: team,
+      user: player.users,
+      createdAt: player.createdAt,
+      updatedAt: player.updatedAt
+    }
 
     // Create notification if status changed
     if (status && status !== existingPlayer.status) {
       try {
         await NotificationService.notifyPlayerStatusChanged(
           id,
-          name || existingPlayer.name,
+          fullName,
           status
         )
       } catch (notificationError) {
@@ -268,7 +367,7 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json(player)
+    return NextResponse.json(transformedPlayer)
   } catch (error) {
     console.error('Error updating player:', error)
     return NextResponse.json(
@@ -370,7 +469,7 @@ export async function DELETE(
     // First check if player exists using Prisma
     const player = await prisma.players.findUnique({
       where: { id: playerId },
-      include: { user: true }
+      include: { users: true }
     })
 
     if (!player) {
