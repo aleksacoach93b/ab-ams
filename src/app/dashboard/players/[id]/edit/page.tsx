@@ -610,7 +610,20 @@ export default function EditPlayerPage() {
                   }`}
                 >
                   <option value="">Select status</option>
+                  <option value="FULLY_AVAILABLE">Fully Available</option>
                   <option value="ACTIVE">Active</option>
+                  <option value="PARTIAL_TRAINING">Partial Training</option>
+                  <option value="PARTIAL_TEAM_INDIVIDUAL">Partial Team Individual</option>
+                  <option value="REHAB_INDIVIDUAL">Rehab Individual</option>
+                  <option value="NOT_AVAILABLE_INJURY">Not Available - Injury</option>
+                  <option value="PARTIAL_ILLNESS">Partial Illness</option>
+                  <option value="NOT_AVAILABLE_ILLNESS">Not Available - Illness</option>
+                  <option value="INDIVIDUAL_WORK">Individual Work</option>
+                  <option value="RECOVERY">Recovery</option>
+                  <option value="NOT_AVAILABLE_OTHER">Not Available - Other</option>
+                  <option value="DAY_OFF">Day Off</option>
+                  <option value="NATIONAL_TEAM">National Team</option>
+                  <option value="PHYSIO_THERAPY">Physio Therapy</option>
                   <option value="INJURED">Injured</option>
                   <option value="SUSPENDED">Suspended</option>
                   <option value="INACTIVE">Inactive</option>

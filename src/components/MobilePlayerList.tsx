@@ -100,40 +100,63 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'healthy': 
-      case 'fully_available':
-      case 'active': 
-        return 'text-green-400'
-      case 'injured': 
-      case 'physio_therapy': 
-        return 'text-yellow-400'
-      case 'suspended': 
-        return 'text-red-400'
-      case 'inactive': 
-        return 'text-gray-400'
-      default: 
-        return colorScheme.primary
+  const formatStatus = (status: string) => {
+    // Convert enum values to readable format
+    const statusMap: { [key: string]: string } = {
+      'FULLY_AVAILABLE': 'Fully Available',
+      'PARTIAL_TRAINING': 'Partial Training',
+      'PARTIAL_TEAM_INDIVIDUAL': 'Partial Team Individual',
+      'REHAB_INDIVIDUAL': 'Rehab Individual',
+      'NOT_AVAILABLE_INJURY': 'Not Available - Injury',
+      'PARTIAL_ILLNESS': 'Partial Illness',
+      'NOT_AVAILABLE_ILLNESS': 'Not Available - Illness',
+      'INDIVIDUAL_WORK': 'Individual Work',
+      'RECOVERY': 'Recovery',
+      'NOT_AVAILABLE_OTHER': 'Not Available - Other',
+      'DAY_OFF': 'Day Off',
+      'NATIONAL_TEAM': 'National Team',
+      'PHYSIO_THERAPY': 'Physio Therapy',
+      'ACTIVE': 'Active',
+      'INJURED': 'Injured',
+      'SUSPENDED': 'Suspended',
+      'INACTIVE': 'Inactive',
+      'RETIRED': 'Retired'
     }
+    return statusMap[status] || status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  }
+
+  const getStatusColor = (status: string) => {
+    const statusUpper = status.toUpperCase()
+    if (statusUpper === 'FULLY_AVAILABLE' || statusUpper === 'ACTIVE' || statusUpper === 'HEALTHY') {
+      return 'text-green-400'
+    }
+    if (statusUpper === 'INJURED' || statusUpper === 'PHYSIO_THERAPY' || statusUpper === 'REHAB_INDIVIDUAL' || statusUpper === 'RECOVERY') {
+      return 'text-yellow-400'
+    }
+    if (statusUpper === 'SUSPENDED' || statusUpper === 'NOT_AVAILABLE_INJURY' || statusUpper === 'NOT_AVAILABLE_ILLNESS' || statusUpper === 'NOT_AVAILABLE_OTHER') {
+      return 'text-red-400'
+    }
+    if (statusUpper === 'INACTIVE' || statusUpper === 'RETIRED') {
+      return 'text-gray-400'
+    }
+    return colorScheme.primary
   }
 
   const getStatusDot = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'healthy': 
-      case 'fully_available':
-      case 'active': 
-        return 'bg-green-400'
-      case 'injured': 
-      case 'physio_therapy': 
-        return 'bg-yellow-400'
-      case 'suspended': 
-        return 'bg-red-400'
-      case 'inactive': 
-        return 'bg-gray-400'
-      default: 
-        return colorScheme.primary
+    const statusUpper = status.toUpperCase()
+    if (statusUpper === 'FULLY_AVAILABLE' || statusUpper === 'ACTIVE' || statusUpper === 'HEALTHY') {
+      return 'bg-green-400'
     }
+    if (statusUpper === 'INJURED' || statusUpper === 'PHYSIO_THERAPY' || statusUpper === 'REHAB_INDIVIDUAL' || statusUpper === 'RECOVERY') {
+      return 'bg-yellow-400'
+    }
+    if (statusUpper === 'SUSPENDED' || statusUpper === 'NOT_AVAILABLE_INJURY' || statusUpper === 'NOT_AVAILABLE_ILLNESS' || statusUpper === 'NOT_AVAILABLE_OTHER') {
+      return 'bg-red-400'
+    }
+    if (statusUpper === 'INACTIVE' || statusUpper === 'RETIRED') {
+      return 'bg-gray-400'
+    }
+    return colorScheme.primary
   }
 
   const getPlayerInitials = (name: string) => {
@@ -385,7 +408,7 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
                         }}
                       />
                       <span className={`text-sm font-medium transition-all duration-300 ${getStatusColor(player.status)}`}>
-                        {player.status.replace('_', ' ')}
+                        {formatStatus(player.status)}
                       </span>
                     </div>
                   </div>
