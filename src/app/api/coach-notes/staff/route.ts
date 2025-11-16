@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all staff members
+    console.log('📋 Fetching staff members for coach notes visibility...')
     const staffMembers = await prisma.staff.findMany({
       where: {
         isActive: true
@@ -68,6 +69,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    console.log(`✅ Found ${staffMembers.length} active staff members`)
+
     const staffList = staffMembers.map(s => ({
       id: s.id,
       name: `${s.firstName} ${s.lastName}`.trim(),
@@ -79,6 +82,8 @@ export async function GET(request: NextRequest) {
         role: s.users.role
       } : null
     }))
+
+    console.log(`✅ Returning ${staffList.length} staff members for visibility control`)
 
     return NextResponse.json({ staff: staffList })
   } catch (error) {
