@@ -7,6 +7,7 @@ declare global {
 // Create Prisma client with connection pooling
 const createPrismaClient = () => {
   const databaseUrl = process.env.DATABASE_URL
+  const directUrl = process.env.DIRECT_URL
   
   // If no DATABASE_URL, allow creating a client without explicit datasource override
   if (!databaseUrl) {
@@ -16,13 +17,21 @@ const createPrismaClient = () => {
     })
   }
 
-  // Configure Prisma for connection pooling (important for Supabase and serverless)
+  // For Supabase: Use DIRECT_URL for runtime queries to avoid prepared statement conflicts
+  // The pooler (port 6543) doesn't support prepared statements properly
+  // DIRECT_URL (port 5432) supports prepared statements and is better for Prisma
+  const runtimeUrl = directUrl || databaseUrl
+  
   console.log('🔗 Database URL configured:', '✅ Set')
+  console.log('🔗 Using DIRECT_URL for runtime queries (avoids prepared statement conflicts)')
   
   return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-    // Disable query engine connection pooling since we're using Supabase pooler
-    // Prisma will use the connection string's pooler directly
+    datasources: {
+      db: {
+        url: runtimeUrl
+      }
+    },
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error']
   })
 }
 
