@@ -850,7 +850,7 @@ export default function Dashboard() {
       const statusResponse = await fetch(`/api/players/${selectedPlayer.id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: selectedPlayer.availabilityStatus })
+        body: JSON.stringify({ status: selectedPlayer.availabilityStatus || selectedPlayer.status })
       })
 
       if (!statusResponse.ok) {
@@ -1772,10 +1772,16 @@ export default function Dashboard() {
                             })
                             
                             if (response.ok) {
-                              // Update local state
+                              const responseData = await response.json()
+                              // Update local state with both status and availabilityStatus
                               setPlayers(prev => prev.map(p => 
-                                p.id === player.id ? { ...p, availabilityStatus: newStatus } : p
+                                p.id === player.id ? { 
+                                  ...p, 
+                                  status: newStatus,
+                                  availabilityStatus: newStatus 
+                                } : p
                               ))
+                              console.log('✅ Status updated successfully:', responseData)
                             } else {
                               const errorData = await response.json()
                               console.error('Failed to update player status:', errorData)
