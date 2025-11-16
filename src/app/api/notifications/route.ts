@@ -103,7 +103,6 @@ export async function GET(request: NextRequest) {
       skip: offset
     })
 
-    const userId = String(user.userId || user.id || '')
     const unreadCount = await prisma.notifications.count({
       where: {
         userId: userId,
