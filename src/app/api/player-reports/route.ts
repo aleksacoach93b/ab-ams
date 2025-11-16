@@ -298,6 +298,16 @@ export async function POST(request: NextRequest) {
     // Generate unique ID for player report
     const reportId = `player_report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
+    console.log('📤 Upload player report data:', {
+      name,
+      description,
+      folderIdRaw,
+      folderId,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size
+    })
+    
     // Create report in database (schema uses 'title' not 'name', and requires 'id')
     const report = await prisma.playersReport.create({
       data: {
@@ -311,10 +321,60 @@ export async function POST(request: NextRequest) {
         folderId,
         createdBy: user.userId,
         updatedAt: new Date(), // Required field
+      },
+      include: {
+        folder: {
+          include: {
+            player_report_player_access: {
+              include: {
+                players: {
+                  select: { id: true, firstName: true, lastName: true, email: true }
+                }
+              }
+            }
+          }
+        }
       }
     })
 
-    return NextResponse.json(report, { status: 201 })
+    // Transform response for frontend (use 'name' instead of 'title', add 'folder' relation)
+    const transformedReport = {
+      id: report.id,
+      name: report.title, // Transform 'title' to 'name' for frontend compatibility
+      description: report.description,
+      folderId: report.folderId,
+      fileName: report.fileName,
+      fileType: report.fileType,
+      fileSize: report.fileSize,
+      fileUrl: report.fileUrl,
+      thumbnailUrl: report.thumbnailUrl,
+      createdBy: report.createdBy,
+      createdAt: report.createdAt.toISOString(),
+      updatedAt: report.updatedAt.toISOString(),
+      folder: report.folder ? {
+        id: report.folder.id,
+        name: report.folder.name,
+        description: report.folder.description,
+        parentId: report.folder.parentId,
+        createdBy: report.folder.createdBy,
+        createdAt: report.folder.createdAt.toISOString(),
+        updatedAt: report.folder.updatedAt.toISOString(),
+        visibleToPlayers: report.folder.player_report_player_access.map(access => ({
+          id: access.id,
+          playerId: access.playerId,
+          canView: access.canView,
+          player: access.players ? {
+            id: access.players.id,
+            name: `${access.players.firstName || ''} ${access.players.lastName || ''}`.trim() || access.players.email,
+            email: access.players.email
+          } : null
+        }))
+      } : null
+    }
+
+    console.log('✅ Player report created successfully:', transformedReport.id)
+
+    return NextResponse.json(transformedReport, { status: 201 })
   } catch (error) {
     console.error('Error uploading player report:', error)
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 })
