@@ -308,6 +308,16 @@ export async function POST(request: NextRequest) {
       fileSize: file.size
     })
     
+    // Verify Prisma client has player_reports model
+    if (!prisma.player_reports) {
+      console.error('❌ Prisma client does not have player_reports model')
+      console.error('Available models:', Object.keys(prisma).filter(k => !k.startsWith('_') && !k.startsWith('$')).sort().join(', '))
+      return NextResponse.json(
+        { message: 'Database model not available. Please regenerate Prisma client.' },
+        { status: 500 }
+      )
+    }
+    
     // Create report in database (schema uses 'title' not 'name', and requires 'id')
     const report = await prisma.player_reports.create({
       data: {
