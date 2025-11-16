@@ -175,6 +175,7 @@ export async function PUT(
                 canView: true,
                 canEdit: false,
                 canDelete: false,
+                createdAt: new Date(),
                 updatedAt: new Date()
               })
             }
