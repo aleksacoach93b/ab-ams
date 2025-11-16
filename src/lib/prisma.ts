@@ -20,7 +20,14 @@ const createPrismaClient = () => {
   // For Supabase: Use DIRECT_URL for runtime queries to avoid prepared statement conflicts
   // The pooler (port 6543) doesn't support prepared statements properly
   // DIRECT_URL (port 5432) supports prepared statements and is better for Prisma
-  const runtimeUrl = directUrl || databaseUrl
+  let runtimeUrl = directUrl || databaseUrl
+  
+  // If using pooler URL, add pgbouncer parameter to disable prepared statements
+  if (runtimeUrl && runtimeUrl.includes('pooler.supabase.com')) {
+    runtimeUrl = runtimeUrl.includes('?') 
+      ? `${runtimeUrl}&pgbouncer=true&connection_limit=1`
+      : `${runtimeUrl}?pgbouncer=true&connection_limit=1`
+  }
   
   console.log('🔗 Database URL configured:', '✅ Set')
   console.log('🔗 Using DIRECT_URL for runtime queries (avoids prepared statement conflicts)')
