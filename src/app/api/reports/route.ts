@@ -460,7 +460,7 @@ export async function POST(request: NextRequest) {
 
     // Create notification for report upload
     try {
-      await NotificationService.notifyReportUploaded(report.id, report.name, user.userId)
+      await NotificationService.notifyReportUploaded(report.id, report.title, user.userId)
       console.log('✅ Notification created for report upload')
     } catch (notificationError) {
       console.error('❌ Error creating notification:', notificationError)
