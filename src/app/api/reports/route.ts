@@ -8,6 +8,9 @@ import { NotificationService } from '@/lib/notificationService'
 const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 import { logFileAccess, getClientInfo } from '@/lib/fileAccessLogger'
 import { readState, writeState } from '@/lib/localDevStore'
+import { put } from '@vercel/blob'
+
+const USE_BLOB_STORAGE = process.env.BLOB_READ_WRITE_TOKEN && !LOCAL_DEV_MODE
 
 export async function GET(request: NextRequest) {
   try {
@@ -392,28 +395,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'reports')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-    }
-
     // Generate unique filename
     const timestamp = Date.now()
     const fileExtension = file.name.split('.').pop()
     const fileName = `report_${timestamp}.${fileExtension}`
-    const filePath = join(uploadsDir, fileName)
+    
+    let fileUrl: string
 
-    // Save file to disk
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    // Use Vercel Blob Storage in production
+    if (USE_BLOB_STORAGE) {
+      console.log('📁 Uploading report to Vercel Blob Storage...')
+      const bytes = await file.arrayBuffer()
+      const blob = await put(`reports/${fileName}`, bytes, {
+        access: 'public',
+        contentType: file.type,
+      })
+      fileUrl = blob.url
+      console.log('✅ Uploaded to Blob Storage:', fileUrl)
+    } else {
+      // Fallback to local filesystem
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'reports')
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true })
+      }
+      const filePath = join(uploadsDir, fileName)
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      await writeFile(filePath, buffer)
+      fileUrl = `/uploads/reports/${fileName}`
+      console.log('✅ File saved to disk:', fileUrl)
+    }
 
     // No thumbnail generation - keep it simple
     const thumbnailUrl = null
-
-    // Create report record
-    const fileUrl = `/uploads/reports/${fileName}`
     
     // Create the report
     const report = await prisma.reports.create({
