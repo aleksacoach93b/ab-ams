@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { EventType } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +18,7 @@ export async function POST(request: NextRequest) {
       startTime,
       endTime,
       location,
+      icon,
     } = body
 
     // Validate required fields
@@ -28,36 +30,61 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Generate unique ID for event
+    const eventId = `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // Use a more reliable validation method
+    const upperType = type?.toUpperCase()
+    const finalEventType = (upperType && EventType[upperType as keyof typeof EventType])
+      ? upperType as EventType
+      : 'TRAINING'
+
+    // Set appropriate default icon based on event type
+    const getDefaultIcon = (eventType: string) => {
+      switch (eventType.toUpperCase()) {
+        case 'TRAINING': return 'dumbbell-realistic'
+        case 'MATCH': return 'football-ball-realistic'
+        case 'MEETING': return 'meeting-new'
+        case 'MEDICAL': return 'blood-sample-final'
+        case 'RECOVERY': return 'recovery-new'
+        case 'MEAL': return 'meal-plate'
+        case 'REST': return 'bed-time'
+        case 'LB_GYM': return 'dumbbell-realistic'
+        case 'UB_GYM': return 'dumbbell-realistic'
+        case 'PRE_ACTIVATION': return 'dumbbell-realistic'
+        case 'REHAB': return 'blood-sample-final'
+        case 'STAFF_MEETING': return 'meeting-new'
+        case 'VIDEO_ANALYSIS': return 'stopwatch-whistle'
+        case 'DAY_OFF': return 'bed-time'
+        case 'TRAVEL': return 'bus-new'
+        case 'OTHER': return 'stopwatch-whistle'
+        default: return 'dumbbell-realistic'
+      }
+    }
+
     console.log('📅 Creating simple event with data:', {
       title,
-      type,
+      type: finalEventType,
       date,
       startTime,
       endTime,
       location
     })
 
-    // Create simple event without participants
-    // Parse date and time into DateTime objects
-    const eventDate = new Date(date)
-    const [startHours, startMinutes] = (startTime || '00:00').split(':').map(Number)
-    const [endHours, endMinutes] = (endTime || '23:59').split(':').map(Number)
-    
-    const startDateTime = new Date(eventDate)
-    startDateTime.setHours(startHours, startMinutes, 0, 0)
-    
-    const endDateTime = new Date(eventDate)
-    endDateTime.setHours(endHours, endMinutes, 0, 0)
+    // Combine date with startTime and endTime to create DateTime objects
+    const startDateTime = new Date(`${date}T${startTime || '00:00'}:00`)
+    const endDateTime = new Date(`${date}T${endTime || '23:59'}:00`)
     
     const event = await prisma.events.create({
       data: {
+        id: eventId,
         title,
-        description: description || '',
-        type: type || 'TRAINING',
+        description: description || null,
+        type: finalEventType,
         startTime: startDateTime,
         endTime: endDateTime,
-        icon: type || 'Calendar',
-        updatedAt: new Date(),
+        locationId: location || null,
+        icon: icon || getDefaultIcon(finalEventType),
       }
     })
 

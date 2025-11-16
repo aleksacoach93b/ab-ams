@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { readState, writeState } from '@/lib/localDevStore'
+import { EventType } from '@prisma/client'
 
 const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
@@ -212,10 +213,14 @@ export async function PUT(
 
     console.log('🔄 Updating event with participants:', { selectedPlayers, selectedStaff })
 
+    // Combine date with startTime and endTime to create DateTime objects
+    const startDateTime = new Date(`${date}T${startTime || '00:00'}:00`)
+    const endDateTime = new Date(`${date}T${endTime || '23:59'}:00`)
+
     // Update event with participants in a transaction
     const result = await prisma.$transaction(async (tx) => {
       // First, delete existing participants
-      await tx.eventParticipant.deleteMany({
+      await tx.event_participants.deleteMany({
         where: { eventId: eventId }
       })
       console.log('✅ Deleted existing participants')
@@ -252,54 +257,61 @@ export async function PUT(
         where: { id: eventId },
         data: {
           title,
-          description,
+          description: description || null,
           type: finalEventType,
-          date: new Date(date),
-          startTime: startTime || '00:00',
-          endTime: endTime || '23:59',
-          location: location || null,
-          iconName: icon || getDefaultIcon(finalEventType),
+          startTime: startDateTime, // DateTime object
+          endTime: endDateTime, // DateTime object
+          locationId: location || null, // Use locationId instead of location
+          icon: icon || getDefaultIcon(finalEventType), // Use icon instead of iconName
         }
       })
       console.log('✅ Updated event:', event.id)
 
-      // Add new participants
-      const participants = []
-      
-      // Add players
-      for (const playerId of selectedPlayers) {
-        const participant = await tx.eventParticipant.create({
-          data: {
-            eventId: eventId,
-            playerId: playerId,
-            staffId: null,
-          }
-        })
-        participants.push(participant)
-      }
-      console.log('✅ Added players:', selectedPlayers.length)
+      // Add new participants with IDs
+      const participantData = [
+        ...selectedPlayers.map((playerId: string) => ({
+          id: `event_participant_${eventId}_${Date.now()}_player_${Math.random().toString(36).substr(2, 9)}`,
+          eventId: eventId,
+          playerId: playerId,
+          staffId: null,
+        })),
+        ...selectedStaff.map((staffId: string) => ({
+          id: `event_participant_${eventId}_${Date.now()}_staff_${Math.random().toString(36).substr(2, 9)}`,
+          eventId: eventId,
+          playerId: null,
+          staffId: staffId,
+        }))
+      ]
 
-      // Add staff
-      for (const staffId of selectedStaff) {
-        const participant = await tx.eventParticipant.create({
-          data: {
-            eventId: eventId,
-            playerId: null,
-            staffId: staffId,
-          }
+      if (participantData.length > 0) {
+        await tx.event_participants.createMany({
+          data: participantData
         })
-        participants.push(participant)
+        console.log('✅ Added participants:', participantData.length)
       }
-      console.log('✅ Added staff:', selectedStaff.length)
 
       // Fetch the complete event with participants
       const completeEvent = await tx.events.findUnique({
         where: { id: eventId },
         include: {
-          participants: {
+          event_participants: {
             include: {
-              player: true,
-              staff: true,
+              players: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              },
+              staff: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              }
             }
           }
         }
@@ -308,10 +320,32 @@ export async function PUT(
       return completeEvent
     })
 
-    // Transform event to map iconName to icon for frontend compatibility
+    // Transform event for frontend compatibility
     const transformedEvent = {
-      ...result,
-      icon: result.iconName || 'Calendar'
+      id: result!.id,
+      title: result!.title,
+      description: result!.description,
+      type: result!.type,
+      startTime: result!.startTime.toISOString(),
+      endTime: result!.endTime.toISOString(),
+      date: result!.startTime.toISOString().split('T')[0],
+      icon: result!.icon || 'Calendar',
+      participants: result!.event_participants?.map(p => ({
+        id: p.id,
+        playerId: p.playerId,
+        staffId: p.staffId,
+        role: p.role,
+        player: p.players ? {
+          id: p.players.id,
+          name: `${p.players.firstName} ${p.players.lastName}`.trim(),
+          email: p.players.email
+        } : null,
+        staff: p.staff ? {
+          id: p.staff.id,
+          name: `${p.staff.firstName} ${p.staff.lastName}`.trim(),
+          email: p.staff.email
+        } : null
+      })) || []
     }
 
     console.log('✅ Event updated successfully with participants:', transformedEvent.participants.length)
