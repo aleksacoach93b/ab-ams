@@ -174,7 +174,13 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ reports: filteredReports })
+    // Transform reports to match frontend expectations (add 'name' field from 'title')
+    const transformedReports = filteredReports.map(report => ({
+      ...report,
+      name: report.title, // Frontend expects 'name' but schema uses 'title'
+    }))
+
+    return NextResponse.json({ reports: transformedReports })
   } catch (error) {
     console.error('Error fetching reports:', error)
     return NextResponse.json(
@@ -468,7 +474,13 @@ export async function POST(request: NextRequest) {
       // Don't fail the report creation if notification fails
     }
 
-    return NextResponse.json(report, { status: 201 })
+    // Transform report to match frontend expectations (add 'name' field from 'title')
+    const transformedReport = {
+      ...report,
+      name: report.title, // Frontend expects 'name' but schema uses 'title'
+    }
+
+    return NextResponse.json(transformedReport, { status: 201 })
   } catch (error) {
     console.error('Error uploading report:', error)
     return NextResponse.json(
