@@ -6,6 +6,9 @@ const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DAT
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { put } from '@vercel/blob'
+
+const USE_BLOB_STORAGE = process.env.BLOB_READ_WRITE_TOKEN && !LOCAL_DEV_MODE
 
 export async function GET(request: NextRequest) {
   try {
@@ -227,21 +230,35 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Create upload directory
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'player-reports')
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-    }
-
-    // Save file
+    // Generate unique filename
     const timestamp = Date.now()
-    const fileName = `${timestamp}-${file.name}`
-    const filePath = join(uploadDir, fileName)
-    const fileUrl = `/uploads/player-reports/${fileName}`
+    const fileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+    
+    let fileUrl: string
 
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    // Use Vercel Blob Storage in production
+    if (USE_BLOB_STORAGE) {
+      console.log('📁 Uploading player report to Vercel Blob Storage...')
+      const bytes = await file.arrayBuffer()
+      const blob = await put(`player-reports/${fileName}`, bytes, {
+        access: 'public',
+        contentType: file.type,
+      })
+      fileUrl = blob.url
+      console.log('✅ Uploaded to Blob Storage:', fileUrl)
+    } else {
+      // Fallback to local filesystem
+      const uploadDir = join(process.cwd(), 'public', 'uploads', 'player-reports')
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true })
+      }
+      const filePath = join(uploadDir, fileName)
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      await writeFile(filePath, buffer)
+      fileUrl = `/uploads/player-reports/${fileName}`
+      console.log('✅ File saved to disk:', fileUrl)
+    }
 
     // Create report in database
     const report = await prisma.playersReport.create({

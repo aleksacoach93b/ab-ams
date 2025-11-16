@@ -6,6 +6,9 @@ import { existsSync } from 'fs'
 import { verifyToken } from '@/lib/auth'
 import { NotificationService } from '@/lib/notificationService'
 const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
+import { put } from '@vercel/blob'
+
+const USE_BLOB_STORAGE = process.env.BLOB_READ_WRITE_TOKEN && !LOCAL_DEV_MODE
 
 export async function GET(
   request: NextRequest,
@@ -175,22 +178,36 @@ export async function POST(
       )
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'events')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-    }
-
     // Generate unique filename
     const timestamp = Date.now()
     const fileExtension = file.name.split('.').pop()
     const fileName = `event_${id}_${timestamp}.${fileExtension}`
-    const filePath = join(uploadsDir, fileName)
+    
+    let fileUrl: string
 
-    // Save file to disk
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    // Use Vercel Blob Storage in production
+    if (USE_BLOB_STORAGE) {
+      console.log('📁 Uploading event media to Vercel Blob Storage...')
+      const bytes = await file.arrayBuffer()
+      const blob = await put(`events/${id}/${fileName}`, bytes, {
+        access: 'public',
+        contentType: file.type,
+      })
+      fileUrl = blob.url
+      console.log('✅ Uploaded to Blob Storage:', fileUrl)
+    } else {
+      // Fallback to local filesystem
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'events')
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true })
+      }
+      const filePath = join(uploadsDir, fileName)
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      await writeFile(filePath, buffer)
+      fileUrl = `/uploads/events/${fileName}`
+      console.log('✅ File saved to disk:', fileUrl)
+    }
 
     // Determine media type
     let mediaType = 'OTHER'
@@ -203,9 +220,6 @@ export async function POST(
     } else if (file.type === 'application/pdf' || file.type.includes('document') || file.type === 'text/plain') {
       mediaType = 'DOCUMENT'
     }
-
-    // Save media record to database
-    const fileUrl = `/uploads/events/${fileName}`
     const newMedia = await prisma.eventMedia.create({
       data: {
         eventId: id,

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
+import { put } from '@vercel/blob'
+
+const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
+const USE_BLOB_STORAGE = process.env.BLOB_READ_WRITE_TOKEN && !LOCAL_DEV_MODE
 
 export async function POST(request: NextRequest) {
   try {
@@ -76,22 +80,31 @@ export async function POST(request: NextRequest) {
     const fileName = `chat-${chatRoomId}-${timestamp}-${user.userId}.${fileExtension}`
 
     console.log('📝 Generated filename:', fileName)
-    console.log('💾 Starting local file upload...')
+    
+    let fileUrl: string
 
-    // Create upload directory if it doesn't exist
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'chat')
-    await mkdir(uploadsDir, { recursive: true })
-
-    // Convert file to buffer
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
-    // Write file to disk
-    const filePath = path.join(uploadsDir, fileName)
-    await writeFile(filePath, buffer)
-
-    // Generate public URL
-    const fileUrl = `/uploads/chat/${fileName}`
+    // Use Vercel Blob Storage in production
+    if (USE_BLOB_STORAGE) {
+      console.log('📁 Uploading chat file to Vercel Blob Storage...')
+      const bytes = await file.arrayBuffer()
+      const blob = await put(`chat/${fileName}`, bytes, {
+        access: 'public',
+        contentType: file.type,
+      })
+      fileUrl = blob.url
+      console.log('✅ Uploaded to Blob Storage:', fileUrl)
+    } else {
+      // Fallback to local filesystem
+      console.log('💾 Starting local file upload...')
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'chat')
+      await mkdir(uploadsDir, { recursive: true })
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      const filePath = path.join(uploadsDir, fileName)
+      await writeFile(filePath, buffer)
+      fileUrl = `/uploads/chat/${fileName}`
+      console.log('✅ File saved to disk:', fileUrl)
+    }
 
     console.log('✅ Upload successful!', { url: fileUrl })
 
