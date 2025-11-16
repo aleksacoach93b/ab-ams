@@ -381,36 +381,84 @@ export async function PUT(request: NextRequest) {
       ? upperTypePut as EventType 
       : EventType.TRAINING
     
+    // Combine date with startTime and endTime to create DateTime objects
+    const startDateTime = new Date(`${date}T${startTime || '00:00'}:00`)
+    const endDateTime = new Date(`${date}T${endTime || '23:59'}:00`)
+    
     const event = await prisma.events.update({
       where: { id },
       data: {
         title,
-        description,
+        description: description || null,
         type: finalEventType,
-        date: new Date(date),
-        startTime: startTime || '00:00',
-        endTime: endTime || '23:59',
-        location: location || null,
-        iconName: icon || 'Dumbbell', // Use iconName field from schema
-        matchDayTag: matchDayTag || null, // Match Day Tag
+        startTime: startDateTime, // DateTime object
+        endTime: endDateTime, // DateTime object
+        locationId: location || null, // Use locationId instead of location
+        icon: icon || 'Dumbbell', // Use icon instead of iconName
+        isRecurring: body.isRecurring !== undefined ? body.isRecurring : undefined,
+        isAllDay: body.isAllDay !== undefined ? body.isAllDay : undefined,
+        allowPlayerCreation: body.allowPlayerCreation !== undefined ? body.allowPlayerCreation : undefined,
+        allowPlayerReschedule: body.allowPlayerReschedule !== undefined ? body.allowPlayerReschedule : undefined,
+        updatedAt: new Date(), // Update timestamp
       },
       include: {
-        participants: {
+        event_participants: {
           include: {
-            player: true,
-            staff: true,
-          },
+            players: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            },
+            staff: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
+          }
         },
-        media: true,
+        event_media: true
       },
     })
 
-    console.log('✅ Event updated successfully:', event.id, event.title, event.iconName)
+    console.log('✅ Event updated successfully:', event.id, event.title, event.icon)
 
-    // Transform event to map iconName to icon for frontend compatibility
+    // Transform event for frontend compatibility
     const transformedEvent = {
-      ...event,
-      icon: event.iconName || 'Calendar'
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      type: event.type,
+      startTime: event.startTime.toISOString(),
+      endTime: event.endTime.toISOString(),
+      date: event.startTime.toISOString().split('T')[0], // Extract date for frontend
+      icon: event.icon || 'Calendar',
+      isRecurring: event.isRecurring,
+      isAllDay: event.isAllDay,
+      allowPlayerCreation: event.allowPlayerCreation,
+      allowPlayerReschedule: event.allowPlayerReschedule,
+      participants: event.event_participants.map(p => ({
+        id: p.id,
+        playerId: p.playerId,
+        staffId: p.staffId,
+        role: p.role,
+        player: p.players ? {
+          id: p.players.id,
+          name: `${p.players.firstName} ${p.players.lastName}`.trim(),
+          email: p.players.email
+        } : null,
+        staff: p.staff ? {
+          id: p.staff.id,
+          name: `${p.staff.firstName} ${p.staff.lastName}`.trim(),
+          email: p.staff.email
+        } : null
+      })),
+      media: event.event_media || []
     }
 
     return NextResponse.json(
@@ -670,18 +718,37 @@ export async function POST(request: NextRequest) {
       ? upperType as EventType
       : 'TRAINING'
 
+    // Generate unique ID for event
+    const eventId = `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // Combine date with startTime and endTime to create DateTime objects
+    const startDateTime = new Date(`${date}T${startTime || '00:00'}:00`)
+    const endDateTime = new Date(`${date}T${endTime || '23:59'}:00`)
+    
     // Create event first without participants
     const eventData = {
+      id: eventId,
       title,
-      description,
+      description: description || null,
       type: finalEventType,
-      date: new Date(date),
-      startTime: startTime || '00:00',
-      endTime: endTime || '23:59',
-      location: location || null,
-      iconName: icon || getDefaultIcon(finalEventType), // Use selected icon or appropriate default
-      matchDayTag: matchDayTag || null, // Match Day Tag
+      startTime: startDateTime, // DateTime object
+      endTime: endDateTime, // DateTime object
+      locationId: location || null, // Use locationId instead of location
+      icon: icon || getDefaultIcon(finalEventType), // Use icon instead of iconName
+      isRecurring: body.isRecurring || false,
+      isAllDay: body.isAllDay || false,
+      allowPlayerCreation: body.allowPlayerCreation || false,
+      allowPlayerReschedule: body.allowPlayerReschedule || false,
     }
+
+    console.log('📅 Creating event with data:', {
+      id: eventId,
+      title,
+      type: finalEventType,
+      startTime: startDateTime,
+      endTime: endDateTime,
+      icon: eventData.icon
+    })
 
     const event = await prisma.events.create({
       data: eventData
@@ -707,8 +774,14 @@ export async function POST(request: NextRequest) {
       ]
 
       if (participantData.length > 0) {
-        await prisma.eventParticipant.createMany({
-          data: participantData
+        // Generate unique IDs for each participant
+        const participantsWithIds = participantData.map((p, index) => ({
+          id: `event_participant_${event.id}_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+          ...p
+        }))
+        
+        await prisma.event_participants.createMany({
+          data: participantsWithIds
         })
         console.log('✅ Participants added successfully')
       }
@@ -718,19 +791,61 @@ export async function POST(request: NextRequest) {
     const completeEvent = await prisma.events.findUnique({
       where: { id: event.id },
       include: {
-        participants: {
+        event_participants: {
           include: {
-            player: true,
-            staff: true,
+            players: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            },
+            staff: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
           }
-        }
+        },
+        event_media: true
       }
     })
 
-    // Transform event to map iconName to icon for frontend compatibility
+    // Transform event for frontend compatibility
     const transformedEvent = {
-      ...completeEvent,
-      icon: completeEvent?.iconName || 'Calendar'
+      id: completeEvent!.id,
+      title: completeEvent!.title,
+      description: completeEvent!.description,
+      type: completeEvent!.type,
+      startTime: completeEvent!.startTime.toISOString(),
+      endTime: completeEvent!.endTime.toISOString(),
+      date: completeEvent!.startTime.toISOString().split('T')[0], // Extract date for frontend
+      icon: completeEvent!.icon || 'Calendar',
+      isRecurring: completeEvent!.isRecurring,
+      isAllDay: completeEvent!.isAllDay,
+      allowPlayerCreation: completeEvent!.allowPlayerCreation,
+      allowPlayerReschedule: completeEvent!.allowPlayerReschedule,
+      participants: completeEvent!.event_participants.map(p => ({
+        id: p.id,
+        playerId: p.playerId,
+        staffId: p.staffId,
+        role: p.role,
+        player: p.players ? {
+          id: p.players.id,
+          name: `${p.players.firstName} ${p.players.lastName}`.trim(),
+          email: p.players.email
+        } : null,
+        staff: p.staff ? {
+          id: p.staff.id,
+          name: `${p.staff.firstName} ${p.staff.lastName}`.trim(),
+          email: p.staff.email
+        } : null
+      })),
+      media: completeEvent!.event_media || []
     }
 
     // Create notifications for player participants only
