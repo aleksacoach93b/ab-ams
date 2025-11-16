@@ -115,14 +115,15 @@ export async function GET(request: NextRequest) {
     const reports = await prisma.reports.findMany({
       where: whereClause,
       include: {
-        folder: {
+        report_folders: {
           include: {
-            visibleToStaff: {
+            report_visibility: {
               include: {
-                staff: {
+                users: {
                   select: {
                     id: true,
-                    name: true,
+                    firstName: true,
+                    lastName: true,
                     email: true
                   }
                 }
@@ -150,9 +151,10 @@ export async function GET(request: NextRequest) {
       
       if (staffMember) {
         // Staff can only see reports from folders they have access to
+        // Note: report_visibility uses userId, not staffId
         filteredReports = reports.filter(report => 
-          report.folder && report.folder.visibleToStaff.some(access => 
-            access.staffId === staffMember.id && access.canView
+          report.report_folders && report.report_folders.report_visibility.some(access => 
+            access.userId === user.userId && access.canView
           )
         )
       } else {
@@ -174,10 +176,21 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Transform reports to match frontend expectations (add 'name' field from 'title')
+    // Transform reports to match frontend expectations (add 'name' field from 'title' and 'folder' from 'report_folders')
     const transformedReports = filteredReports.map(report => ({
       ...report,
       name: report.title, // Frontend expects 'name' but schema uses 'title'
+      folder: report.report_folders ? {
+        ...report.report_folders,
+        visibleToStaff: report.report_folders.report_visibility?.map(access => ({
+          ...access,
+          staff: access.users ? {
+            id: access.users.id,
+            name: `${access.users.firstName} ${access.users.lastName}`.trim(),
+            email: access.users.email
+          } : null
+        })) || []
+      } : null
     }))
 
     return NextResponse.json({ reports: transformedReports })
@@ -454,7 +467,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(), // Required field
       },
       include: {
-        folder: true
+        report_folders: true // Schema uses 'report_folders' relation, not 'folder'
       }
     })
 
@@ -474,10 +487,11 @@ export async function POST(request: NextRequest) {
       // Don't fail the report creation if notification fails
     }
 
-    // Transform report to match frontend expectations (add 'name' field from 'title')
+    // Transform report to match frontend expectations (add 'name' field from 'title' and 'folder' from 'report_folders')
     const transformedReport = {
       ...report,
       name: report.title, // Frontend expects 'name' but schema uses 'title'
+      folder: report.report_folders || null // Frontend expects 'folder' but schema uses 'report_folders'
     }
 
     return NextResponse.json(transformedReport, { status: 201 })
