@@ -54,19 +54,33 @@ export async function GET(request: NextRequest) {
     // Get all staff members from database
     const staff = await prisma.staff.findMany({
       include: {
-        user: {
+        users: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             role: true
           }
         }
       },
       orderBy: {
-        name: 'asc'
+        firstName: 'asc'
       }
     })
+
+    // Transform staff to match frontend expectations
+    const transformedStaff = staff.map(staffMember => ({
+      id: staffMember.id,
+      name: `${staffMember.firstName} ${staffMember.lastName}`.trim(),
+      email: staffMember.email || staffMember.users?.email || '',
+      user: staffMember.users ? {
+        id: staffMember.users.id,
+        name: `${staffMember.users.firstName} ${staffMember.users.lastName}`.trim(),
+        email: staffMember.users.email,
+        role: staffMember.users.role
+      } : null
+    }))
 
     return NextResponse.json({ staff })
   } catch (error) {

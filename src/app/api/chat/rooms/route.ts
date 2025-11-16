@@ -143,10 +143,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Get chat rooms where user is a participant (DB path)
+    // Note: chat_rooms model doesn't have isActive field, only participants do
     const chatRooms = await prisma.chat_rooms.findMany({
       where: {
-        isActive: true,
-        participants: {
+        chat_room_participants: {
           some: {
             userId: user.userId,
             isActive: true
@@ -154,31 +154,33 @@ export async function GET(request: NextRequest) {
         }
       },
       include: {
-        participants: {
+        chat_room_participants: {
           where: {
             isActive: true
           },
           include: {
-            user: {
+            users: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
                 role: true
               }
             }
           }
         },
-        messages: {
+        chat_messages: {
           orderBy: {
             createdAt: 'desc'
           },
           take: 1,
           include: {
-            sender: {
+            users: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
                 role: true
               }
@@ -195,21 +197,21 @@ export async function GET(request: NextRequest) {
     const transformedRooms = chatRooms.map(room => ({
       id: room.id,
       name: room.name,
-      type: room.type,
-      participants: room.participants.map(p => ({
-        id: p.user.id,
-        name: p.user.name || p.user.email,
-        role: p.user.role,
+      type: room.type || 'group',
+      participants: room.chat_room_participants.map(p => ({
+        id: p.users.id,
+        name: `${p.users.firstName} ${p.users.lastName}`.trim() || p.users.email,
+        role: p.users.role,
         isOnline: Math.random() > 0.5 // TODO: Implement real online status
       })),
-      lastMessage: room.messages[0] ? {
-        id: room.messages[0].id,
-        content: room.messages[0].content,
-        senderId: room.messages[0].sender.id,
-        senderName: room.messages[0].sender.name || room.messages[0].sender.email,
-        senderRole: room.messages[0].sender.role,
-        timestamp: room.messages[0].createdAt.toISOString(),
-        type: room.messages[0].messageType,
+      lastMessage: room.chat_messages[0] ? {
+        id: room.chat_messages[0].id,
+        content: room.chat_messages[0].content,
+        senderId: room.chat_messages[0].users.id,
+        senderName: `${room.chat_messages[0].users.firstName} ${room.chat_messages[0].users.lastName}`.trim() || room.chat_messages[0].users.email,
+        senderRole: room.chat_messages[0].users.role,
+        timestamp: room.chat_messages[0].createdAt.toISOString(),
+        type: room.chat_messages[0].messageType,
         status: 'delivered' // TODO: Implement real message status
       } : undefined,
       unreadCount: 0 // TODO: Implement unread count
@@ -456,12 +458,13 @@ export async function POST(request: NextRequest) {
         }
       },
       include: {
-        participants: {
+        chat_room_participants: {
           include: {
-            user: {
+            users: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
                 role: true
               }
@@ -475,11 +478,11 @@ export async function POST(request: NextRequest) {
     const transformedRoom = {
       id: chatRoom.id,
       name: chatRoom.name,
-      type: chatRoom.type,
-      participants: chatRoom.participants.map(p => ({
-        id: p.user.id,
-        name: p.user.name || p.user.email,
-        role: p.user.role,
+      type: chatRoom.type || 'group',
+      participants: chatRoom.chat_room_participants.map(p => ({
+        id: p.users.id,
+        name: `${p.users.firstName} ${p.users.lastName}`.trim() || p.users.email,
+        role: p.users.role,
         isOnline: Math.random() > 0.5 // TODO: Implement real online status
       })),
       lastMessage: undefined,
