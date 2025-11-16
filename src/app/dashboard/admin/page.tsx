@@ -795,7 +795,7 @@ export default function AdminPage() {
               <div className="space-y-2">
                 <textarea
                   readOnly
-                  value={`http://localhost:3000/api/analytics/${csvType}-csv`}
+                  value={`${typeof window !== 'undefined' ? window.location.origin : 'https://ab-ams-app.vercel.app'}/api/analytics/${csvType}-csv`}
                   className="w-full p-3 border rounded-md text-sm font-mono resize-none"
                   style={{ 
                     backgroundColor: colorScheme.background,
@@ -810,7 +810,8 @@ export default function AdminPage() {
               <div className="flex space-x-3">
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(`http://localhost:3000/api/analytics/${csvType}-csv`)
+                    const csvUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://ab-ams-app.vercel.app'}/api/analytics/${csvType}-csv`
+                    navigator.clipboard.writeText(csvUrl)
                     alert('Link copied to clipboard!')
                   }}
                   className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 border rounded-md font-medium transition-colors"

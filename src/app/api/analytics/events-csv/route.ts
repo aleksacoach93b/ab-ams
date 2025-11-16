@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
 
     // Database mode: use Prisma
     // Get saved daily analytics data
-    const dailyAnalytics = await prisma.dailyEventAnalytics.findMany({
+    const dailyAnalytics = await prisma.daily_event_analytics.findMany({
       where: {
         date: {
           gte: startDate,
