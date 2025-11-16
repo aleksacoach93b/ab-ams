@@ -229,7 +229,7 @@ export async function DELETE(
     }
 
     // Check if folder exists
-    const existingFolder = await prisma.playerReportFolder.findUnique({
+    const existingFolder = await prisma.player_report_folders.findUnique({
       where: { id }
     })
 
@@ -248,7 +248,7 @@ export async function DELETE(
       )
     }
 
-    await prisma.playerReportFolder.delete({
+    await prisma.player_report_folders.delete({
       where: { id }
     })
 

@@ -55,10 +55,10 @@ export async function GET(request: NextRequest) {
       include: {
         folder: {
           include: {
-            visibleToPlayers: {
+            player_report_player_access: {
               include: {
-                player: {
-                  select: { id: true, name: true, email: true }
+                players: {
+                  select: { id: true, firstName: true, lastName: true, email: true }
                 }
               }
             }
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       if (player) {
         // Players can only see reports from folders they have access to
         filteredReports = reports.filter(report => 
-          !report.folder || report.folder.visibleToPlayers.some(access => 
+          !report.folder || report.folder.player_report_player_access.some(access => 
             access.playerId === player.id && access.canView
           )
         )
@@ -88,7 +88,42 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ reports: filteredReports })
+    // Transform reports for frontend (use 'name' instead of 'title', add 'folder' relation)
+    const transformedReports = filteredReports.map(report => ({
+      id: report.id,
+      name: report.title, // Transform 'title' to 'name' for frontend compatibility
+      description: report.description,
+      folderId: report.folderId,
+      fileName: report.fileName,
+      fileType: report.fileType,
+      fileSize: report.fileSize,
+      fileUrl: report.fileUrl,
+      thumbnailUrl: report.thumbnailUrl,
+      createdBy: report.createdBy,
+      createdAt: report.createdAt.toISOString(),
+      updatedAt: report.updatedAt.toISOString(),
+      folder: report.folder ? {
+        id: report.folder.id,
+        name: report.folder.name,
+        description: report.folder.description,
+        parentId: report.folder.parentId,
+        createdBy: report.folder.createdBy,
+        createdAt: report.folder.createdAt.toISOString(),
+        updatedAt: report.folder.updatedAt.toISOString(),
+        visibleToPlayers: report.folder.player_report_player_access.map(access => ({
+          id: access.id,
+          playerId: access.playerId,
+          canView: access.canView,
+          player: access.players ? {
+            id: access.players.id,
+            name: `${access.players.firstName || ''} ${access.players.lastName || ''}`.trim() || access.players.email,
+            email: access.players.email
+          } : null
+        }))
+      } : null
+    }))
+
+    return NextResponse.json({ reports: transformedReports })
   } catch (error) {
     console.error('Error fetching player reports:', error)
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 })

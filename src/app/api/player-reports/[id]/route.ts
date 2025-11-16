@@ -35,7 +35,7 @@ export async function DELETE(
     }
 
     // Check if report exists
-    const existingReport = await prisma.playerReport.findUnique({
+    const existingReport = await prisma.playersReport.findUnique({
       where: { id }
     })
 
@@ -47,7 +47,7 @@ export async function DELETE(
     }
 
     // Delete the report (cascade will handle related records)
-    await prisma.playerReport.delete({
+    await prisma.playersReport.delete({
       where: { id }
     })
 
