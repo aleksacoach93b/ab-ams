@@ -131,12 +131,16 @@ export async function POST(request: NextRequest) {
         )
       }
       
-      // Check if email already exists
+      // Normalize email (lowercase, trim)
+      const normalizedEmail = email.toLowerCase().trim()
+      
+      // Check if email already exists (case-insensitive)
       const state = await readState()
-      const emailExists = state.players.some(p => p.email.toLowerCase() === email.toLowerCase()) ||
-                         state.playerUsers.some(u => u.email.toLowerCase() === email.toLowerCase())
+      const emailExists = state.players.some(p => p.email && p.email.toLowerCase().trim() === normalizedEmail) ||
+                         state.playerUsers.some(u => u.email && u.email.toLowerCase().trim() === normalizedEmail)
       
       if (emailExists) {
+        console.log('❌ Email already exists in local state:', normalizedEmail)
         return NextResponse.json(
           { message: 'Email already exists. Please use a different email address.' },
           { status: 400 }
@@ -254,13 +258,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if email already exists
-    const existingUser = await prisma.users.findUnique({
-      where: { email }
+    // Normalize email (lowercase, trim)
+    const normalizedEmail = email.toLowerCase().trim()
+    
+    // Check if email already exists (case-insensitive, only active users)
+    const existingUser = await prisma.users.findFirst({
+      where: { 
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive'
+        },
+        isActive: true
+      }
     })
     
     if (existingUser) {
-      console.log('❌ Email already exists:', email)
+      console.log('❌ Email already exists:', normalizedEmail, 'User ID:', existingUser.id)
+      return NextResponse.json(
+        { message: 'Email already exists. Please use a different email address.' },
+        { status: 400 }
+      )
+    }
+    
+    // Also check if email exists in players table (in case user was deleted but player remains)
+    const existingPlayer = await prisma.players.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive'
+        },
+        isActive: true
+      },
+      include: {
+        users: true
+      }
+    })
+    
+    if (existingPlayer && existingPlayer.users && existingPlayer.users.isActive) {
+      console.log('❌ Email already exists in players table:', normalizedEmail, 'Player ID:', existingPlayer.id)
       return NextResponse.json(
         { message: 'Email already exists. Please use a different email address.' },
         { status: 400 }
@@ -277,7 +312,7 @@ export async function POST(request: NextRequest) {
     const user = await prisma.users.create({
       data: {
         id: userId,
-        email,
+        email: normalizedEmail, // Use normalized email
         password: await hashPassword(password),
         role: UserRole.PLAYER,
         firstName,
@@ -296,7 +331,7 @@ export async function POST(request: NextRequest) {
         id: playerId,
         firstName,
         lastName,
-        email: email || null,
+        email: normalizedEmail || null, // Use normalized email
         phone: phone || null,
         position: position || null,
         jerseyNumber: jerseyNumber ? parseInt(jerseyNumber) : null,
