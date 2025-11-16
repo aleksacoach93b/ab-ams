@@ -83,9 +83,15 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
     const unreadOnly = searchParams.get('unreadOnly') === 'true'
 
-    const where = {
-      userId: user.userId,
-      ...(unreadOnly && { isRead: false })
+    // Ensure userId is a string
+    const userId = String(user.userId || user.id || '')
+    
+    const where: any = {
+      userId: userId,
+    }
+    
+    if (unreadOnly) {
+      where.isRead = false
     }
 
     const notifications = await prisma.notifications.findMany({
@@ -97,9 +103,10 @@ export async function GET(request: NextRequest) {
       skip: offset
     })
 
+    const userId = String(user.userId || user.id || '')
     const unreadCount = await prisma.notifications.count({
       where: {
-        userId: user.userId,
+        userId: userId,
         isRead: false
       }
     })

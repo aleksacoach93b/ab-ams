@@ -290,8 +290,10 @@ export async function POST(request: NextRequest) {
 
     console.log('⚽ Creating player profile...')
     // Create player profile
+    const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const player = await prisma.players.create({
       data: {
+        id: playerId,
         firstName,
         lastName,
         email: email || null,
