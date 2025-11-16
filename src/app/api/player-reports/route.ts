@@ -102,15 +102,15 @@ export async function GET(request: NextRequest) {
       createdBy: report.createdBy,
       createdAt: report.createdAt.toISOString(),
       updatedAt: report.updatedAt.toISOString(),
-      folder: report.folder ? {
-        id: report.folder.id,
-        name: report.folder.name,
-        description: report.folder.description,
-        parentId: report.folder.parentId,
-        createdBy: report.folder.createdBy,
-        createdAt: report.folder.createdAt.toISOString(),
-        updatedAt: report.folder.updatedAt.toISOString(),
-        visibleToPlayers: report.folder.player_report_player_access.map(access => ({
+      folder: report.player_report_folders ? {
+        id: report.player_report_folders.id,
+        name: report.player_report_folders.name,
+        description: report.player_report_folders.description,
+        parentId: report.player_report_folders.parentId,
+        createdBy: report.player_report_folders.createdBy,
+        createdAt: report.player_report_folders.createdAt.toISOString(),
+        updatedAt: report.player_report_folders.updatedAt.toISOString(),
+        visibleToPlayers: report.player_report_folders.player_report_player_access.map(access => ({
           id: access.id,
           playerId: access.playerId,
           canView: access.canView,
@@ -351,15 +351,15 @@ export async function POST(request: NextRequest) {
       createdBy: report.createdBy,
       createdAt: report.createdAt.toISOString(),
       updatedAt: report.updatedAt.toISOString(),
-      folder: report.folder ? {
-        id: report.folder.id,
-        name: report.folder.name,
-        description: report.folder.description,
-        parentId: report.folder.parentId,
-        createdBy: report.folder.createdBy,
-        createdAt: report.folder.createdAt.toISOString(),
-        updatedAt: report.folder.updatedAt.toISOString(),
-        visibleToPlayers: report.folder.player_report_player_access.map(access => ({
+      folder: report.player_report_folders ? {
+        id: report.player_report_folders.id,
+        name: report.player_report_folders.name,
+        description: report.player_report_folders.description,
+        parentId: report.player_report_folders.parentId,
+        createdBy: report.player_report_folders.createdBy,
+        createdAt: report.player_report_folders.createdAt.toISOString(),
+        updatedAt: report.player_report_folders.updatedAt.toISOString(),
+        visibleToPlayers: report.player_report_folders.player_report_player_access.map(access => ({
           id: access.id,
           playerId: access.playerId,
           canView: access.canView,
