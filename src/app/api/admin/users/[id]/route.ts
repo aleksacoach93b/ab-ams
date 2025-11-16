@@ -7,11 +7,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id },
       include: {
-        player: true,
-        coach: true,
+        players: true,
+        coaches: true,
         staff: true
       }
     })
@@ -41,7 +41,7 @@ export async function PATCH(
     const { id } = await params
     const { isActive } = await request.json()
     
-    const user = await prisma.user.update({
+    const user = await prisma.users.update({
       where: { id },
       data: { isActive }
     })
@@ -62,7 +62,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    await prisma.user.delete({
+    await prisma.users.delete({
       where: { id }
     })
 

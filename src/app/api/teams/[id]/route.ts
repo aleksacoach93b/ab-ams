@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const team = await prisma.team.findUnique({
+    const team = await prisma.teams.findUnique({
       where: {
         id: params.id
       },
@@ -101,7 +101,7 @@ export async function PUT(
       )
     }
 
-    const team = await prisma.team.update({
+    const team = await prisma.teams.update({
       where: {
         id: params.id
       },
@@ -130,7 +130,7 @@ export async function DELETE(
 ) {
   try {
     // Soft delete by setting isActive to false
-    const team = await prisma.team.update({
+    const team = await prisma.teams.update({
       where: {
         id: params.id
       },

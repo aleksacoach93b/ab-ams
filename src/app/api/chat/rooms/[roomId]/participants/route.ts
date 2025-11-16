@@ -181,7 +181,7 @@ export async function POST(
     const newParticipants = await Promise.all(
       userIds.map(async (userId: string) => {
         // Check if user exists and is active
-        const targetUser = await prisma.user.findFirst({
+        const targetUser = await prisma.users.findFirst({
           where: {
             id: userId,
             isActive: true

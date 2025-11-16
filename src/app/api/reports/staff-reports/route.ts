@@ -230,7 +230,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get reports in the current folder (if any)
-    const reports = await prisma.report.findMany({
+    const reports = await prisma.reports.findMany({
       where: {
         isActive: true,
         folderId: folderId || null,

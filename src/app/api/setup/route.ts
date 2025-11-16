@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     // Create admin user
     const adminPassword = await bcrypt.hash('Teodor2025', 12)
     
-    const adminUser = await prisma.user.upsert({
+    const adminUser = await prisma.users.upsert({
       where: { email: 'aleksacoach@gmail.com' },
       update: {
         password: adminPassword,
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Create a sample coach
     const coachPassword = await bcrypt.hash('coach123', 12)
     
-    const coachUser = await prisma.user.upsert({
+    const coachUser = await prisma.users.upsert({
       where: { email: 'coach@example.com' },
       update: {
         password: coachPassword,
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Create coach profile
-    await prisma.coach.upsert({
+    await prisma.coaches.upsert({
       where: { userId: coachUser.id },
       update: {
         firstName: 'John',
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     // Create a sample player
     const playerPassword = await bcrypt.hash('player123', 12)
     
-    const playerUser = await prisma.user.upsert({
+    const playerUser = await prisma.users.upsert({
       where: { email: 'player@example.com' },
       update: {
         password: playerPassword,
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     // Create a sample staff member
     const staffPassword = await bcrypt.hash('staff123', 12)
     
-    const staffUser = await prisma.user.upsert({
+    const staffUser = await prisma.users.upsert({
       where: { email: 'staff@example.com' },
       update: {
         password: staffPassword,

@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get all coaches (users with COACH role)
-    const coaches = await prisma.user.findMany({
+    const coaches = await prisma.users.findMany({
       where: {
         role: 'COACH'
       },

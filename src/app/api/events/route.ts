@@ -737,10 +737,10 @@ export async function POST(request: NextRequest) {
     try {
       if (selectedPlayers && selectedPlayers.length > 0) {
         // Get player user IDs for participants
-        const playerUsers = await prisma.user.findMany({
+        const playerUsers = await prisma.users.findMany({
           where: {
             role: 'PLAYER',
-            player: {
+            players: {
               id: {
                 in: selectedPlayers
               }

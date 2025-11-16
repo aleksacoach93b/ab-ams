@@ -60,7 +60,7 @@ export async function PUT(
     }
 
     // Check if report exists
-    const report = await prisma.report.findUnique({
+    const report = await prisma.reports.findUnique({
       where: { id }
     })
 

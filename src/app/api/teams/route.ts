@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       color
     })
 
-    const team = await prisma.team.create({
+    const team = await prisma.teams.create({
       data: {
         name: name.trim(),
         description: description?.trim() || null,

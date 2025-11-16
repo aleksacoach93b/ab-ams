@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
       targetUserIds = userIds
     } else {
       // Send to all active users
-      const allUsers = await prisma.user.findMany({
+      const allUsers = await prisma.users.findMany({
         where: { isActive: true },
         select: { id: true }
       })

@@ -4,11 +4,11 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   try {
     // First, get all users
-    const users = await prisma.user.findMany({
+    const users = await prisma.users.findMany({
       include: {
-        player: true,
+        players: true,
         staff: true,
-        loginLogs: {
+        login_logs: {
           orderBy: { createdAt: 'desc' },
           take: 1
         }
@@ -22,12 +22,12 @@ export async function GET(request: NextRequest) {
 
     const formattedUsers = users.map(user => {
       // Get name from player/staff if user doesn't have name
-      let displayName = user.name
+      let displayName = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email.split('@')[0]
       if (!displayName) {
-        if (user.player) {
-          displayName = user.player.name
+        if (user.players) {
+          displayName = `${user.players.firstName} ${user.players.lastName}`
         } else if (user.staff) {
-          displayName = user.staff.name
+          displayName = `${user.staff.firstName} ${user.staff.lastName}`
         } else {
           displayName = user.email.split('@')[0] // Use email prefix as fallback
         }
@@ -50,10 +50,10 @@ export async function GET(request: NextRequest) {
         lastLoginAt: user.lastLoginAt?.toISOString(),
         lastLoginIp: user.loginIp,
         // Add specific role data
-        playerData: user.player,
+        playerData: user.players,
         staffData: user.staff,
         // Add login activity
-        lastLoginLog: user.loginLogs[0] || null
+        lastLoginLog: user.login_logs[0] || null
       }
     })
 

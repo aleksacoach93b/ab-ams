@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch reports
-    const reports = await prisma.report.findMany({
+    const reports = await prisma.reports.findMany({
       where: whereClause,
       include: {
         folder: {
@@ -416,7 +416,7 @@ export async function POST(request: NextRequest) {
     const fileUrl = `/uploads/reports/${fileName}`
     
     // Create the report
-    const report = await prisma.report.create({
+    const report = await prisma.reports.create({
       data: {
         name: name,
         description: description || null,

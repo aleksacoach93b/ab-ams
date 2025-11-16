@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const coaches = await prisma.user.findMany({
+    const coaches = await prisma.users.findMany({
       where: {
         role: 'COACH'
       },
