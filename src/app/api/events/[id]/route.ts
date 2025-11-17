@@ -248,9 +248,11 @@ export async function PUT(
         }
       }
 
-      const finalEventType = (type && ['TRAINING', 'MATCH', 'MEETING', 'RECOVERY', 'MEAL', 'REST', 'LB_GYM', 'UB_GYM', 'PRE_ACTIVATION', 'REHAB', 'STAFF_MEETING', 'VIDEO_ANALYSIS', 'DAY_OFF', 'TRAVEL', 'OTHER'].includes(type.toUpperCase())) 
-        ? type.toUpperCase() 
-        : 'TRAINING'
+      // Use a more reliable validation method - check if type exists in EventType enum
+      const upperTypePut = type?.toUpperCase()
+      const finalEventType = (upperTypePut && EventType[upperTypePut as keyof typeof EventType]) 
+        ? upperTypePut as EventType 
+        : EventType.TRAINING
 
       // Update the event
       const event = await tx.events.update({
