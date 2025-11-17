@@ -20,7 +20,7 @@ export class NotificationService {
         targetUserIds = data.userIds
       } else {
         // Send to all active users
-        const allUsers = await prisma.user.findMany({
+        const allUsers = await prisma.users.findMany({
           where: { isActive: true },
           select: { id: true }
         })
@@ -89,7 +89,7 @@ export class NotificationService {
   // Player-related notifications
   static async notifyPlayerStatusChanged(playerId: string, playerName: string, newStatus: string) {
     // Get only staff users (ADMIN, COACH, STAFF) - exclude PLAYER role
-    const staffUsers = await prisma.user.findMany({
+    const staffUsers = await prisma.users.findMany({
       where: { 
         isActive: true,
         role: {
@@ -126,22 +126,22 @@ export class NotificationService {
   // Chat-related notifications
   static async notifyNewChatMessage(roomId: string, roomName: string, senderName: string, messagePreview: string, senderId?: string) {
     // Get all participants except the sender
-    const participants = await prisma.chatRoomParticipant.findMany({
+    const participants = await prisma.chat_room_participants.findMany({
       where: {
         roomId,
         isActive: true
       },
       include: {
-        user: {
-          select: { id: true, name: true }
+        users: {
+          select: { id: true, firstName: true, lastName: true, email: true }
         }
       }
     })
 
     // Filter out the sender from notifications
     const participantIds = participants
-      .filter(p => !senderId || p.user.id !== senderId)
-      .map(p => p.user.id)
+      .filter(p => !senderId || p.users.id !== senderId)
+      .map(p => p.users.id)
 
     console.log('📱 Creating chat notification:', {
       roomId,

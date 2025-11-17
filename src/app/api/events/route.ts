@@ -858,21 +858,19 @@ export async function POST(request: NextRequest) {
     // Create notifications for player participants only
     try {
       if (selectedPlayers && selectedPlayers.length > 0) {
-        // Get player user IDs for participants
-        const playerUsers = await prisma.users.findMany({
+        // Get players and their user IDs
+        const players = await prisma.players.findMany({
           where: {
-            role: 'PLAYER',
-            players: {
-              id: {
-                in: selectedPlayers
-              }
-            },
-            isActive: true
+            id: {
+              in: selectedPlayers
+            }
           },
-          select: { id: true }
+          select: { userId: true }
         })
         
-        const playerUserIds = playerUsers.map(u => u.id)
+        const playerUserIds = players
+          .map(p => p.userId)
+          .filter((id): id is string => !!id)
         
         if (playerUserIds.length > 0) {
           await NotificationService.createNotification({
