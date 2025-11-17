@@ -32,14 +32,11 @@ export class NotificationService {
         targetUserIds.map(userId =>
           prisma.notifications.create({
             data: {
+              id: `notif_${Date.now()}_${userId}_${Math.random().toString(36).substr(2, 9)}`,
               title: data.title,
               message: data.message,
-              type: data.type || 'INFO',
-              priority: data.priority || 'MEDIUM',
-              category: data.category || 'GENERAL',
-              userId,
-              relatedId: data.relatedId,
-              relatedType: data.relatedType
+              type: data.type || 'GENERAL',
+              userId
             }
           })
         )
