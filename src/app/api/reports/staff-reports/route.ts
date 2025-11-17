@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Only staff members can access this endpoint
-    if (user.role !== 'STAFF') {
+    // Only staff members, admins, and coaches can access this endpoint
+    if (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'COACH') {
       return NextResponse.json(
         { message: 'Access denied' },
         { status: 403 }

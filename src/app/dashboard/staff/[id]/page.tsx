@@ -65,9 +65,7 @@ export default function StaffProfilePage() {
           'Content-Type': 'application/json'
         }
 
-        const [staffResponse] = await Promise.all([
-          fetch(`/api/staff/${staffId}`, { headers })
-        ])
+        const staffResponse = await fetch(`/api/staff/${staffId}`, { headers })
         
         if (staffResponse.ok) {
           const staffData = await staffResponse.json()
@@ -78,7 +76,7 @@ export default function StaffProfilePage() {
           const reportsResponse = await fetch(`/api/reports/staff-reports?staffId=${staffId}`, { headers })
 
           if (reportsResponse.ok) {
-          const reportsData = await reportsResponse.json()
+            const reportsData = await reportsResponse.json()
           // Flatten reports from all folders
           const allReports: Report[] = []
           if (reportsData.folders && Array.isArray(reportsData.folders)) {
