@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         date: event.date,
         startTime: event.startTime,
         endTime: event.endTime,
-        location: event.location,
+        location: event.locationId,
         iconName: event.iconName || event.icon,
         icon: event.icon || event.iconName || 'Calendar',
         color: event.color || getEventColor(event.type),
