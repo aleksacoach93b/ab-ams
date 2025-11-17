@@ -91,14 +91,51 @@ export async function GET(request: NextRequest) {
               }
             }
           },
-          include: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            type: true,
+            startTime: true,
+            endTime: true,
+            location: true,
+            icon: true,
+            matchDayTag: true,
+            createdAt: true,
+            updatedAt: true,
             event_participants: {
-              include: {
-                players: true,
-                staff: true,
-              },
+              select: {
+                id: true,
+                playerId: true,
+                staffId: true,
+                role: true,
+                players: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true
+                  }
+                },
+                staff: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true
+                  }
+                }
+              }
             },
-            event_media: true,
+            event_media: {
+              select: {
+                id: true,
+                fileName: true,
+                fileType: true,
+                fileUrl: true,
+                fileSize: true
+              }
+            }
           },
           orderBy: {
             startTime: 'asc'
@@ -132,14 +169,51 @@ export async function GET(request: NextRequest) {
       } else {
         // For coaches and admins, show all events
         events = await prisma.events.findMany({
-          include: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            type: true,
+            startTime: true,
+            endTime: true,
+            location: true,
+            icon: true,
+            matchDayTag: true,
+            createdAt: true,
+            updatedAt: true,
             event_participants: {
-              include: {
-                players: true,
-                staff: true,
-              },
+              select: {
+                id: true,
+                playerId: true,
+                staffId: true,
+                role: true,
+                players: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true
+                  }
+                },
+                staff: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true
+                  }
+                }
+              }
             },
-            event_media: true,
+            event_media: {
+              select: {
+                id: true,
+                fileName: true,
+                fileType: true,
+                fileUrl: true,
+                fileSize: true
+              }
+            }
           },
           orderBy: {
             startTime: 'asc'
@@ -149,14 +223,51 @@ export async function GET(request: NextRequest) {
     } else {
       // If no user filter, show all events (for admin/coach views)
       events = await prisma.events.findMany({
-        include: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          type: true,
+          startTime: true,
+          endTime: true,
+          location: true,
+          icon: true,
+          matchDayTag: true,
+          createdAt: true,
+          updatedAt: true,
           event_participants: {
-            include: {
-              players: true,
-              staff: true,
-            },
+            select: {
+              id: true,
+              playerId: true,
+              staffId: true,
+              role: true,
+              players: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              },
+              staff: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              }
+            }
           },
-          event_media: true,
+          event_media: {
+            select: {
+              id: true,
+              fileName: true,
+              fileType: true,
+              fileUrl: true,
+              fileSize: true
+            }
+          }
         },
         orderBy: {
           startTime: 'asc'
@@ -187,11 +298,19 @@ export async function GET(request: NextRequest) {
       // Extract date from startTime for frontend compatibility
       const eventDate = event.startTime ? event.startTime.toISOString().split('T')[0] : null
       
+      // Format time as HH:MM for frontend
+      const formatTime = (dateTime: Date | null): string => {
+        if (!dateTime) return ''
+        const hours = String(dateTime.getHours()).padStart(2, '0')
+        const minutes = String(dateTime.getMinutes()).padStart(2, '0')
+        return `${hours}:${minutes}`
+      }
+      
       return {
         ...event,
         date: eventDate, // Add date field for frontend
-        startTime: event.startTime ? event.startTime.toISOString() : null,
-        endTime: event.endTime ? event.endTime.toISOString() : null,
+        startTime: formatTime(event.startTime),
+        endTime: formatTime(event.endTime),
         participants,
         media,
         icon: event.icon || 'Calendar',

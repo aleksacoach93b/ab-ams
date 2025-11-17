@@ -55,8 +55,29 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const url = userId && userRole 
-          ? `/api/events?userId=${userId}&userRole=${userRole}`
+        // If userId is provided but it's a player ID (not user ID), we need to get the user ID first
+        let finalUserId = userId
+        let finalUserRole = userRole
+        
+        // If userId looks like a player ID (starts with 'player_'), fetch the player's user ID
+        if (userId && userId.startsWith('player_')) {
+          try {
+            const playerResponse = await fetch(`/api/players/${userId}`)
+            if (playerResponse.ok) {
+              const playerData = await playerResponse.json()
+              // Get user ID from player data - check if it has userId field or user relation
+              if (playerData.userId) {
+                finalUserId = playerData.userId
+                finalUserRole = 'PLAYER'
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching player data for calendar:', err)
+          }
+        }
+        
+        const url = finalUserId && finalUserRole 
+          ? `/api/events?userId=${finalUserId}&userRole=${finalUserRole}`
           : '/api/events'
         
         const response = await fetch(url)

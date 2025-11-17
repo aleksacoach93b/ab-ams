@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
 import RichTextEditor from '@/components/RichTextEditor'
 import PDFThumbnail from '@/components/PDFThumbnail'
+import ReadOnlyCalendar from '@/components/ReadOnlyCalendar'
 
 interface Player {
   id: string
@@ -67,7 +68,7 @@ export default function PlayerProfilePage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedFilter, setSelectedFilter] = useState('All')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [activeTab, setActiveTab] = useState<'media' | 'notes' | 'chats'>('media')
+  const [activeTab, setActiveTab] = useState<'media' | 'notes' | 'chats' | 'events'>('media')
   const [showNewNote, setShowNewNote] = useState(false)
   const [editingNote, setEditingNote] = useState<PlayerNote | null>(null)
   const [availableTags, setAvailableTags] = useState<string[]>([])
@@ -740,6 +741,19 @@ export default function PlayerProfilePage() {
             <div className="flex items-center space-x-2">
               <MessageCircle className="h-4 w-4" />
               <span>Chats</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('events')}
+            className="px-6 py-3 text-sm font-medium border-b-2 transition-colors hover:opacity-70"
+            style={{
+              borderColor: activeTab === 'events' ? colorScheme.primary : 'transparent',
+              color: activeTab === 'events' ? colorScheme.primary : colorScheme.textSecondary
+            }}
+          >
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-4 w-4" />
+              <span>Events</span>
             </div>
           </button>
         </div>
@@ -1504,6 +1518,16 @@ export default function PlayerProfilePage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Events Tab Content */}
+      {activeTab === 'events' && player && (
+        <div className="p-4">
+          <ReadOnlyCalendar 
+            userId={(player as any).userId || (player as any).user?.id || player.id} 
+            userRole={user?.role === 'PLAYER' && playerId === user.id ? 'PLAYER' : undefined}
+          />
         </div>
       )}
 

@@ -75,8 +75,36 @@ export async function GET(
 
     const player = await prisma.players.findUnique({
       where: { id },
-      include: {
-        users: true
+      select: {
+        id: true,
+        userId: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        position: true,
+        status: true,
+        teamId: true,
+        avatar: true,
+        phone: true,
+        dateOfBirth: true,
+        nationality: true,
+        height: true,
+        weight: true,
+        preferredFoot: true,
+        jerseyNumber: true,
+        medicalNotes: true,
+        emergencyContact: true,
+        createdAt: true,
+        updatedAt: true,
+        users: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true
+          }
+        }
       }
     })
 
