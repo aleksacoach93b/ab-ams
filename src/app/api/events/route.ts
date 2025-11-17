@@ -98,9 +98,8 @@ export async function GET(request: NextRequest) {
             type: true,
             startTime: true,
             endTime: true,
-            location: true,
+            locationId: true,
             icon: true,
-            matchDayTag: true,
             createdAt: true,
             updatedAt: true,
             event_participants: {
@@ -143,24 +142,70 @@ export async function GET(request: NextRequest) {
         })
       } else if (userRole === 'STAFF') {
         // Find events where the staff is a participant
+        // First find staff by userId
+        const staff = await prisma.staff.findFirst({
+          where: {
+            userId: userId
+          },
+          select: { id: true }
+        })
+
+        if (!staff) {
+          return NextResponse.json([])
+        }
+
         events = await prisma.events.findMany({
           where: {
             event_participants: {
               some: {
-                staff: {
-                  userId: userId
-                }
+                staffId: staff.id
               }
             }
           },
-          include: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            type: true,
+            startTime: true,
+            endTime: true,
+            locationId: true,
+            icon: true,
+            createdAt: true,
+            updatedAt: true,
             event_participants: {
-              include: {
-                players: true,
-                staff: true,
-              },
+              select: {
+                id: true,
+                playerId: true,
+                staffId: true,
+                role: true,
+                players: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true
+                  }
+                },
+                staff: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true
+                  }
+                }
+              }
             },
-            event_media: true,
+            event_media: {
+              select: {
+                id: true,
+                fileName: true,
+                fileType: true,
+                fileUrl: true,
+                fileSize: true
+              }
+            }
           },
           orderBy: {
             startTime: 'asc'
@@ -176,9 +221,8 @@ export async function GET(request: NextRequest) {
             type: true,
             startTime: true,
             endTime: true,
-            location: true,
+            locationId: true,
             icon: true,
-            matchDayTag: true,
             createdAt: true,
             updatedAt: true,
             event_participants: {
@@ -230,9 +274,8 @@ export async function GET(request: NextRequest) {
           type: true,
           startTime: true,
           endTime: true,
-          location: true,
+          locationId: true,
           icon: true,
-          matchDayTag: true,
           createdAt: true,
           updatedAt: true,
           event_participants: {
