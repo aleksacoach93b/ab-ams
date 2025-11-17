@@ -83,6 +83,7 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
   const [showRoomDropdown, setShowRoomDropdown] = useState<string | null>(null)
   const [showAddMembersModal, setShowAddMembersModal] = useState(false)
   const [showCreateChatModal, setShowCreateChatModal] = useState(false)
+  const [showMembersModal, setShowMembersModal] = useState(false)
   const [newChatName, setNewChatName] = useState('')
   const [newChatParticipants, setNewChatParticipants] = useState<string[]>([])
   const [availableUsers, setAvailableUsers] = useState<any[]>([])
@@ -1094,15 +1095,8 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
           const newMembers = await response.json()
           console.log('Added members to chat room:', newMembers)
           
-          // Update the chat room with new members
-          setChatRooms(prev => prev.map(room => 
-            room.id === activeRoom 
-              ? {
-                  ...room,
-                  participants: [...room.participants, ...newMembers]
-                }
-              : room
-          ))
+          // Refresh chat rooms from server to get accurate participant list (avoid duplicates)
+          await loadRealUsersAndCreateChatRooms()
 
           setSelectedUsers([])
           setShowAddMembersModal(false)
@@ -1349,9 +1343,13 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
                       <h3 className="font-semibold text-sm sm:text-base" style={{ color: colorScheme.text }}>
                         {chatRooms.find(r => r.id === activeRoom)?.name}
                       </h3>
-                      <p className="text-xs sm:text-sm" style={{ color: colorScheme.textSecondary }}>
-                        {chatRooms.find(r => r.id === activeRoom)?.participants.length} members
-                      </p>
+                      <button
+                        onClick={() => setShowMembersModal(true)}
+                        className="text-xs sm:text-sm hover:underline"
+                        style={{ color: colorScheme.textSecondary }}
+                      >
+                        {chatRooms.find(r => r.id === activeRoom)?.participants.length || 0} members
+                      </button>
                     </div>
                   </div>
                 <div className="flex items-center space-x-1 sm:space-x-2">
@@ -1885,6 +1883,76 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
                 }}
               >
                 Add {selectedUsers.length} Member{selectedUsers.length !== 1 ? 's' : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Members Modal */}
+      {showMembersModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div 
+            className="w-full max-w-md rounded-lg shadow-xl"
+            style={{ backgroundColor: colorScheme.surface }}
+          >
+            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: colorScheme.border }}>
+              <h2 className="text-lg font-semibold" style={{ color: colorScheme.text }}>
+                Members ({chatRooms.find(r => r.id === activeRoom)?.participants.length || 0})
+              </h2>
+              <button
+                onClick={() => setShowMembersModal(false)}
+                className="p-1 rounded-lg hover:bg-opacity-20 transition-colors"
+                style={{ color: colorScheme.textSecondary }}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-4 max-h-96 overflow-y-auto">
+              {chatRooms.find(r => r.id === activeRoom)?.participants.length === 0 ? (
+                <div className="text-center py-8" style={{ color: colorScheme.textSecondary }}>
+                  <p>No members in this chat room</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {chatRooms.find(r => r.id === activeRoom)?.participants.map((participant) => (
+                    <div
+                      key={participant.id}
+                      className="flex items-center space-x-3 p-3 rounded-lg"
+                      style={{ backgroundColor: colorScheme.background }}
+                    >
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white"
+                           style={{ backgroundColor: colorScheme.primary }}>
+                        {participant.name?.charAt(0) || 'U'}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium" style={{ color: colorScheme.text }}>
+                          {participant.name}
+                        </h3>
+                        <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
+                          {participant.role}
+                        </p>
+                      </div>
+                      {participant.isOnline && (
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end p-4 border-t" style={{ borderColor: colorScheme.border }}>
+              <button
+                onClick={() => setShowMembersModal(false)}
+                className="px-4 py-2 rounded-lg font-medium transition-colors"
+                style={{ 
+                  backgroundColor: colorScheme.primary,
+                  color: colorScheme.primaryText || 'white'
+                }}
+              >
+                Close
               </button>
             </div>
           </div>

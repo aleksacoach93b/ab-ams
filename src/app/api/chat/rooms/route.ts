@@ -198,12 +198,14 @@ export async function GET(request: NextRequest) {
       id: room.id,
       name: room.name,
       type: 'group', // Default type since schema doesn't have type field
-      participants: room.chat_room_participants.map(p => ({
-        id: p.users.id,
-        name: `${p.users.firstName} ${p.users.lastName}`.trim() || p.users.email,
-        role: p.users.role,
-        isOnline: Math.random() > 0.5 // TODO: Implement real online status
-      })),
+      participants: room.chat_room_participants
+        .filter(p => p.isActive) // Only include active participants
+        .map(p => ({
+          id: p.users.id,
+          name: `${p.users.firstName} ${p.users.lastName}`.trim() || p.users.email,
+          role: p.users.role,
+          isOnline: Math.random() > 0.5 // TODO: Implement real online status
+        })),
       lastMessage: room.chat_messages[0] ? {
         id: room.chat_messages[0].id,
         content: room.chat_messages[0].content,
