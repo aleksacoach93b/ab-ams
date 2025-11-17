@@ -136,6 +136,7 @@ export async function GET(
     
     return NextResponse.json({
       id: player.id,
+      userId: player.userId, // Add userId explicitly
       firstName: player.firstName,
       lastName: player.lastName,
       name: fullName,

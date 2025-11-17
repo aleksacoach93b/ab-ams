@@ -200,6 +200,14 @@ export default function StaffPage() {
               </div>
               <div className="flex items-center space-x-2">
                 <button
+                  onClick={() => router.push(`/dashboard/staff/${staffMember.id}`)}
+                  className="p-2 rounded-lg hover:bg-opacity-20 transition-colors"
+                  style={{ backgroundColor: colorScheme.primaryLight }}
+                  title="View Profile"
+                >
+                  <Eye className="h-4 w-4" style={{ color: colorScheme.primary }} />
+                </button>
+                <button
                   onClick={() => setEditingStaff(staffMember)}
                   className="p-2 rounded-lg hover:bg-opacity-20 transition-colors"
                   style={{ backgroundColor: colorScheme.primaryLight }}

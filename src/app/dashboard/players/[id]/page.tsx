@@ -1525,8 +1525,8 @@ export default function PlayerProfilePage() {
       {activeTab === 'events' && player && (
         <div className="p-4">
           <ReadOnlyCalendar 
-            userId={(player as any).userId || (player as any).user?.id || player.id} 
-            userRole={user?.role === 'PLAYER' && playerId === user.id ? 'PLAYER' : undefined}
+            userId={(player as any).userId || (player as any).user?.id} 
+            userRole="PLAYER"
           />
         </div>
       )}
