@@ -174,24 +174,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Get folders that are visible to this staff member
-    const folders = await prisma.reportFolder.findMany({
+    // Folders use report_visibility with userId, not visibleToStaff with staffId
+    const folders = await prisma.report_folders.findMany({
       where: {
         ...whereClause,
-        visibleToStaff: {
+        report_visibility: {
           some: {
-            staffId: staffMember.id,
+            userId: staffMember.userId,
             canView: true
           }
         }
       },
       include: {
-        parent: true,
-        children: {
+        report_folders: true, // parent folder
+        other_report_folders: {
           where: {
             isActive: true,
-            visibleToStaff: {
+            report_visibility: {
               some: {
-                staffId: staffMember.id,
+                userId: staffMember.userId,
                 canView: true
               }
             }
@@ -203,7 +204,7 @@ export async function GET(request: NextRequest) {
           },
           select: {
             id: true,
-            name: true,
+            title: true,
             description: true,
             fileName: true,
             fileType: true,
@@ -215,12 +216,13 @@ export async function GET(request: NextRequest) {
             createdBy: true
           }
         },
-        visibleToStaff: {
+        report_visibility: {
           include: {
-            staff: {
+            users: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true
               }
             }
@@ -233,12 +235,12 @@ export async function GET(request: NextRequest) {
                 isActive: true
               }
             },
-            children: {
+            other_report_folders: {
               where: {
                 isActive: true,
-                visibleToStaff: {
+                report_visibility: {
                   some: {
-                    staffId: staffMember.id,
+                    userId: staffMember.userId,
                     canView: true
                   }
                 }

@@ -84,7 +84,7 @@ export default function StaffProfilePage() {
               if (folder.reports && Array.isArray(folder.reports)) {
                 allReports.push(...folder.reports.map((r: any) => ({
                   id: r.id,
-                  name: r.name,
+                  name: r.title || r.name, // Use title from schema, fallback to name
                   description: r.description,
                   fileName: r.fileName,
                   fileType: r.fileType,
