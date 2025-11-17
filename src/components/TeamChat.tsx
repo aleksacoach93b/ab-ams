@@ -872,6 +872,54 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
     }
   }
 
+  const editChatRoom = async (roomId: string, newName: string, description?: string) => {
+    if (!roomId || !newName || !newName.trim()) return
+
+    try {
+      // Get token from localStorage
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      console.log('✏️ Editing chat room:', roomId, 'New name:', newName)
+
+      // Call API to update chat room
+      const response = await fetch(`/api/chat/rooms/${roomId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: newName.trim(),
+          description: description || null
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('✅ Chat room updated successfully:', result)
+        
+        // Update frontend state
+        setChatRooms(prev => prev.map(room => 
+          room.id === roomId 
+            ? { ...room, name: result.name, description: result.description }
+            : room
+        ))
+      } else {
+        const errorData = await response.json()
+        console.error('❌ Failed to update chat room:', errorData.message || errorData.error)
+        alert(`Failed to update chat room: ${errorData.message || errorData.error}`)
+      }
+    } catch (error) {
+      console.error('❌ Error updating chat room:', error)
+      alert('Error updating chat room. Please try again.')
+    }
+  }
+
   const deleteChatRoom = async (roomId: string) => {
     if (!roomId) return
 
@@ -1339,10 +1387,10 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
                   {user && user.role !== 'PLAYER' && (
                     <button 
                       onClick={() => {
-                        const newName = prompt('Enter new chat room name:', chatRooms.find(r => r.id === activeRoom)?.name)
-                        if (newName && newName.trim()) {
-                          console.log('Renaming room to:', newName)
-                          // Add rename logic here
+                        const currentRoom = chatRooms.find(r => r.id === activeRoom)
+                        const newName = prompt('Enter new chat room name:', currentRoom?.name)
+                        if (newName && newName.trim() && newName !== currentRoom?.name) {
+                          editChatRoom(activeRoom, newName)
                         }
                       }}
                       className="p-1.5 sm:p-2 rounded-lg hover:bg-opacity-20 transition-colors"

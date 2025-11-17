@@ -161,7 +161,7 @@ export async function POST(
     }
 
     // Check if user is admin of this room
-    const participant = await prisma.chatRoomParticipant.findFirst({
+    const participant = await prisma.chat_room_participants.findFirst({
       where: {
         roomId,
         userId: user.userId,
@@ -177,23 +177,59 @@ export async function POST(
       )
     }
 
+    // Map participantIds to user IDs
+    // userIds can be player.id or staff.id, but we need users.id for chat_room_participants
+    const mappedUserIds: string[] = []
+    
+    for (const participantId of userIds) {
+      // Try to find as player first
+      const player = await prisma.players.findUnique({
+        where: { id: participantId },
+        select: { userId: true }
+      })
+      
+      if (player) {
+        mappedUserIds.push(player.userId)
+        continue
+      }
+      
+      // Try to find as staff
+      const staff = await prisma.staff.findUnique({
+        where: { id: participantId },
+        select: { userId: true }
+      })
+      
+      if (staff) {
+        mappedUserIds.push(staff.userId)
+        continue
+      }
+      
+      // If not found as player or staff, assume it's already a user ID
+      // But verify it exists in users table
+      const userExists = await prisma.users.findUnique({
+        where: { id: participantId },
+        select: { id: true, isActive: true }
+      })
+      
+      if (userExists && userExists.isActive) {
+        mappedUserIds.push(participantId)
+      } else {
+        console.warn(`⚠️ Participant ID ${participantId} not found as player, staff, or active user`)
+      }
+    }
+
+    if (mappedUserIds.length === 0) {
+      return NextResponse.json(
+        { message: 'No valid participants to add' },
+        { status: 400 }
+      )
+    }
+
     // Add participants to the room
     const newParticipants = await Promise.all(
-      userIds.map(async (userId: string) => {
-        // Check if user exists and is active
-        const targetUser = await prisma.users.findFirst({
-          where: {
-            id: userId,
-            isActive: true
-          }
-        })
-
-        if (!targetUser) {
-          throw new Error(`User ${userId} not found or inactive`)
-        }
-
+      mappedUserIds.map(async (userId: string) => {
         // Check if user is already a participant
-        const existingParticipant = await prisma.chatRoomParticipant.findFirst({
+        const existingParticipant = await prisma.chat_room_participants.findFirst({
           where: {
             roomId,
             userId
@@ -203,17 +239,18 @@ export async function POST(
         if (existingParticipant) {
           // Reactivate if they left
           if (!existingParticipant.isActive) {
-            return await prisma.chatRoomParticipant.update({
+            return await prisma.chat_room_participants.update({
               where: { id: existingParticipant.id },
               data: {
                 isActive: true,
                 leftAt: null
               },
               include: {
-                user: {
+                users: {
                   select: {
                     id: true,
-                    name: true,
+                    firstName: true,
+                    lastName: true,
                     email: true,
                     role: true
                   }
@@ -221,21 +258,40 @@ export async function POST(
               }
             })
           }
-          return existingParticipant
+          // Return existing participant with user data
+          return await prisma.chat_room_participants.findUnique({
+            where: { id: existingParticipant.id },
+            include: {
+              users: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  role: true
+                }
+              }
+            }
+          })
         }
 
+        // Generate unique ID for participant
+        const participantId = `chat_participant_${roomId}_${userId}_${Date.now()}`
+
         // Create new participant
-        return await prisma.chatRoomParticipant.create({
+        return await prisma.chat_room_participants.create({
           data: {
+            id: participantId,
             roomId,
             userId,
             role: 'member'
           },
           include: {
-            user: {
+            users: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
                 role: true
               }
@@ -248,11 +304,12 @@ export async function POST(
     // Transform the data
     const transformedParticipants = newParticipants.map(p => {
       // Handle case where participant might be existing (not created)
-      if (p.user) {
+      if (p.users) {
+        const user = p.users
         return {
-          id: p.user.id,
-          name: p.user.name || p.user.email,
-          role: p.user.role,
+          id: user.id,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown',
+          role: user.role,
           isOnline: Math.random() > 0.5 // TODO: Implement real online status
         }
       } else {
@@ -376,8 +433,32 @@ export async function DELETE(
       return NextResponse.json({ message: 'Participant removed successfully' })
     }
 
+    // Map userId to actual user ID if it's a player or staff ID
+    let actualUserId = userId
+    
+    // Try to find as player first
+    const player = await prisma.players.findUnique({
+      where: { id: userId },
+      select: { userId: true }
+    })
+    
+    if (player) {
+      actualUserId = player.userId
+    } else {
+      // Try to find as staff
+      const staff = await prisma.staff.findUnique({
+        where: { id: userId },
+        select: { userId: true }
+      })
+      
+      if (staff) {
+        actualUserId = staff.userId
+      }
+      // If not found, assume it's already a user ID
+    }
+
     // Check if user is admin of this room or removing themselves
-    const participant = await prisma.chatRoomParticipant.findFirst({
+    const participant = await prisma.chat_room_participants.findFirst({
       where: {
         roomId,
         userId: user.userId,
@@ -393,7 +474,7 @@ export async function DELETE(
     }
 
     // Prevent players from leaving chat rooms
-    if (user.role === 'PLAYER' && userId === user.userId) {
+    if (user.role === 'PLAYER' && actualUserId === user.userId) {
       return NextResponse.json(
         { message: 'Players cannot leave chat rooms they were added to by admin' },
         { status: 403 }
@@ -401,7 +482,7 @@ export async function DELETE(
     }
 
     // Allow removal if user is admin or removing themselves (but not if player)
-    if (participant.role !== 'admin' && userId !== user.userId) {
+    if (participant.role !== 'admin' && actualUserId !== user.userId) {
       return NextResponse.json(
         { message: 'Only admins can remove other members' },
         { status: 403 }
@@ -409,10 +490,10 @@ export async function DELETE(
     }
 
     // Remove participant
-    await prisma.chatRoomParticipant.updateMany({
+    await prisma.chat_room_participants.updateMany({
       where: {
         roomId,
-        userId
+        userId: actualUserId
       },
       data: {
         isActive: false,

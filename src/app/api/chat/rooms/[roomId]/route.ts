@@ -5,6 +5,144 @@ import { readState, writeState } from '@/lib/localDevStore'
 
 const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ roomId: string }> }
+) {
+  try {
+    // Check authentication
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) {
+      return NextResponse.json(
+        { message: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const user = await verifyToken(token)
+    if (!user) {
+      return NextResponse.json(
+        { message: 'Invalid token' },
+        { status: 401 }
+      )
+    }
+
+    const { roomId } = await context.params
+    const { name, description } = await request.json()
+
+    if (!name || !name.trim()) {
+      return NextResponse.json(
+        { message: 'Chat room name is required' },
+        { status: 400 }
+      )
+    }
+
+    // Local dev mode: update in localDevStore
+    if (LOCAL_DEV_MODE) {
+      const state = await readState()
+      const chatRooms = state.chatRooms || []
+      const chatRoom = chatRooms.find((room: any) => room.id === roomId)
+      
+      if (!chatRoom) {
+        return NextResponse.json(
+          { message: 'Chat room not found' },
+          { status: 404 }
+        )
+      }
+
+      // Check if user is admin of this room
+      const isAdmin = chatRoom.participants?.some((p: any) => 
+        (p.userId === user.userId || p.id === user.userId) && p.role === 'admin' && p.isActive !== false
+      )
+
+      if (!isAdmin) {
+        return NextResponse.json(
+          { message: 'Only admins can edit chat rooms' },
+          { status: 403 }
+        )
+      }
+
+      chatRoom.name = name.trim()
+      if (description !== undefined) {
+        chatRoom.description = description?.trim() || null
+      }
+      chatRoom.updatedAt = new Date().toISOString()
+      await writeState(state)
+
+      console.log('✅ Chat room updated successfully in local storage:', roomId)
+
+      return NextResponse.json({
+        id: chatRoom.id,
+        name: chatRoom.name,
+        description: chatRoom.description,
+        message: 'Chat room updated successfully'
+      })
+    }
+
+    // Check if user is admin of this room
+    const participant = await prisma.chat_room_participants.findFirst({
+      where: {
+        roomId,
+        userId: user.userId,
+        isActive: true,
+        role: 'admin'
+      }
+    })
+
+    if (!participant) {
+      return NextResponse.json(
+        { message: 'Only admins can edit chat rooms' },
+        { status: 403 }
+      )
+    }
+
+    // Update chat room
+    const updatedRoom = await prisma.chat_rooms.update({
+      where: { id: roomId },
+      data: {
+        name: name.trim(),
+        description: description?.trim() || null,
+        updatedAt: new Date()
+      },
+      include: {
+        chat_room_participants: {
+          where: {
+            isActive: true
+          },
+          include: {
+            users: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                role: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    console.log('✅ Chat room updated successfully:', roomId)
+
+    return NextResponse.json({
+      id: updatedRoom.id,
+      name: updatedRoom.name,
+      description: updatedRoom.description,
+      message: 'Chat room updated successfully'
+    })
+
+  } catch (error) {
+    console.error('❌ Error updating chat room:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ roomId: string }> }
@@ -66,7 +204,7 @@ export async function DELETE(
     }
 
     // Check if user is admin of this room
-    const participant = await prisma.chatRoomParticipant.findFirst({
+    const participant = await prisma.chat_room_participants.findFirst({
       where: {
         roomId,
         userId: user.userId,
@@ -92,30 +230,21 @@ export async function DELETE(
     console.log('🗑️ Deleting chat room:', roomId)
 
     // Delete all related data in the correct order
-    // 1. Delete read receipts
-    await prisma.chatMessageReadReceipt.deleteMany({
-      where: {
-        message: {
-          roomId
-        }
-      }
-    })
-
-    // 2. Delete messages
-    await prisma.chatMessage.deleteMany({
+    // 1. Delete messages (cascade will handle participants)
+    await prisma.chat_messages.deleteMany({
       where: {
         roomId
       }
     })
 
-    // 3. Delete participants
-    await prisma.chatRoomParticipant.deleteMany({
+    // 2. Delete participants
+    await prisma.chat_room_participants.deleteMany({
       where: {
         roomId
       }
     })
 
-    // 4. Delete the chat room
+    // 3. Delete the chat room
     await prisma.chat_rooms.delete({
       where: {
         id: roomId
