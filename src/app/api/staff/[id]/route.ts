@@ -54,6 +54,7 @@ export async function GET(
     // Transform staff response
     return NextResponse.json({
       id: staff.id,
+      userId: staff.userId, // Add userId explicitly
       firstName: staff.firstName,
       lastName: staff.lastName,
       name: `${staff.firstName} ${staff.lastName}`,

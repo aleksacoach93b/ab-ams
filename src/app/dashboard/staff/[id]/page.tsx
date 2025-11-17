@@ -79,18 +79,37 @@ export default function StaffProfilePage() {
           const reportsData = await reportsResponse.json()
           // Flatten reports from all folders
           const allReports: Report[] = []
-          if (reportsData.folders) {
+          if (reportsData.folders && Array.isArray(reportsData.folders)) {
             reportsData.folders.forEach((folder: any) => {
               if (folder.reports && Array.isArray(folder.reports)) {
                 allReports.push(...folder.reports.map((r: any) => ({
-                  ...r,
+                  id: r.id,
+                  name: r.name,
+                  description: r.description,
+                  fileName: r.fileName,
+                  fileType: r.fileType,
+                  fileSize: r.fileSize,
+                  fileUrl: r.fileUrl,
+                  thumbnailUrl: r.thumbnailUrl,
+                  createdAt: r.createdAt,
                   folder: folder
                 })))
               }
             })
           }
           if (reportsData.reports && Array.isArray(reportsData.reports)) {
-            allReports.push(...reportsData.reports)
+            allReports.push(...reportsData.reports.map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              description: r.description,
+              fileName: r.fileName,
+              fileType: r.fileType,
+              fileSize: r.fileSize,
+              fileUrl: r.fileUrl,
+              thumbnailUrl: r.thumbnailUrl,
+              createdAt: r.createdAt,
+              folder: r.folder
+            })))
           }
           setReports(allReports)
         }
