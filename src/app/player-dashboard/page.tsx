@@ -956,7 +956,6 @@ export default function PlayerDashboard() {
                     return
                   }
                   
-                  // Get wellness settings
                   // Get wellness settings (use defaults if not loaded)
                   const settings = wellnessSettings || {
                     csvUrl: 'https://wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv',
