@@ -197,7 +197,7 @@ export async function GET(request: NextRequest) {
     const transformedRooms = chatRooms.map(room => ({
       id: room.id,
       name: room.name,
-      type: room.type || 'group',
+      type: 'group', // Default type since schema doesn't have type field
       participants: room.chat_room_participants.map(p => ({
         id: p.users.id,
         name: `${p.users.firstName} ${p.users.lastName}`.trim() || p.users.email,
@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { name, type = 'group', participantIds = [] } = await request.json()
+    const { name, description, participantIds = [] } = await request.json()
 
     if (!name || name.trim() === '') {
       return NextResponse.json(
@@ -460,7 +460,7 @@ export async function POST(request: NextRequest) {
       data: {
         id: roomId,
         name: name.trim(),
-        type,
+        description: description || null,
         createdBy: user.userId,
         chat_room_participants: {
           create: participantsWithIds
@@ -487,7 +487,7 @@ export async function POST(request: NextRequest) {
     const transformedRoom = {
       id: chatRoom.id,
       name: chatRoom.name,
-      type: chatRoom.type || 'group',
+      type: 'group', // Default type since schema doesn't have type field
       participants: chatRoom.chat_room_participants.map(p => ({
         id: p.users.id,
         name: `${p.users.firstName} ${p.users.lastName}`.trim() || p.users.email,
