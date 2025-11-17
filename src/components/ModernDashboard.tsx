@@ -70,9 +70,10 @@ interface Notification {
   id: string
   title: string
   message: string
-  type: 'info' | 'warning' | 'success' | 'error'
-  timestamp: string
-  read: boolean
+  type: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR'
+  createdAt: string
+  isRead: boolean
+  category?: 'SYSTEM' | 'PLAYER' | 'EVENT' | 'WELLNESS' | 'CHAT' | 'REPORT' | 'GENERAL'
 }
 
 interface ModernDashboardProps {
@@ -85,10 +86,39 @@ export default function ModernDashboard({ onNavigate }: ModernDashboardProps) {
   const [players, setPlayers] = useState<Player[]>([])
   const [events, setEvents] = useState<Event[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'events' | 'analytics'>('overview')
   const [searchQuery, setSearchQuery] = useState('')
   const [showNotifications, setShowNotifications] = useState(false)
+
+  // Fetch notifications separately for real-time updates
+  const fetchNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      const response = await fetch('/api/notifications?limit=20', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // Filter out chat notifications - they should be shown on chat icon
+        const nonChatNotifications = (data.notifications || []).filter((notification: Notification) => 
+          notification.category !== 'CHAT'
+        )
+        
+        setNotifications(nonChatNotifications)
+        setUnreadNotificationsCount(data.unreadCount || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+    }
+  }
 
   useEffect(() => {
     fetchDashboardData()
@@ -111,6 +141,16 @@ export default function ModernDashboard({ onNavigate }: ModernDashboardProps) {
       window.removeEventListener('eventDeleted', handleRefreshEvents)
     }
   }, [])
+
+  // Real-time notifications polling
+  useEffect(() => {
+    if (user?.id) {
+      fetchNotifications()
+      // Poll for new notifications every 5 seconds for faster updates
+      const notificationsInterval = setInterval(fetchNotifications, 5000)
+      return () => clearInterval(notificationsInterval)
+    }
+  }, [user?.id])
 
   const fetchDashboardData = async () => {
     try {
@@ -147,33 +187,7 @@ export default function ModernDashboard({ onNavigate }: ModernDashboardProps) {
         setEvents(sortedEvents)
       }
 
-      // Generate sample notifications
-      setNotifications([
-        {
-          id: '1',
-          title: 'New Training Session',
-          message: 'Morning training scheduled for tomorrow at 9:00 AM',
-          type: 'info',
-          timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-          read: false
-        },
-        {
-          id: '2',
-          title: 'Player Status Update',
-          message: 'Marko Petrović is now fully available',
-          type: 'success',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-          read: false
-        },
-        {
-          id: '3',
-          title: 'Wellness Survey Reminder',
-          message: '3 players haven\'t completed today\'s wellness survey',
-          type: 'warning',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-          read: true
-        }
-      ])
+      // Notifications are fetched separately via fetchNotifications()
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {
@@ -254,7 +268,36 @@ export default function ModernDashboard({ onNavigate }: ModernDashboardProps) {
     }
   }
 
-  const unreadNotifications = notifications.filter(n => !n.read).length
+  // Mark notification as read
+  const markNotificationAsRead = async (notificationId: string) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      const response = await fetch(`/api/notifications/${notificationId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isRead: true })
+      })
+
+      if (response.ok) {
+        // Update local state
+        setNotifications(prev => 
+          prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
+        )
+        // Refresh notifications to update count
+        setTimeout(() => fetchNotifications(), 500)
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+    }
+  }
+
+  // Use the unread count from API response
+  const unreadNotifications = unreadNotificationsCount
 
   if (loading) {
     return (
@@ -348,34 +391,43 @@ export default function ModernDashboard({ onNavigate }: ModernDashboardProps) {
                       </h3>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
-                      {notifications.map((notification) => (
-                        <div key={notification.id} 
-                             className={`p-4 border-b transition-colors ${!notification.read ? 'bg-opacity-50' : ''}`}
-                             style={{ 
-                               borderColor: colorScheme.border,
-                               backgroundColor: !notification.read ? `${colorScheme.primary}10` : 'transparent'
-                             }}>
-                          <div className="flex items-start space-x-3">
-                            <div 
-                              className="w-2 h-2 rounded-full mt-2"
-                              style={{ 
-                                backgroundColor: !notification.read ? colorScheme.primary : colorScheme.border
-                              }}
-                            ></div>
-                            <div className="flex-1">
-                              <h4 className="font-medium text-sm" style={{ color: colorScheme.text }}>
-                                {notification.title}
-                              </h4>
-                              <p className="text-xs mt-1" style={{ color: colorScheme.textSecondary }}>
-                                {notification.message}
-                              </p>
-                              <p className="text-xs mt-2" style={{ color: colorScheme.textSecondary }}>
-                                {new Date(notification.timestamp).toLocaleTimeString()}
-                              </p>
+                      {notifications.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <Bell className="h-12 w-12 mx-auto mb-3" style={{ color: colorScheme.textSecondary }} />
+                          <p style={{ color: colorScheme.textSecondary }}>No notifications</p>
+                        </div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <div 
+                            key={notification.id} 
+                            onClick={() => !notification.isRead && markNotificationAsRead(notification.id)}
+                            className={`p-4 border-b transition-colors cursor-pointer hover:opacity-80 ${!notification.isRead ? 'bg-opacity-50' : ''}`}
+                            style={{ 
+                              borderColor: colorScheme.border,
+                              backgroundColor: !notification.isRead ? `${colorScheme.primary}10` : 'transparent'
+                            }}>
+                            <div className="flex items-start space-x-3">
+                              <div 
+                                className="w-2 h-2 rounded-full mt-2"
+                                style={{ 
+                                  backgroundColor: !notification.isRead ? colorScheme.primary : colorScheme.border
+                                }}
+                              ></div>
+                              <div className="flex-1">
+                                <h4 className="font-medium text-sm" style={{ color: colorScheme.text }}>
+                                  {notification.title}
+                                </h4>
+                                <p className="text-xs mt-1" style={{ color: colorScheme.textSecondary }}>
+                                  {notification.message}
+                                </p>
+                                <p className="text-xs mt-2" style={{ color: colorScheme.textSecondary }}>
+                                  {new Date(notification.createdAt).toLocaleString()}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
