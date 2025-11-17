@@ -13,9 +13,10 @@ export async function GET(request: NextRequest) {
     }
 
     const user = await verifyToken(token)
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'COACH')) {
+    if (!user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 403 })
     }
+    // Allow all authenticated users (ADMIN, COACH, STAFF, PLAYER) to get wellness settings
 
     if (LOCAL_DEV_MODE) {
       const state = await readState()
