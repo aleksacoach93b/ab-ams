@@ -16,7 +16,7 @@ export async function GET(
     }
 
     // Get all media files for this player
-    const mediaFiles = await prisma.playerMedia.findMany({
+    const mediaFiles = await prisma.player_media.findMany({
       where: { playerId: id },
       select: { tags: true }
     })

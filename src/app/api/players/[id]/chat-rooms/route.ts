@@ -127,43 +127,57 @@ export async function GET(
       return NextResponse.json(transformedRooms)
     }
 
+    // First, get player's user ID from players table
+    const player = await prisma.players.findUnique({
+      where: { id: playerId },
+      select: { userId: true }
+    })
+
+    if (!player || !player.userId) {
+      console.log('❌ Player not found or has no user ID:', playerId)
+      return NextResponse.json([])
+    }
+
+    const playerUserId = player.userId
+
     // Get real chat rooms where this player is a participant
     const chatRooms = await prisma.chat_rooms.findMany({
       where: {
-        isActive: true,
-        participants: {
+        chat_room_participants: {
           some: {
-            userId: playerId,
+            userId: playerUserId,
             isActive: true
           }
         }
       },
       include: {
-        participants: {
+        chat_room_participants: {
           where: {
             isActive: true
           },
           include: {
-            user: {
+            users: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
                 role: true
               }
             }
           }
         },
-        messages: {
+        chat_messages: {
           orderBy: {
             createdAt: 'desc'
           },
           take: 1,
           include: {
-            sender: {
+            users: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
                 role: true
               }
@@ -177,28 +191,34 @@ export async function GET(
     })
 
     // Transform the data to match the frontend format
-    const transformedRooms = chatRooms.map(room => ({
-      id: room.id,
-      name: room.name,
-      type: room.type,
-      participants: room.participants.map(p => ({
-        id: p.user.id,
-        name: p.user.name || p.user.email,
-        role: p.user.role,
-        isOnline: false // Real online status would need to be implemented
-      })),
-      lastMessage: room.messages[0] ? {
-        id: room.messages[0].id,
-        content: room.messages[0].content,
-        senderId: room.messages[0].sender.id,
-        senderName: room.messages[0].sender.name || room.messages[0].sender.email,
-        senderRole: room.messages[0].sender.role,
-        timestamp: room.messages[0].createdAt.toISOString(),
-        type: room.messages[0].messageType,
-        status: 'delivered'
-      } : undefined,
-      unreadCount: 0 // Real unread count would need to be implemented
-    }))
+    const transformedRooms = chatRooms.map(room => {
+      const sender = room.chat_messages[0]?.users
+      return {
+        id: room.id,
+        name: room.name,
+        type: 'group', // Default type since schema doesn't have type field
+        participants: room.chat_room_participants.map(p => {
+          const user = p.users
+          return {
+            id: user.id,
+            name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown',
+            role: user.role,
+            isOnline: false // Real online status would need to be implemented
+          }
+        }),
+        lastMessage: room.chat_messages[0] && sender ? {
+          id: room.chat_messages[0].id,
+          content: room.chat_messages[0].content,
+          senderId: sender.id,
+          senderName: `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email || 'Unknown',
+          senderRole: sender.role,
+          timestamp: room.chat_messages[0].createdAt.toISOString(),
+          type: room.chat_messages[0].messageType,
+          status: 'delivered'
+        } : undefined,
+        unreadCount: 0 // Real unread count would need to be implemented
+      }
+    })
 
     return NextResponse.json(transformedRooms)
   } catch (error) {
