@@ -183,10 +183,22 @@ export async function POST(request: NextRequest) {
     // Try DB auth; on failure, fall back to local admin
     let user: any = null
     try {
+      const normalizedEmail = email.toLowerCase().trim()
+      console.log('🔍 Looking for user with email:', normalizedEmail)
+      
       user = await prisma.users.findUnique({
-        where: { email: email.toLowerCase() }
+        where: { email: normalizedEmail }
       })
+      
+      console.log('🔍 User found:', user ? {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        hasPassword: !!user.password
+      } : 'NOT FOUND')
     } catch (dbError) {
+      console.error('❌ Database error during login:', dbError)
       // Fallback path if Prisma is not configured locally
       const emailLower = email.toLowerCase()
       
@@ -335,6 +347,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user) {
+      console.log('❌ User not found for email:', email.toLowerCase().trim())
       return NextResponse.json(
         { message: 'Invalid email or password' },
         { status: 401 }
@@ -342,6 +355,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user.isActive) {
+      console.log('❌ User account is deactivated:', user.id)
       return NextResponse.json(
         { message: 'Account is deactivated' },
         { status: 401 }
@@ -349,14 +363,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password || '')
-    
-    if (!isValidPassword) {
+    if (!user.password) {
+      console.log('❌ User has no password set:', user.id)
       return NextResponse.json(
         { message: 'Invalid email or password' },
         { status: 401 }
       )
     }
+    
+    console.log('🔐 Comparing password...')
+    const isValidPassword = await bcrypt.compare(password, user.password)
+    
+    if (!isValidPassword) {
+      console.log('❌ Invalid password for user:', user.id)
+      return NextResponse.json(
+        { message: 'Invalid email or password' },
+        { status: 401 }
+      )
+    }
+    
+    console.log('✅ Password valid for user:', user.id)
 
     // Update last login
     await prisma.users.update({

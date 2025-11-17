@@ -280,9 +280,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Normalize email for checking
+    const normalizedEmail = email.toLowerCase().trim()
+    
     // Check if email already exists
     const existingUser = await prisma.users.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     })
 
     if (existingUser) {
@@ -294,8 +297,12 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('👤 Creating user account...')
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim()
+    
     // Hash password
     const hashedPassword = await hashPassword(password)
+    console.log('🔐 Password hashed, length:', hashedPassword.length)
 
     const userId = `staff_user_${Date.now()}`
 
@@ -303,7 +310,7 @@ export async function POST(request: NextRequest) {
     const user = await prisma.users.create({
       data: {
         id: userId,
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
         role: 'STAFF',
         firstName: finalFirstName,
@@ -312,7 +319,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date()
       }
     })
-    console.log('✅ User created:', user.id)
+    console.log('✅ User created:', { id: user.id, email: user.email, role: user.role })
 
     console.log('👔 Creating staff record...')
     const staffId = `staff_${user.id}`
@@ -324,7 +331,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         firstName: finalFirstName,
         lastName: finalLastName,
-        email,
+        email: normalizedEmail,
         phone: phone || null,
         position: position || null,
         // Reports permissions

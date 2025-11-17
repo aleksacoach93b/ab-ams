@@ -309,11 +309,14 @@ export async function POST(request: NextRequest) {
     const lastName = nameParts.slice(1).join(' ') || ''
     const userId = `player_user_${Date.now()}`
     
+    const hashedPassword = await hashPassword(password)
+    console.log('🔐 Password hashed, length:', hashedPassword.length)
+    
     const user = await prisma.users.create({
       data: {
         id: userId,
         email: normalizedEmail, // Use normalized email
-        password: await hashPassword(password),
+        password: hashedPassword,
         role: UserRole.PLAYER,
         firstName,
         lastName,
@@ -321,7 +324,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       },
     })
-    console.log('✅ User created:', user.id)
+    console.log('✅ User created:', { id: user.id, email: user.email, role: user.role })
 
     console.log('⚽ Creating player profile...')
     // Create player profile
