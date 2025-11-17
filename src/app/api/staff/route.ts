@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hashPassword } from '@/lib/auth'
 import { readState, writeState } from '@/lib/localDevStore'
+import { UserRole } from '@prisma/client'
 
 const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
@@ -169,7 +170,7 @@ export async function POST(request: NextRequest) {
         phone: phone || '',
         position: position || '',
         imageUrl: null,
-        role: 'STAFF',
+        role: UserRole.STAFF,
         // Reports permissions
         canViewReports: canViewReports || false,
         canEditReports: canEditReports || false,
@@ -297,10 +298,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('👤 Creating user account...')
-    // Normalize email
-    const normalizedEmail = email.toLowerCase().trim()
-    
-    // Hash password
+    // Hash password (normalizedEmail already declared above)
     const hashedPassword = await hashPassword(password)
     console.log('🔐 Password hashed, length:', hashedPassword.length)
 
@@ -312,7 +310,7 @@ export async function POST(request: NextRequest) {
         id: userId,
         email: normalizedEmail,
         password: hashedPassword,
-        role: 'STAFF',
+        role: UserRole.STAFF,
         firstName: finalFirstName,
         lastName: finalLastName,
         isActive: true,
