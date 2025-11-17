@@ -150,13 +150,13 @@ export async function GET(request: NextRequest) {
       // If no user filter, show all events (for admin/coach views)
       events = await prisma.events.findMany({
         include: {
-          participants: {
+          event_participants: {
             include: {
-              player: true,
+              players: true,
               staff: true,
             },
           },
-          media: true,
+          event_media: true,
         },
         orderBy: {
           startTime: 'asc'
