@@ -65,17 +65,19 @@ export default function StaffProfilePage() {
           'Content-Type': 'application/json'
         }
 
-        const [staffResponse, reportsResponse] = await Promise.all([
-          fetch(`/api/staff/${staffId}`, { headers }),
-          fetch(`/api/reports/staff-reports`, { headers })
+        const [staffResponse] = await Promise.all([
+          fetch(`/api/staff/${staffId}`, { headers })
         ])
-
+        
         if (staffResponse.ok) {
           const staffData = await staffResponse.json()
           setStaff(staffData)
-        }
+          
+          // Fetch reports for this specific staff member
+          // Pass staffId as query parameter so admin/coach can view staff's reports
+          const reportsResponse = await fetch(`/api/reports/staff-reports?staffId=${staffId}`, { headers })
 
-        if (reportsResponse.ok) {
+          if (reportsResponse.ok) {
           const reportsData = await reportsResponse.json()
           // Flatten reports from all folders
           const allReports: Report[] = []
@@ -112,6 +114,9 @@ export default function StaffProfilePage() {
             })))
           }
           setReports(allReports)
+          } else {
+            console.error('Failed to fetch reports:', reportsResponse.status, reportsResponse.statusText)
+          }
         }
       } catch (error) {
         console.error('Error fetching staff data:', error)

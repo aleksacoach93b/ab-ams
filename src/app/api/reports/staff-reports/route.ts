@@ -35,16 +35,28 @@ export async function GET(request: NextRequest) {
     // Get query parameters for folder navigation
     const { searchParams } = new URL(request.url)
     const folderId = searchParams.get('folderId')
+    const targetStaffId = searchParams.get('staffId') // Allow admin/coach to view specific staff's reports
     const folderKey = folderId || 'root'
 
     // LOCAL_DEV_MODE: Return folders and reports from state
     if (LOCAL_DEV_MODE) {
       const state = await readState()
       
+      // Get query parameters
+      const { searchParams } = new URL(request.url)
+      const targetStaffId = searchParams.get('staffId')
+      
       // Find staff member
-      const staffMember = state.staff?.find((s: any) => 
-        s.user?.id === user.userId || s.id === user.userId
-      )
+      let staffMember
+      if (targetStaffId && (user.role === 'ADMIN' || user.role === 'COACH')) {
+        // Admin/Coach viewing specific staff's reports
+        staffMember = state.staff?.find((s: any) => s.id === targetStaffId)
+      } else {
+        // Staff viewing their own reports
+        staffMember = state.staff?.find((s: any) => 
+          s.user?.id === user.userId || s.id === user.userId
+        )
+      }
 
       if (!staffMember) {
         return NextResponse.json(
@@ -128,9 +140,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Find the staff member
-    const staffMember = await prisma.staff.findFirst({
-      where: { userId: user.userId }
-    })
+    // If targetStaffId is provided and user is admin/coach, use that staff ID
+    // Otherwise, use the logged-in user's staff ID
+    let staffMember
+    if (targetStaffId && (user.role === 'ADMIN' || user.role === 'COACH')) {
+      // Admin/Coach viewing specific staff's reports
+      staffMember = await prisma.staff.findUnique({
+        where: { id: targetStaffId }
+      })
+    } else {
+      // Staff viewing their own reports
+      staffMember = await prisma.staff.findFirst({
+        where: { userId: user.userId }
+      })
+    }
 
     if (!staffMember) {
       return NextResponse.json(
