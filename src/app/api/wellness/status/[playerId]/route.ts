@@ -42,8 +42,9 @@ export async function GET(
     // Get today's date in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0]
 
-    // Get player info
+    // Get player info - need name and email for matching
     let playerName: string
+    let playerEmail: string | null = null
     
     if (LOCAL_DEV_MODE) {
       const state = await readState()
@@ -52,16 +53,27 @@ export async function GET(
         return NextResponse.json({ message: 'Player not found' }, { status: 404 })
       }
       playerName = player.name
+      playerEmail = player.email || null
     } else {
       const player = await prisma.players.findUnique({
         where: { id: playerId },
-        select: { name: true }
+        include: {
+          users: {
+            select: {
+              email: true
+            }
+          }
+        }
       })
       if (!player) {
         return NextResponse.json({ message: 'Player not found' }, { status: 404 })
       }
-      playerName = player.name
+      // Construct name from firstName + lastName
+      playerName = `${player.firstName} ${player.lastName}`.trim()
+      playerEmail = player.users?.email || player.email || null
     }
+    
+    console.log(`🔍 [WELLNESS] Checking for player: ${playerName} (${playerEmail})`)
 
     try {
       // Get wellness settings (CSV URL)
@@ -134,51 +146,94 @@ export async function GET(
         return result
       }
 
-      const headers = parseCSVLine(lines[0])
-      const playerNameIndex = headers.findIndex(h => h === 'playerName')
-      const submittedAtIndex = headers.findIndex(h => h === 'submittedAt')
+      const headers = parseCSVLine(lines[0]).map(h => h.trim().replace(/^"|"$/g, ''))
+      const playerNameIndex = headers.findIndex(h => h === 'playerName' || h.toLowerCase() === 'playername')
+      const playerEmailIndex = headers.findIndex(h => h === 'playerEmail' || h.toLowerCase() === 'playeremail')
+      const submittedAtIndex = headers.findIndex(h => h === 'submittedAt' || h.toLowerCase() === 'submittedat')
       
-      if (playerNameIndex === -1 || submittedAtIndex === -1) {
-        console.error('CSV headers missing playerName or submittedAt', headers)
+      console.log(`🔍 [WELLNESS] CSV headers:`, headers)
+      console.log(`🔍 [WELLNESS] Indices - name: ${playerNameIndex}, email: ${playerEmailIndex}, submittedAt: ${submittedAtIndex}`)
+      
+      if (submittedAtIndex === -1) {
+        console.error('❌ CSV headers missing submittedAt', headers)
         return NextResponse.json({ 
           completed: false,
           date: today,
           playerId: playerId,
-          source: 'csv_invalid'
+          source: 'csv_invalid',
+          error: 'Missing submittedAt column'
         })
       }
 
       // Check if player has completed survey today
       let completedToday = false
+      let matchedRow: any = null
       
       for (let i = 1; i < lines.length; i++) {
         const row = parseCSVLine(lines[i])
         if (row.length < headers.length) continue
 
-        const rowPlayerName = row[playerNameIndex]?.replace(/^"|"$/g, '').trim()
+        const rowPlayerName = playerNameIndex >= 0 ? row[playerNameIndex]?.replace(/^"|"$/g, '').trim() : null
+        const rowPlayerEmail = playerEmailIndex >= 0 ? row[playerEmailIndex]?.replace(/^"|"$/g, '').trim() : null
         const submittedAt = row[submittedAtIndex]?.replace(/^"|"$/g, '').trim()
 
-        if (!rowPlayerName || !submittedAt) continue
+        if (!submittedAt) continue
 
-        // Check if this is the current player (case-insensitive)
-        if (rowPlayerName.toLowerCase() === playerName.toLowerCase()) {
-          // Parse date from submittedAt (format: "10/1/2025, 12:09:31 PM" or "10/1/2025, 12:09:31 PM")
+        // Match by email first (more reliable), then by name
+        let isMatch = false
+        if (playerEmail && rowPlayerEmail) {
+          isMatch = rowPlayerEmail.toLowerCase() === playerEmail.toLowerCase()
+          if (isMatch) {
+            console.log(`✅ [WELLNESS] Matched by email: ${rowPlayerEmail}`)
+          }
+        }
+        
+        // If no email match, try name match
+        if (!isMatch && rowPlayerName && playerName) {
+          isMatch = rowPlayerName.toLowerCase() === playerName.toLowerCase()
+          if (isMatch) {
+            console.log(`✅ [WELLNESS] Matched by name: ${rowPlayerName}`)
+          }
+        }
+
+        if (isMatch) {
+          // Parse date from submittedAt (format: "10/1/2025, 12:09:31 PM" or ISO format)
           try {
-            const datePart = submittedAt.split(',')[0].trim() // "10/1/2025"
-            const [month, day, year] = datePart.split('/')
-            const surveyDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+            let surveyDate: string
+            
+            // Try parsing as "MM/DD/YYYY, HH:MM:SS AM/PM" format
+            if (submittedAt.includes(',')) {
+              const datePart = submittedAt.split(',')[0].trim() // "10/1/2025"
+              const [month, day, year] = datePart.split('/')
+              surveyDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+            } else {
+              // Try parsing as ISO format
+              const date = new Date(submittedAt)
+              surveyDate = date.toISOString().split('T')[0]
+            }
+            
+            console.log(`📅 [WELLNESS] Survey date: ${surveyDate}, Today: ${today}`)
             
             // Check if survey was completed today
             if (surveyDate === today) {
               completedToday = true
-              console.log(`✅ Player ${playerName} completed wellness survey today (${surveyDate})`)
+              matchedRow = { playerName: rowPlayerName, playerEmail: rowPlayerEmail, submittedAt, surveyDate }
+              console.log(`✅ [WELLNESS] Player ${playerName} (${playerEmail}) completed wellness survey today (${surveyDate})`)
               break
+            } else {
+              console.log(`⚠️ [WELLNESS] Survey found but not for today. Survey date: ${surveyDate}, Today: ${today}`)
             }
           } catch (error) {
-            console.error('Error parsing date:', submittedAt, error)
+            console.error('❌ [WELLNESS] Error parsing date:', submittedAt, error)
             continue
           }
         }
+      }
+      
+      if (!completedToday && matchedRow) {
+        console.log(`⚠️ [WELLNESS] Player matched but survey not for today:`, matchedRow)
+      } else if (!completedToday) {
+        console.log(`❌ [WELLNESS] No matching survey found for player ${playerName} (${playerEmail}) today`)
       }
 
       return NextResponse.json({ 
