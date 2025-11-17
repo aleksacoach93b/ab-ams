@@ -114,10 +114,25 @@ export default function PlayerDashboard() {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ Wellness settings loaded:', data.wellnessSettings)
         setWellnessSettings(data.wellnessSettings)
+      } else {
+        console.error('❌ Failed to fetch wellness settings:', response.status, response.statusText)
+        // Set default settings if fetch fails
+        setWellnessSettings({
+          csvUrl: 'https://wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv',
+          surveyId: 'cmg6klyig0004l704u1kd78zb',
+          baseUrl: 'https://wellness-monitor-tan.vercel.app'
+        })
       }
     } catch (error) {
-      console.error('Error fetching wellness settings:', error)
+      console.error('❌ Error fetching wellness settings:', error)
+      // Set default settings if fetch fails
+      setWellnessSettings({
+        csvUrl: 'https://wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv',
+        surveyId: 'cmg6klyig0004l704u1kd78zb',
+        baseUrl: 'https://wellness-monitor-tan.vercel.app'
+      })
     }
   }
 
@@ -799,17 +814,29 @@ export default function PlayerDashboard() {
                           return
                         }
                         
-                        // Get wellness settings
-                        if (!wellnessSettings) {
-                          alert('Wellness settings not loaded. Please refresh the page.')
+                        // Get wellness settings (use defaults if not loaded)
+                        const settings = wellnessSettings || {
+                          csvUrl: 'https://wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv',
+                          surveyId: 'cmg6klyig0004l704u1kd78zb',
+                          baseUrl: 'https://wellness-monitor-tan.vercel.app'
+                        }
+                        
+                        if (!settings.baseUrl || !settings.surveyId) {
+                          alert('Wellness settings are incomplete. Please contact administrator.')
+                          console.error('❌ Wellness settings incomplete:', settings)
                           return
                         }
                         
-                        const wellnessUrl = `${wellnessSettings.baseUrl}/kiosk/${wellnessSettings.surveyId}`
-                        console.log('Opening wellness kiosk URL:', wellnessUrl)
+                        const wellnessUrl = `${settings.baseUrl}/kiosk/${settings.surveyId}`
+                        console.log('🔗 Opening wellness kiosk URL:', wellnessUrl)
                         
                         // Open wellness app in new tab
                         const wellnessWindow = window.open(wellnessUrl, '_blank')
+                        
+                        if (!wellnessWindow) {
+                          alert('Popup blocked. Please allow popups for this site and try again.')
+                          return
+                        }
                         
                         // Set up periodic checking for survey completion
                         const checkCompletion = setInterval(async () => {
