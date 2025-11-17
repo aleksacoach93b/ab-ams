@@ -69,9 +69,19 @@ export async function GET(
       )
     }
 
-    // Get player media files from database
+    // Get player media files from database - select only needed fields
     const mediaFiles = await prisma.player_media.findMany({
       where: { playerId: id },
+      select: {
+        id: true,
+        fileName: true,
+        fileUrl: true,
+        fileType: true,
+        fileSize: true,
+        thumbnailUrl: true,
+        tags: true,
+        createdAt: true
+      },
       orderBy: { createdAt: 'desc' }
     })
 
@@ -331,24 +341,20 @@ export async function POST(
     console.log('✅ Successfully uploaded files:', uploadedFiles.length)
     console.log('✅ Uploaded files details:', uploadedFiles)
 
-    // Create notification for player media upload
-    try {
-      const token = request.headers.get('authorization')?.replace('Bearer ', '')
-      if (token) {
-        const user = await verifyToken(token)
+    // Create notification for player media upload (async, don't block)
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (token) {
+      verifyToken(token).then(user => {
         if (user) {
-          await NotificationService.notifyPlayerMediaUploaded(
+          const playerName = `${player.firstName} ${player.lastName}`.trim()
+          NotificationService.notifyPlayerMediaUploaded(
             player.id,
-            player.name,
+            playerName,
             uploadedFiles.length,
-            user.userId
-          )
-          console.log('✅ Notification created for player media upload')
+            user.userId || user.id || 'system'
+          ).catch(err => console.error('❌ Error creating notification:', err))
         }
-      }
-    } catch (notificationError) {
-      console.error('❌ Error creating notification:', notificationError)
-      // Don't fail the upload if notification fails
+      }).catch(err => console.error('❌ Error verifying token for notification:', err))
     }
 
     return NextResponse.json(uploadedFiles, { status: 201 })
