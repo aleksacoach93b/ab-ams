@@ -134,7 +134,7 @@ export async function GET(
     }
 
     // Check if user is participant in this room
-    const participant = await prisma.chatRoomParticipant.findFirst({
+    const participant = await prisma.chat_room_participants.findFirst({
       where: {
         roomId,
         userId: user.userId,
@@ -151,29 +151,19 @@ export async function GET(
     }
 
     // Get messages for the room
-    const messages = await prisma.chatMessage.findMany({
+    const messages = await prisma.chat_messages.findMany({
       where: {
         roomId,
         deletedAt: null
       },
       include: {
-        sender: {
+        users: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             role: true
-          }
-        },
-        readReceipts: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
           }
         }
       },
@@ -183,26 +173,25 @@ export async function GET(
     })
 
     // Transform the data
-    const transformedMessages = messages.map(message => ({
-      id: message.id,
-      content: message.content,
-      senderId: message.sender.id,
-      senderName: message.sender.name || message.sender.email,
-      senderRole: message.sender.role,
-      timestamp: message.createdAt.toISOString(),
-      type: message.messageType,
-      status: 'delivered', // TODO: Implement real message status
-      fileUrl: message.fileUrl,
-      fileName: message.fileName,
-      fileType: message.fileType,
-      fileSize: message.fileSize,
-      editedAt: message.editedAt?.toISOString(),
-      readBy: message.readReceipts.map(receipt => ({
-        userId: receipt.user.id,
-        userName: receipt.user.name || receipt.user.email,
-        readAt: receipt.readAt.toISOString()
-      }))
-    }))
+    const transformedMessages = messages.map(message => {
+      const sender = message.users
+      return {
+        id: message.id,
+        content: message.content,
+        senderId: sender.id,
+        senderName: `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email || 'Unknown',
+        senderRole: sender.role,
+        timestamp: message.createdAt.toISOString(),
+        type: message.messageType,
+        status: 'delivered', // TODO: Implement real message status
+        fileUrl: message.fileUrl,
+        fileName: message.fileName,
+        fileType: message.fileType,
+        fileSize: message.fileSize,
+        editedAt: message.editedAt?.toISOString(),
+        readBy: [] // TODO: Implement read receipts if needed
+      }
+    })
 
     return NextResponse.json(transformedMessages)
   } catch (error) {
@@ -449,7 +438,7 @@ export async function POST(
     }
 
     // Check if user is participant in this room
-    const participant = await prisma.chatRoomParticipant.findFirst({
+    const participant = await prisma.chat_room_participants.findFirst({
       where: {
         roomId,
         userId: user.userId,
@@ -465,23 +454,28 @@ export async function POST(
       )
     }
 
+    // Generate unique ID for message
+    const messageId = `chat_msg_${roomId}_${user.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
     // Create message
-    const message = await prisma.chatMessage.create({
+    const message = await prisma.chat_messages.create({
       data: {
+        id: messageId,
         roomId,
         senderId: user.userId,
         content: content.trim(),
-        messageType,
-        fileUrl,
-        fileName,
-        fileType,
-        fileSize
+        messageType: messageType || 'text',
+        fileUrl: fileUrl || null,
+        fileName: fileName || null,
+        fileType: fileType || null,
+        fileSize: fileSize || null
       },
       include: {
-        sender: {
+        users: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             role: true
           }
@@ -496,12 +490,13 @@ export async function POST(
     })
 
     // Transform the data
+    const sender = message.users
     const transformedMessage = {
       id: message.id,
       content: message.content,
-      senderId: message.sender.id,
-      senderName: message.sender.name || message.sender.email,
-      senderRole: message.sender.role,
+      senderId: sender.id,
+      senderName: `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email || 'Unknown',
+      senderRole: sender.role,
       timestamp: message.createdAt.toISOString(),
       type: message.messageType,
       status: 'delivered',
@@ -522,12 +517,13 @@ export async function POST(
       
       if (room) {
         const messagePreview = content.length > 50 ? content.substring(0, 50) + '...' : content
+        const senderName = `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email || 'Unknown'
         await NotificationService.notifyNewChatMessage(
           roomId,
           room.name,
-          message.sender.name || message.sender.email,
+          senderName,
           messagePreview,
-          message.sender.id // Pass sender ID to exclude from notifications
+          sender.id // Pass sender ID to exclude from notifications
         )
       }
     } catch (notificationError) {
