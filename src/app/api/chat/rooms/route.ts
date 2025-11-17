@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
       const transformedRooms = chatRooms.map((room: any) => ({
         id: room.id,
         name: room.name,
-        type: room.type || 'group',
+        type: 'group', // Default type since schema doesn't have type field
         participants: (room.participants || []).filter((p: any) => p.isActive !== false).map((p: any) => ({
           id: p.userId,
           name: p.user?.name || p.name || 'Unknown',
@@ -439,21 +439,60 @@ export async function POST(request: NextRequest) {
     // Generate unique ID for chat room
     const roomId = `chat_room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
+    // Map participantIds to user IDs
+    // participantIds can be player.id or staff.id, but we need users.id for chat_room_participants
+    const userIds: string[] = []
+    
+    // First, add creator's userId
+    userIds.push(user.userId)
+    
+    // Map participantIds to user IDs
+    for (const participantId of participantIds) {
+      // Try to find as player first
+      const player = await prisma.players.findUnique({
+        where: { id: participantId },
+        select: { userId: true }
+      })
+      
+      if (player) {
+        userIds.push(player.userId)
+        continue
+      }
+      
+      // Try to find as staff
+      const staff = await prisma.staff.findUnique({
+        where: { id: participantId },
+        select: { userId: true }
+      })
+      
+      if (staff) {
+        userIds.push(staff.userId)
+        continue
+      }
+      
+      // If not found as player or staff, assume it's already a user ID
+      // But verify it exists in users table
+      const userExists = await prisma.users.findUnique({
+        where: { id: participantId },
+        select: { id: true }
+      })
+      
+      if (userExists) {
+        userIds.push(participantId)
+      } else {
+        console.warn(`⚠️ Participant ID ${participantId} not found as player, staff, or user`)
+      }
+    }
+    
+    // Remove duplicates
+    const uniqueUserIds = [...new Set(userIds)]
+    
     // Generate unique IDs for participants
-    const participantsWithIds = [
-      // Add creator as admin
-      {
-        id: `chat_participant_${roomId}_${user.userId}_${Date.now()}_0`,
-        userId: user.userId,
-        role: 'admin'
-      },
-      // Add other participants
-      ...participantIds.map((participantId: string, index: number) => ({
-        id: `chat_participant_${roomId}_${participantId}_${Date.now()}_${index + 1}`,
-        userId: participantId,
-        role: 'member'
-      }))
-    ]
+    const participantsWithIds = uniqueUserIds.map((userId: string, index: number) => ({
+      id: `chat_participant_${roomId}_${userId}_${Date.now()}_${index}`,
+      userId: userId,
+      role: index === 0 ? 'admin' : 'member' // First one is creator (admin)
+    }))
 
     // Create chat room
     const chatRoom = await prisma.chat_rooms.create({
