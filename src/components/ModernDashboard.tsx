@@ -94,7 +94,22 @@ export default function ModernDashboard({ onNavigate }: ModernDashboardProps) {
     fetchDashboardData()
     // Simulate real-time updates
     const interval = setInterval(fetchDashboardData, 30000) // Update every 30 seconds
-    return () => clearInterval(interval)
+    
+    // Listen for custom events to refresh data
+    const handleRefreshEvents = () => {
+      fetchDashboardData()
+    }
+    
+    window.addEventListener('eventCreated', handleRefreshEvents)
+    window.addEventListener('eventUpdated', handleRefreshEvents)
+    window.addEventListener('eventDeleted', handleRefreshEvents)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('eventCreated', handleRefreshEvents)
+      window.removeEventListener('eventUpdated', handleRefreshEvents)
+      window.removeEventListener('eventDeleted', handleRefreshEvents)
+    }
   }, [])
 
   const fetchDashboardData = async () => {
@@ -124,8 +139,8 @@ export default function ModernDashboard({ onNavigate }: ModernDashboardProps) {
         
         // Sort events by date and time
         const sortedEvents = processedEvents.sort((a: any, b: any) => {
-          const dateA = new Date(`${a.date} ${a.startTime}`)
-          const dateB = new Date(`${b.date} ${b.startTime}`)
+          const dateA = new Date(`${a.date || a.startTime} ${a.startTime || ''}`)
+          const dateB = new Date(`${b.date || b.startTime} ${b.startTime || ''}`)
           return dateA.getTime() - dateB.getTime()
         })
         
@@ -633,6 +648,28 @@ export default function ModernDashboard({ onNavigate }: ModernDashboardProps) {
 
         {activeTab === 'events' && (
           <div className="space-y-6">
+            {/* Event Analytics CSV Link */}
+            <div className="flex justify-end mb-4">
+              <a
+                href="/api/analytics/events-csv"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: colorScheme.primary,
+                  color: '#FFFFFF'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.filter = 'brightness(0.9)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.filter = 'none'
+                }}
+              >
+                📊 Download Events Analytics CSV
+              </a>
+            </div>
+            
             {/* Events List */}
             <div className="space-y-4">
               {events.map((event) => (

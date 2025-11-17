@@ -413,6 +413,8 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
         const updatedEvent = result.event || result
         onEdit(updatedEvent)
         setIsEditing(false)
+        // Dispatch custom event to refresh calendar
+        window.dispatchEvent(new CustomEvent('eventUpdated'))
       } else {
         let errorMessage = 'Unknown error'
         try {
@@ -447,6 +449,8 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
 
       if (response.ok) {
         onDelete(event.id)
+        // Dispatch custom event to refresh calendar
+        window.dispatchEvent(new CustomEvent('eventDeleted'))
       } else {
         console.error('Failed to delete event')
         alert('Failed to delete event.')

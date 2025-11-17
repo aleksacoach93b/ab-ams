@@ -120,6 +120,8 @@ export default function NewEventPage() {
       })
 
       if (response.ok) {
+        // Dispatch custom event to refresh calendar
+        window.dispatchEvent(new CustomEvent('eventCreated'))
         router.push('/dashboard/calendar')
       } else {
         const errorData = await response.json()

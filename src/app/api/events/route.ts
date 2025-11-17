@@ -184,8 +184,14 @@ export async function GET(request: NextRequest) {
         size: m.fileSize
       })) || []
       
+      // Extract date from startTime for frontend compatibility
+      const eventDate = event.startTime ? event.startTime.toISOString().split('T')[0] : null
+      
       return {
         ...event,
+        date: eventDate, // Add date field for frontend
+        startTime: event.startTime ? event.startTime.toISOString() : null,
+        endTime: event.endTime ? event.endTime.toISOString() : null,
         participants,
         media,
         icon: event.icon || 'Calendar',

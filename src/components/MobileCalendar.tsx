@@ -88,59 +88,75 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null)
 
   // Fetch events from API
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const response = await fetch('/api/events')
-        if (response.ok) {
-          const data = await response.json()
-          const transformedEvents = data.map((event: any) => {
-            // Parse the event date from the API response
-            const eventDate = event.date ? new Date(event.date) : null
-            
-            // Format date in local timezone to avoid UTC conversion issues
-            const formatLocalDate = (date: Date) => {
-              const year = date.getFullYear()
-              const month = String(date.getMonth() + 1).padStart(2, '0')
-              const day = String(date.getDate()).padStart(2, '0')
-              return `${year}-${month}-${day}`
-            }
-            
-            // Extract participant IDs from the participants array
-            const selectedPlayers = event.participants
-              ?.filter((p: any) => p.playerId)
-              ?.map((p: any) => p.playerId) || []
-            
-            const selectedStaff = event.participants
-              ?.filter((p: any) => p.staffId)
-              ?.map((p: any) => p.staffId) || []
+  const fetchEvents = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/events')
+      if (response.ok) {
+        const data = await response.json()
+        const transformedEvents = data.map((event: any) => {
+          // Parse the event date from the API response
+          const eventDate = event.date ? new Date(event.date) : null
+          
+          // Format date in local timezone to avoid UTC conversion issues
+          const formatLocalDate = (date: Date) => {
+            const year = date.getFullYear()
+            const month = String(date.getMonth() + 1).padStart(2, '0')
+            const day = String(date.getDate()).padStart(2, '0')
+            return `${year}-${month}-${day}`
+          }
+          
+          // Extract participant IDs from the participants array
+          const selectedPlayers = event.participants
+            ?.filter((p: any) => p.playerId)
+            ?.map((p: any) => p.playerId) || []
+          
+          const selectedStaff = event.participants
+            ?.filter((p: any) => p.staffId)
+            ?.map((p: any) => p.staffId) || []
 
-            return {
-              id: event.id,
-              title: event.title,
-              type: event.type,
-              date: eventDate ? formatLocalDate(eventDate) : '',
-              startTime: event.startTime || '',
-              endTime: event.endTime || '',
-              location: event.location?.name || '',
-              description: event.description || '',
-              color: getEventColor(event.type),
-              icon: event.icon || event.iconName || 'Calendar', // Use icon or iconName, fallback to Calendar
-              media: event.media || [],
-              selectedPlayers,
-              selectedStaff
-            }
-          })
-          setEvents(transformedEvents)
-        }
-      } catch (error) {
-        console.error('Error fetching events:', error)
-      } finally {
-        setLoading(false)
+          return {
+            id: event.id,
+            title: event.title,
+            type: event.type,
+            date: eventDate ? formatLocalDate(eventDate) : '',
+            startTime: event.startTime || '',
+            endTime: event.endTime || '',
+            location: event.location?.name || '',
+            description: event.description || '',
+            color: getEventColor(event.type),
+            icon: event.icon || event.iconName || 'Calendar', // Use icon or iconName, fallback to Calendar
+            media: event.media || [],
+            selectedPlayers,
+            selectedStaff
+          }
+        })
+        setEvents(transformedEvents)
       }
+    } catch (error) {
+      console.error('Error fetching events:', error)
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchEvents()
+    
+    // Listen for custom event to refresh events list
+    const handleRefreshEvents = () => {
+      fetchEvents()
+    }
+    
+    window.addEventListener('eventCreated', handleRefreshEvents)
+    window.addEventListener('eventUpdated', handleRefreshEvents)
+    window.addEventListener('eventDeleted', handleRefreshEvents)
+    
+    return () => {
+      window.removeEventListener('eventCreated', handleRefreshEvents)
+      window.removeEventListener('eventUpdated', handleRefreshEvents)
+      window.removeEventListener('eventDeleted', handleRefreshEvents)
+    }
   }, [])
 
   const getEventColor = (type: string) => {
