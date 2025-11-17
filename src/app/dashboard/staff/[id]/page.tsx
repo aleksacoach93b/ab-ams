@@ -100,7 +100,7 @@ export default function StaffProfilePage() {
           if (reportsData.reports && Array.isArray(reportsData.reports)) {
             allReports.push(...reportsData.reports.map((r: any) => ({
               id: r.id,
-              name: r.name,
+              name: r.title || r.name, // Use title from schema, fallback to name
               description: r.description,
               fileName: r.fileName,
               fileType: r.fileType,
@@ -108,7 +108,7 @@ export default function StaffProfilePage() {
               fileUrl: r.fileUrl,
               thumbnailUrl: r.thumbnailUrl,
               createdAt: r.createdAt,
-              folder: r.folder
+              folder: r.report_folders || r.folder // Use report_folders from schema, fallback to folder
             })))
           }
           setReports(allReports)

@@ -252,23 +252,35 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Get reports in the current folder (if folderId is specified)
-    // Otherwise, get all reports from all accessible folders
+    // Get reports visible to this staff member
+    // Reports can be visible through:
+    // 1. Being in a folder that has visibleToStaff with this staff
+    // 2. Having report_visibility with this staff's userId
+    // 3. Being without folder (folderId = null) - accessible to all staff with permission
     const reportsWhere: any = {
       isActive: true,
       OR: [
         // Reports in folders visible to this staff
         {
-          folder: {
-            visibleToStaff: {
+          report_folders: {
+            report_visibility: {
               some: {
-                staffId: staffMember.id,
+                userId: staffMember.userId,
                 canView: true
               }
             }
           }
         },
-        // Reports without folder (folderId is null) - these are accessible to all staff with permission
+        // Reports with direct visibility to this staff's user
+        {
+          report_visibility: {
+            some: {
+              userId: staffMember.userId,
+              canView: true
+            }
+          }
+        },
+        // Reports without folder (folderId is null) - accessible to all staff with permission
         {
           folderId: null
         }
@@ -280,12 +292,21 @@ export async function GET(request: NextRequest) {
       reportsWhere.OR = [
         {
           folderId: folderId,
-          folder: {
-            visibleToStaff: {
+          report_folders: {
+            report_visibility: {
               some: {
-                staffId: staffMember.id,
+                userId: staffMember.userId,
                 canView: true
               }
+            }
+          }
+        },
+        {
+          folderId: folderId,
+          report_visibility: {
+            some: {
+              userId: staffMember.userId,
+              canView: true
             }
           }
         }
@@ -295,17 +316,30 @@ export async function GET(request: NextRequest) {
     const reports = await prisma.reports.findMany({
       where: reportsWhere,
       include: {
-        folder: {
+        report_folders: {
           include: {
-            visibleToStaff: {
+            report_visibility: {
               include: {
-                staff: {
+                users: {
                   select: {
                     id: true,
-                    name: true,
+                    firstName: true,
+                    lastName: true,
                     email: true
                   }
                 }
+              }
+            }
+          }
+        },
+        report_visibility: {
+          include: {
+            users: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
               }
             }
           }
