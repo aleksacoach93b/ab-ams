@@ -739,6 +739,7 @@ export async function POST(request: NextRequest) {
       isAllDay: body.isAllDay || false,
       allowPlayerCreation: body.allowPlayerCreation || false,
       allowPlayerReschedule: body.allowPlayerReschedule || false,
+      updatedAt: new Date(), // Add updatedAt field for Prisma
     }
 
     console.log('📅 Creating event with data:', {

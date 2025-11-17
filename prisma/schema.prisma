@@ -200,7 +200,7 @@ model events {
   allowPlayerCreation   Boolean              @default(false)
   allowPlayerReschedule Boolean              @default(false)
   createdAt             DateTime             @default(now())
-  updatedAt             DateTime
+  updatedAt             DateTime             @updatedAt
   event_media           event_media[]
   event_participants    event_participants[]
   coaches               coaches?             @relation(fields: [coachId], references: [id])
