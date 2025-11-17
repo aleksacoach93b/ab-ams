@@ -256,20 +256,41 @@ export async function GET(request: NextRequest) {
     // Otherwise, get all reports from all accessible folders
     const reportsWhere: any = {
       isActive: true,
-      folder: {
-        visibleToStaff: {
-          some: {
-            staffId: staffMember.id,
-            canView: true
+      OR: [
+        // Reports in folders visible to this staff
+        {
+          folder: {
+            visibleToStaff: {
+              some: {
+                staffId: staffMember.id,
+                canView: true
+              }
+            }
           }
+        },
+        // Reports without folder (folderId is null) - these are accessible to all staff with permission
+        {
+          folderId: null
         }
-      }
+      ]
     }
     
     if (folderId) {
-      reportsWhere.folderId = folderId
+      // If folderId is specified, only get reports from that folder
+      reportsWhere.OR = [
+        {
+          folderId: folderId,
+          folder: {
+            visibleToStaff: {
+              some: {
+                staffId: staffMember.id,
+                canView: true
+              }
+            }
+          }
+        }
+      ]
     }
-    // If no folderId, get all reports from all accessible folders
     
     const reports = await prisma.reports.findMany({
       where: reportsWhere,
