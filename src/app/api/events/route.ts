@@ -884,7 +884,14 @@ export async function POST(request: NextRequest) {
     const upperType = type?.toUpperCase()
     const finalEventType = (upperType && EventType[upperType as keyof typeof EventType])
       ? upperType as EventType
-      : 'TRAINING'
+      : EventType.TRAINING
+
+    console.log('🔍 [CREATE EVENT] Type validation:', {
+      originalType: type,
+      upperType: upperType,
+      finalEventType: finalEventType,
+      existsInEnum: upperType ? EventType[upperType as keyof typeof EventType] : false
+    })
 
     // Generate unique ID for event
     const eventId = `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -1016,6 +1023,15 @@ export async function POST(request: NextRequest) {
       })),
       media: completeEvent!.event_media || []
     }
+
+    console.log('✅ [CREATE EVENT] Event created and transformed:', {
+      id: transformedEvent.id,
+      title: transformedEvent.title,
+      type: transformedEvent.type,
+      originalTypeFromBody: type,
+      finalTypeInDB: completeEvent!.type,
+      typeMatches: transformedEvent.type === (type?.toUpperCase() || 'TRAINING')
+    })
 
     // Create notifications for player participants only
     try {
