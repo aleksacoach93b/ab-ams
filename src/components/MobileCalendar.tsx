@@ -96,7 +96,13 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
         const data = await response.json()
         const transformedEvents = data.map((event: any) => {
           // Parse the event date from the API response
-          const eventDate = event.date ? new Date(event.date) : null
+          // API can return date as string (YYYY-MM-DD) or we need to extract from startTime
+          let eventDate: Date | null = null
+          if (event.date) {
+            eventDate = new Date(event.date)
+          } else if (event.startTime) {
+            eventDate = new Date(event.startTime)
+          }
           
           // Format date in local timezone to avoid UTC conversion issues
           const formatLocalDate = (date: Date) => {
@@ -104,6 +110,23 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
             const month = String(date.getMonth() + 1).padStart(2, '0')
             const day = String(date.getDate()).padStart(2, '0')
             return `${year}-${month}-${day}`
+          }
+          
+          // Extract time from ISO string or use as-is if already in HH:MM format
+          const extractTime = (timeStr: string | null | undefined): string => {
+            if (!timeStr) return ''
+            // If already in HH:MM format, return as-is
+            if (/^\d{2}:\d{2}$/.test(timeStr)) {
+              return timeStr
+            }
+            // If ISO string, extract time part
+            if (timeStr.includes('T')) {
+              const date = new Date(timeStr)
+              const hours = String(date.getHours()).padStart(2, '0')
+              const minutes = String(date.getMinutes()).padStart(2, '0')
+              return `${hours}:${minutes}`
+            }
+            return timeStr
           }
           
           // Extract participant IDs from the participants array
@@ -120,9 +143,9 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
             title: event.title,
             type: event.type,
             date: eventDate ? formatLocalDate(eventDate) : '',
-            startTime: event.startTime || '',
-            endTime: event.endTime || '',
-            location: event.location?.name || '',
+            startTime: extractTime(event.startTime),
+            endTime: extractTime(event.endTime),
+            location: event.location?.name || event.location || '',
             description: event.description || '',
             color: getEventColor(event.type),
             icon: event.icon || event.iconName || 'Calendar', // Use icon or iconName, fallback to Calendar
@@ -336,7 +359,12 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
           ?.map((p: any) => p.staffId) || []
 
         // Parse the event date from the API response
-        const eventDate = event.date ? new Date(event.date) : null
+        let eventDate: Date | null = null
+        if (event.date) {
+          eventDate = new Date(event.date)
+        } else if (event.startTime) {
+          eventDate = new Date(event.startTime)
+        }
         
         // Format date in local timezone to avoid UTC conversion issues
         const formatLocalDate = (date: Date) => {
@@ -345,15 +373,32 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
           const day = String(date.getDate()).padStart(2, '0')
           return `${year}-${month}-${day}`
         }
+        
+        // Extract time from ISO string or use as-is if already in HH:MM format
+        const extractTime = (timeStr: string | null | undefined): string => {
+          if (!timeStr) return ''
+          // If already in HH:MM format, return as-is
+          if (/^\d{2}:\d{2}$/.test(timeStr)) {
+            return timeStr
+          }
+          // If ISO string, extract time part
+          if (timeStr.includes('T')) {
+            const date = new Date(timeStr)
+            const hours = String(date.getHours()).padStart(2, '0')
+            const minutes = String(date.getMinutes()).padStart(2, '0')
+            return `${hours}:${minutes}`
+          }
+          return timeStr
+        }
 
         return {
           id: event.id,
           title: event.title,
           type: event.type,
           date: eventDate ? formatLocalDate(eventDate) : '',
-          startTime: event.startTime || '',
-          endTime: event.endTime || '',
-          location: event.location || '',
+          startTime: extractTime(event.startTime),
+          endTime: extractTime(event.endTime),
+          location: event.location?.name || event.location || '',
           description: event.description || '',
           color: getEventColor(event.type),
           icon: event.icon || 'Calendar',
