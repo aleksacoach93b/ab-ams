@@ -957,18 +957,31 @@ export default function PlayerDashboard() {
                   }
                   
                   // Get wellness settings
-                  if (!wellnessSettings) {
-                    alert('Wellness settings not loaded. Please refresh the page.')
+                  // Get wellness settings (use defaults if not loaded)
+                  const settings = wellnessSettings || {
+                    csvUrl: 'https://wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv',
+                    surveyId: 'cmg6klyig0004l704u1kd78zb',
+                    baseUrl: 'https://wellness-monitor-tan.vercel.app'
+                  }
+                  
+                  if (!settings.baseUrl || !settings.surveyId) {
+                    alert('Wellness settings are incomplete. Please contact administrator.')
+                    console.error('❌ Wellness settings incomplete:', settings)
                     return
                   }
                   
-                  const wellnessUrl = `${wellnessSettings.baseUrl}/kiosk/${wellnessSettings.surveyId}`
+                  const wellnessUrl = `${settings.baseUrl}/kiosk/${settings.surveyId}`
                   console.log('AB AMS Player ID:', currentPlayer.id)
-                  console.log('Wellness Survey ID:', wellnessSettings.surveyId)
-                  console.log('Opening wellness kiosk URL:', wellnessUrl)
+                  console.log('Wellness Survey ID:', settings.surveyId)
+                  console.log('🔗 Opening wellness kiosk URL:', wellnessUrl)
                   
                   // Open wellness app in new tab
                   const wellnessWindow = window.open(wellnessUrl, '_blank')
+                  
+                  if (!wellnessWindow) {
+                    alert('Popup blocked. Please allow popups for this site and try again.')
+                    return
+                  }
                   
                   // Set up periodic checking for survey completion
                   const checkCompletion = setInterval(async () => {
