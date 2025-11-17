@@ -436,25 +436,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(transformedRoom, { status: 201 })
     }
 
+    // Generate unique ID for chat room
+    const roomId = `chat_room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // Generate unique IDs for participants
+    const participantsWithIds = [
+      // Add creator as admin
+      {
+        id: `chat_participant_${roomId}_${user.userId}_${Date.now()}_0`,
+        userId: user.userId,
+        role: 'admin'
+      },
+      // Add other participants
+      ...participantIds.map((participantId: string, index: number) => ({
+        id: `chat_participant_${roomId}_${participantId}_${Date.now()}_${index + 1}`,
+        userId: participantId,
+        role: 'member'
+      }))
+    ]
+
     // Create chat room
     const chatRoom = await prisma.chat_rooms.create({
       data: {
+        id: roomId,
         name: name.trim(),
         type,
         createdBy: user.userId,
-        participants: {
-          create: [
-            // Add creator as admin
-            {
-              userId: user.userId,
-              role: 'admin'
-            },
-            // Add other participants
-            ...participantIds.map((participantId: string) => ({
-              userId: participantId,
-              role: 'member'
-            }))
-          ]
+        chat_room_participants: {
+          create: participantsWithIds
         }
       },
       include: {
