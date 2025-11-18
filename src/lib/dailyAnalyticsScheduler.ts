@@ -70,16 +70,19 @@ export class DailyAnalyticsScheduler {
 
   private async collectEventAnalytics(date: Date) {
     try {
-      // Fetch events for the specified date
+      // Set date to 00:00:00 for that day
+      const dateStart = new Date(date)
+      dateStart.setHours(0, 0, 0, 0)
+      const dateEnd = new Date(dateStart)
+      dateEnd.setHours(23, 59, 59, 999)
+      
+      // Fetch events for the specified date using startTime (events don't have date field)
       const events = await prisma.events.findMany({
         where: {
-          date: {
-            gte: date,
-            lt: new Date(date.getTime() + 24 * 60 * 60 * 1000) // Next day
+          startTime: {
+            gte: dateStart,
+            lte: dateEnd
           }
-        },
-        include: {
-          participants: true
         }
       })
 
@@ -117,38 +120,46 @@ export class DailyAnalyticsScheduler {
       // Calculate and store analytics for each event type
       for (const [eventTypeLabel, eventsOfType] of Object.entries(eventGroups)) {
         const totalDuration = eventsOfType.reduce((sum, event) => {
-          const start = new Date(`2000-01-01T${event.startTime}`)
-          const end = new Date(`2000-01-01T${event.endTime}`)
-          return sum + (end.getTime() - start.getTime()) / (1000 * 60) // minutes
+          if (event.startTime && event.endTime) {
+            const start = new Date(event.startTime)
+            const end = new Date(event.endTime)
+            return sum + (end.getTime() - start.getTime()) / (1000 * 60) // minutes
+          }
+          return sum
         }, 0)
 
-        const avgDuration = Math.round(totalDuration / eventsOfType.length)
+        const avgDuration = eventsOfType.length > 0 ? Math.round(totalDuration / eventsOfType.length) : 0
 
         // Collect event titles for this type
         const eventTitles = eventsOfType.map(event => event.title).join('; ')
 
-        // Upsert daily event analytics
-        await prisma.dailyEventAnalytics.upsert({
+        // Upsert daily event analytics - use dateStart (00:00:00) to ensure consistency
+        // Once saved at 00:00, this data cannot be changed (no update, only create if doesn't exist)
+        const existing = await prisma.daily_event_analytics.findUnique({
           where: {
             date_eventType: {
-              date: date,
+              date: dateStart,
               eventType: eventTypeLabel
             }
-          },
-          update: {
-            count: eventsOfType.length,
-            totalDuration: Math.round(totalDuration),
-            avgDuration,
-            updatedAt: new Date()
-          },
-          create: {
-            date,
-            eventType: eventTypeLabel,
-            count: eventsOfType.length,
-            totalDuration: Math.round(totalDuration),
-            avgDuration
           }
         })
+
+        if (!existing) {
+          // Only create if doesn't exist - once saved at 00:00, it cannot be changed
+          await prisma.daily_event_analytics.create({
+            data: {
+              date: dateStart,
+              eventType: eventTypeLabel,
+              count: eventsOfType.length,
+              totalDuration: Math.round(totalDuration),
+              avgDuration,
+              eventTitles: eventTitles || null
+            }
+          })
+          console.log(`✅ Created event analytics for ${eventTypeLabel} on ${dateStart.toISOString().split('T')[0]}`)
+        } else {
+          console.log(`⚠️ Event analytics already exists for ${eventTypeLabel} on ${dateStart.toISOString().split('T')[0]} - skipping (data locked at 00:00)`)
+        }
       }
 
       console.log(`Event analytics collected for ${eventGroups.length} event types on ${date.toISOString().split('T')[0]}`)

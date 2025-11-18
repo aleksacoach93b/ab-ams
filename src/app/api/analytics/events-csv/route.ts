@@ -137,9 +137,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Database mode: use Prisma
-    // OPTIMIZED: Get ALL events at once instead of querying per day (fixes timeout)
-    console.log('📊 Fetching ALL events from database...')
+    // Use saved daily_event_analytics as PRIMARY source (like players-csv does)
+    console.log('📊 Fetching saved daily event analytics from database...')
     
+    // Get ALL saved daily event analytics (PRIMARY DATA SOURCE - locked at 00:00)
+    const savedAnalytics = await prisma.daily_event_analytics.findMany({
+      orderBy: [
+        { date: 'asc' },
+        { eventType: 'asc' }
+      ]
+    })
+
+    console.log(`📊 Found ${savedAnalytics.length} saved daily event analytics records`)
+
     // Map event type values to labels (same as in dropdown)
     const eventTypeMap: { [key: string]: string } = {
       'TRAINING': 'Training',
@@ -160,53 +170,132 @@ export async function GET(request: NextRequest) {
       'OTHER': 'Other'
     }
 
-    // Get ALL events at once (single query - much faster)
-    const allEvents = await prisma.events.findMany({
-      orderBy: {
-        startTime: 'asc'
-      },
-      select: {
-        id: true,
-        title: true,
-        type: true,
-        startTime: true,
-        endTime: true
-      }
+    // Find the earliest date from saved analytics
+    const allDates = savedAnalytics.map(analytics => analytics.date)
+    const earliestDate = allDates.length > 0 
+      ? new Date(Math.min(...allDates.map(d => d.getTime())))
+      : new Date() // If no data, start from today
+    earliestDate.setHours(0, 0, 0, 0)
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    // Create a map of saved analytics by date and event type (PRIMARY DATA SOURCE)
+    const analyticsMap = new Map<string, any>()
+    savedAnalytics.forEach(analytics => {
+      const dateStr = analytics.date.toISOString().split('T')[0]
+      const key = `${dateStr}_${analytics.eventType}`
+      analyticsMap.set(key, analytics)
     })
 
-    console.log(`📊 Found ${allEvents.length} total events in database`)
+    // Get all dates from earliest to today
+    const allDatesInRange: string[] = []
+    for (let d = new Date(earliestDate); d <= today; d.setDate(d.getDate() + 1)) {
+      allDatesInRange.push(d.toISOString().split('T')[0])
+    }
 
-    // Process all events into CSV rows
-    const allData: any[] = []
-    allEvents.forEach(event => {
-      const typeLabel = eventTypeMap[event.type] || event.type
+    // Find missing dates (dates without saved analytics)
+    const savedDates = new Set(savedAnalytics.map(a => a.date.toISOString().split('T')[0]))
+    const missingDates = allDatesInRange.filter(date => !savedDates.has(date))
+
+    console.log(`📊 Processing ${allDatesInRange.length} dates (${savedAnalytics.length} saved, ${missingDates.length} missing)`)
+
+    // Get live events data for missing dates only (if any)
+    let liveData: any[] = []
+    if (missingDates.length > 0) {
+      console.log(`📊 Fetching live events for ${missingDates.length} missing dates...`)
       
-      // Calculate duration
-      let duration = 0
-      if (event.startTime && event.endTime) {
-        const start = new Date(event.startTime)
-        const end = new Date(event.endTime)
-        duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60))
-      }
-      
-      // Format startTime and endTime for CSV
-      const startTimeStr = event.startTime ? new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A'
-      const endTimeStr = event.endTime ? new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A'
-      
-      // Get date from startTime (set to 00:00:00 for that day)
-      const eventDate = event.startTime ? new Date(event.startTime) : new Date()
-      eventDate.setHours(0, 0, 0, 0)
-      
-      allData.push({
-        date: eventDate,
-        eventType: typeLabel,
-        eventTitle: event.title || 'Untitled Event',
-        startTime: startTimeStr,
-        endTime: endTimeStr,
-        duration: duration,
-        matchDayTag: 'N/A' // matchDayTag is not in events model
+      // Get ALL events at once (single query - much faster)
+      const allEvents = await prisma.events.findMany({
+        orderBy: {
+          startTime: 'asc'
+        },
+        select: {
+          id: true,
+          title: true,
+          type: true,
+          startTime: true,
+          endTime: true
+        }
       })
+
+      console.log(`📊 Found ${allEvents.length} total events in database`)
+
+      // Process events for missing dates only
+      missingDates.forEach(missingDate => {
+        const dateStart = new Date(missingDate + 'T00:00:00')
+        const dateEnd = new Date(missingDate + 'T23:59:59')
+        
+        const dayEvents = allEvents.filter(event => {
+          if (!event.startTime) return false
+          const eventDate = new Date(event.startTime)
+          return eventDate >= dateStart && eventDate <= dateEnd
+        })
+
+        dayEvents.forEach(event => {
+          const typeLabel = eventTypeMap[event.type] || event.type
+          
+          // Calculate duration
+          let duration = 0
+          if (event.startTime && event.endTime) {
+            const start = new Date(event.startTime)
+            const end = new Date(event.endTime)
+            duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60))
+          }
+          
+          // Format startTime and endTime for CSV
+          const startTimeStr = event.startTime ? new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A'
+          const endTimeStr = event.endTime ? new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A'
+          
+          liveData.push({
+            date: dateStart,
+            eventType: typeLabel,
+            eventTitle: event.title || 'Untitled Event',
+            startTime: startTimeStr,
+            endTime: endTimeStr,
+            duration: duration,
+            matchDayTag: 'N/A'
+          })
+        })
+      })
+    }
+
+    // Process saved analytics data (PRIMARY SOURCE)
+    const processedSavedAnalytics: any[] = []
+    savedAnalytics.forEach(analytics => {
+      const analyticsDate = new Date(analytics.date)
+      analyticsDate.setHours(0, 0, 0, 0)
+      
+      // If eventTitles exist, split them and create separate rows
+      if (analytics.eventTitles) {
+        const titles = analytics.eventTitles.split('; ')
+        titles.forEach((title: string, index: number) => {
+          processedSavedAnalytics.push({
+            date: analyticsDate,
+            eventType: analytics.eventType,
+            eventTitle: title.trim(),
+            startTime: 'N/A', // Saved data doesn't have individual times
+            endTime: 'N/A',
+            duration: analytics.avgDuration,
+            matchDayTag: 'N/A'
+          })
+        })
+      } else {
+        // If no titles, create one row with count
+        processedSavedAnalytics.push({
+          date: analyticsDate,
+          eventType: analytics.eventType,
+          eventTitle: `${analytics.count} event(s)`,
+          startTime: 'N/A',
+          endTime: 'N/A',
+          duration: analytics.avgDuration,
+          matchDayTag: 'N/A'
+        })
+      }
     })
+
+    // Combine saved (PRIMARY) and live data
+    const allData = [...processedSavedAnalytics, ...liveData]
 
     // Sort by date
     allData.sort((a, b) => a.date.getTime() - b.date.getTime())

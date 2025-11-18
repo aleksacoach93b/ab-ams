@@ -149,6 +149,22 @@ model daily_player_analytics {
   players   players  @relation(fields: [playerId], references: [id], onDelete: Cascade)
 }
 
+model daily_event_analytics {
+  id            String   @id @default(cuid())
+  date          DateTime
+  eventType     String
+  count         Int      @default(0)
+  totalDuration Int      @default(0) // in minutes
+  avgDuration   Int      @default(0) // in minutes
+  eventTitles   String?  // Semicolon-separated list of event titles
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([date, eventType])
+  @@index([date])
+  @@map("daily_event_analytics")
+}
+
 model daily_player_notes {
   id        String   @id
   playerId  String
