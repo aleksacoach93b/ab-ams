@@ -174,8 +174,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         current: pathname === '/dashboard/wellness',
         show: true
       })
-      
-      // Daily Wellness - show for admin and coach
+    }
+    
+    // Daily Wellness - show for admin, coach, and staff
+    if (user?.role === 'ADMIN' || user?.role === 'COACH' || user?.role === 'STAFF') {
       baseNavigation.push({
         name: 'Daily Wellness',
         href: '/dashboard/daily-wellness',
@@ -183,8 +185,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         current: pathname === '/dashboard/daily-wellness',
         show: true
       })
-      
-      // RPE Analysis - show for admin and coach
+    }
+    
+    // RPE Analysis - show for admin, coach, and staff
+    if (user?.role === 'ADMIN' || user?.role === 'COACH' || user?.role === 'STAFF') {
       baseNavigation.push({
         name: 'RPE Analysis',
         href: '/dashboard/rpe-analysis',
@@ -248,14 +252,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       icon: HeartPulse,
       label: 'Daily Wellness',
       onClick: () => router.push('/dashboard/daily-wellness'),
-      show: user?.role === 'ADMIN' || user?.role === 'COACH'
+      show: user?.role === 'ADMIN' || user?.role === 'COACH' || user?.role === 'STAFF'
     },
     {
       key: 'rpeAnalysis',
       icon: Activity,
       label: 'RPE Analysis',
       onClick: () => router.push('/dashboard/rpe-analysis'),
-      show: user?.role === 'ADMIN' || user?.role === 'COACH'
+      show: user?.role === 'ADMIN' || user?.role === 'COACH' || user?.role === 'STAFF'
     }
   ].filter((btn, index, self) => 
     // Remove duplicates by checking if this is the first occurrence of this key

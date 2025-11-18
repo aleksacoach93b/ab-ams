@@ -12,12 +12,12 @@ export default function RPEAnalysisPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || (user?.role !== 'ADMIN' && user?.role !== 'COACH'))) {
+    if (!isLoading && (!isAuthenticated || (user?.role !== 'ADMIN' && user?.role !== 'COACH' && user?.role !== 'STAFF'))) {
       router.push('/login')
     }
   }, [isLoading, isAuthenticated, user, router])
 
-  if (isLoading || !isAuthenticated || (user?.role !== 'ADMIN' && user?.role !== 'COACH')) {
+  if (isLoading || !isAuthenticated || (user?.role !== 'ADMIN' && user?.role !== 'COACH' && user?.role !== 'STAFF')) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: colorScheme.background }}>
         <div className="text-center">
