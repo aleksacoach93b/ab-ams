@@ -237,14 +237,18 @@ model login_logs {
 }
 
 model notifications {
-  id        String           @id
-  userId    String
-  title     String
-  message   String
-  type      NotificationType @default(GENERAL)
-  isRead    Boolean          @default(false)
-  createdAt DateTime         @default(now())
-  users     users            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String           @id
+  userId     String
+  title      String
+  message    String
+  type       NotificationType @default(GENERAL)
+  category   String?          // 'SYSTEM' | 'PLAYER' | 'EVENT' | 'WELLNESS' | 'CHAT' | 'REPORT' | 'GENERAL'
+  priority   String?          // 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  relatedId  String?          // ID of related entity (event, player, chat room, etc.)
+  relatedType String?         // Type of related entity ('event', 'player', 'chat', etc.)
+  isRead     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  users      users            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model player_availability {
