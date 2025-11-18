@@ -385,6 +385,22 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
       return
     }
 
+    // Validate Match Day Tag is required
+    if (!formData.matchDayTag || formData.matchDayTag.trim() === '') {
+      alert('Match Day Tag is required. Please select a Match Day Tag before saving.')
+      // Scroll to Match Day Tag section
+      const matchDayTagSection = document.querySelector('[data-match-day-tag-section]')
+      if (matchDayTagSection) {
+        matchDayTagSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        // Highlight the section
+        matchDayTagSection.classList.add('ring-2', 'ring-red-500')
+        setTimeout(() => {
+          matchDayTagSection.classList.remove('ring-2', 'ring-red-500')
+        }, 2000)
+      }
+      return
+    }
+
     console.log('💾 Saving event with data:', formData)
     setIsLoading(true)
     
@@ -629,6 +645,7 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
                         {/* Match Day Tag - Only visible to Admin */}
                         {user?.role === 'ADMIN' && (
                           <div 
+                            data-match-day-tag-section
                             className="rounded-lg p-2 sm:p-4"
                             style={{ backgroundColor: colorScheme.background }}
                           >
@@ -636,7 +653,7 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
                               className="text-lg font-medium mb-4"
                               style={{ color: colorScheme.text + ' !important' }}
                             >
-                              Match Day Tag
+                              Match Day Tag <span style={{ color: '#EF4444' }}>*</span>
                             </h4>
                             
                             <div>
@@ -644,7 +661,7 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
                                 className="block text-sm font-medium mb-2"
                                 style={{ color: colorScheme.text + ' !important' }}
                               >
-                                Select Match Day Tag
+                                Select Match Day Tag <span style={{ color: '#EF4444' }}>*</span>
                               </label>
                               <MatchDayTagSelector
                                 value={formData?.matchDayTag || ''}

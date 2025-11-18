@@ -108,6 +108,23 @@ export default function NewEventPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate Match Day Tag is required
+    if (!formData.matchDayTag || formData.matchDayTag.trim() === '') {
+      alert('Match Day Tag is required. Please select a Match Day Tag before saving.')
+      // Scroll to Match Day Tag section
+      const matchDayTagSection = document.querySelector('[data-match-day-tag-section]')
+      if (matchDayTagSection) {
+        matchDayTagSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        // Highlight the section
+        matchDayTagSection.classList.add('ring-2', 'ring-red-500')
+        setTimeout(() => {
+          matchDayTagSection.classList.remove('ring-2', 'ring-red-500')
+        }, 2000)
+      }
+      return
+    }
+    
     setIsLoading(true)
 
     try {
@@ -225,12 +242,18 @@ export default function NewEventPage() {
 
         {/* Match Day Tag - Only visible to Admin */}
         {user?.role === 'ADMIN' && (
-          <div className="rounded-lg shadow p-6" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
-            <h3 style={{ color: colorScheme.text }} className="text-lg font-medium mb-6">Match Day Tag</h3>
+          <div 
+            data-match-day-tag-section
+            className="rounded-lg shadow p-6" 
+            style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}
+          >
+            <h3 style={{ color: colorScheme.text }} className="text-lg font-medium mb-6">
+              Match Day Tag <span style={{ color: '#EF4444' }}>*</span>
+            </h3>
             
             <div>
               <label style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
-                Select Match Day Tag
+                Select Match Day Tag <span style={{ color: '#EF4444' }}>*</span>
               </label>
               <MatchDayTagSelector
                 value={formData.matchDayTag}
