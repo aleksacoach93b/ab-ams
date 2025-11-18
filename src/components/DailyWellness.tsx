@@ -2710,34 +2710,52 @@ export default function DailyWellness() {
                   <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                     <tr style={{ backgroundColor: `${colorScheme.primary}20` }}>
                       <th 
-                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold"
+                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold cursor-pointer transition-all hover:opacity-80"
                         style={{ 
                           color: colorScheme.text,
                           borderBottom: `1px solid ${colorScheme.border}`,
                           fontFamily: 'DIN, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                         }}
+                        onClick={() => handleBodyPartsSort('athleteName', 'pain')}
                       >
-                        Athlete
+                        <div className="flex items-center gap-1">
+                          Athlete
+                          {painfulAreasSortColumn === 'athleteName' && (
+                            painfulAreasSortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                          )}
+                        </div>
                       </th>
                       <th 
-                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold"
+                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold cursor-pointer transition-all hover:opacity-80"
                         style={{ 
                           color: colorScheme.text,
                           borderBottom: `1px solid ${colorScheme.border}`,
                           fontFamily: 'DIN, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                         }}
+                        onClick={() => handleBodyPartsSort('bodyPart', 'pain')}
                       >
-                        Body Part
+                        <div className="flex items-center gap-1">
+                          Body Part
+                          {painfulAreasSortColumn === 'bodyPart' && (
+                            painfulAreasSortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                          )}
+                        </div>
                       </th>
                       <th 
-                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold"
+                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold cursor-pointer transition-all hover:opacity-80"
                         style={{ 
                           color: colorScheme.text,
                           borderBottom: `1px solid ${colorScheme.border}`,
                           fontFamily: 'DIN, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                         }}
+                        onClick={() => handleBodyPartsSort('scale', 'pain')}
                       >
-                        Scale
+                        <div className="flex items-center gap-1">
+                          Scale
+                          {painfulAreasSortColumn === 'scale' && (
+                            painfulAreasSortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                          )}
+                        </div>
                       </th>
                     </tr>
                   </thead>
@@ -2808,34 +2826,52 @@ export default function DailyWellness() {
                   <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                     <tr style={{ backgroundColor: `${colorScheme.primary}20` }}>
                       <th 
-                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold"
+                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold cursor-pointer transition-all hover:opacity-80"
                         style={{ 
                           color: colorScheme.text,
                           borderBottom: `1px solid ${colorScheme.border}`,
                           fontFamily: 'DIN, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                         }}
+                        onClick={() => handleBodyPartsSort('athleteName', 'soreness')}
                       >
-                        Athlete
+                        <div className="flex items-center gap-1">
+                          Athlete
+                          {soreAreasSortColumn === 'athleteName' && (
+                            soreAreasSortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                          )}
+                        </div>
                       </th>
                       <th 
-                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold"
+                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold cursor-pointer transition-all hover:opacity-80"
                         style={{ 
                           color: colorScheme.text,
                           borderBottom: `1px solid ${colorScheme.border}`,
                           fontFamily: 'DIN, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                         }}
+                        onClick={() => handleBodyPartsSort('bodyPart', 'soreness')}
                       >
-                        Body Part
+                        <div className="flex items-center gap-1">
+                          Body Part
+                          {soreAreasSortColumn === 'bodyPart' && (
+                            soreAreasSortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                          )}
+                        </div>
                       </th>
                       <th 
-                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold"
+                        className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-xs font-bold cursor-pointer transition-all hover:opacity-80"
                         style={{ 
                           color: colorScheme.text,
                           borderBottom: `1px solid ${colorScheme.border}`,
                           fontFamily: 'DIN, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                         }}
+                        onClick={() => handleBodyPartsSort('scale', 'soreness')}
                       >
-                        Scale
+                        <div className="flex items-center gap-1">
+                          Scale
+                          {soreAreasSortColumn === 'scale' && (
+                            soreAreasSortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                          )}
+                        </div>
                       </th>
                     </tr>
                   </thead>
