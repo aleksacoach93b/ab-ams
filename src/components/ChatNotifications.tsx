@@ -32,7 +32,10 @@ export default function ChatNotifications({ onOpenChat }: ChatNotificationsProps
   const fetchChatNotifications = async () => {
     try {
       const token = localStorage.getItem('token')
-      if (!token) return
+      if (!token) {
+        console.warn('⚠️ [CHAT NOTIFICATIONS] No token found')
+        return
+      }
 
       const response = await fetch('/api/notifications?limit=100&unreadOnly=false', {
         headers: {
@@ -44,21 +47,38 @@ export default function ChatNotifications({ onOpenChat }: ChatNotificationsProps
       if (response.ok) {
         const data = await response.json()
         
+        console.log('📱 [CHAT NOTIFICATIONS] Fetched notifications:', {
+          total: data.notifications?.length || 0,
+          allNotifications: data.notifications
+        })
+        
         // Filter only chat notifications
-        const chatOnlyNotifications = data.notifications.filter((notification: Notification) => 
-          notification.category === 'CHAT'
-        )
+        const chatOnlyNotifications = (data.notifications || []).filter((notification: Notification) => {
+          const isChat = notification.category === 'CHAT'
+          if (!isChat && notification.category) {
+            console.log('🔍 [CHAT NOTIFICATIONS] Non-chat notification:', notification.category, notification.title)
+          }
+          return isChat
+        })
+        
         const unreadChatNotifications = chatOnlyNotifications.filter((notification: Notification) => 
           !notification.isRead
         )
         
+        console.log('📱 [CHAT NOTIFICATIONS] Filtered results:', {
+          chatOnly: chatOnlyNotifications.length,
+          unread: unreadChatNotifications.length,
+          chatNotifications: chatOnlyNotifications
+        })
+        
         setChatNotifications(chatOnlyNotifications)
         setUnreadChatCount(unreadChatNotifications.length)
       } else {
-        console.error('Failed to fetch chat notifications:', response.status)
+        const errorText = await response.text()
+        console.error('❌ [CHAT NOTIFICATIONS] Failed to fetch:', response.status, errorText)
       }
     } catch (error) {
-      console.error('Error fetching chat notifications:', error)
+      console.error('❌ [CHAT NOTIFICATIONS] Error fetching:', error)
     }
   }
 
