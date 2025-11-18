@@ -642,22 +642,18 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
                           </div>
                         </div>
 
-                        {/* Match Day Tag - REQUIRED - Only visible to Admin */}
+                        {/* Match Day Tag - Only visible to Admin */}
                         {user?.role === 'ADMIN' && (
                           <div 
                             data-match-day-tag-section
-                            className="rounded-lg p-2 sm:p-4 border-2"
-                            style={{ 
-                              backgroundColor: colorScheme.background,
-                              borderColor: !formData?.matchDayTag ? '#EF4444' : colorScheme.border,
-                              borderWidth: !formData?.matchDayTag ? '2px' : '1px'
-                            }}
+                            className="rounded-lg p-2 sm:p-4"
+                            style={{ backgroundColor: colorScheme.background }}
                           >
                             <h4 
                               className="text-lg font-medium mb-4"
                               style={{ color: colorScheme.text + ' !important' }}
                             >
-                              Match Day Tag <span style={{ color: '#EF4444', fontSize: '1.2em', fontWeight: 'bold' }}>* REQUIRED</span>
+                              Match Day Tag <span style={{ color: '#EF4444' }}>*</span>
                             </h4>
                             
                             <div>
@@ -665,13 +661,8 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
                                 className="block text-sm font-medium mb-2"
                                 style={{ color: colorScheme.text + ' !important' }}
                               >
-                                Select Match Day Tag <span style={{ color: '#EF4444', fontSize: '1.1em', fontWeight: 'bold' }}>* REQUIRED</span>
+                                Select Match Day Tag <span style={{ color: '#EF4444' }}>*</span>
                               </label>
-                              {!formData?.matchDayTag && (
-                                <p style={{ color: '#EF4444', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: '500' }}>
-                                  ⚠️ This field is required. Please select a Match Day Tag.
-                                </p>
-                              )}
                               <MatchDayTagSelector
                                 value={formData?.matchDayTag || ''}
                                 onChange={(tag) => setFormData(prev => prev ? { ...prev, matchDayTag: tag } : null)}
