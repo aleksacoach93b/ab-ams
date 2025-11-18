@@ -100,8 +100,27 @@ export async function GET(request: NextRequest) {
         createdAt: 'desc'
       },
       take: limit,
-      skip: offset
+      skip: offset,
+      select: {
+        id: true,
+        userId: true,
+        title: true,
+        message: true,
+        type: true,
+        category: true,
+        priority: true,
+        relatedId: true,
+        relatedType: true,
+        isRead: true,
+        createdAt: true
+      }
     })
+    
+    // Ensure category field exists (fallback for old notifications)
+    const notificationsWithCategory = notifications.map((notif: any) => ({
+      ...notif,
+      category: notif.category || 'GENERAL'
+    }))
 
     const unreadCount = await prisma.notifications.count({
       where: {
@@ -111,9 +130,9 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
-      notifications,
+      notifications: notificationsWithCategory,
       unreadCount,
-      total: notifications.length
+      total: notificationsWithCategory.length
     })
   } catch (error) {
     console.error('Error fetching notifications:', error)

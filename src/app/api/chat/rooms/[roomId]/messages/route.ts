@@ -509,27 +509,42 @@ export async function POST(
     }
 
     // Create notification for new message (async, don't wait)
-    try {
-      const room = await prisma.chat_rooms.findUnique({
-        where: { id: roomId },
-        select: { name: true }
-      })
-      
-      if (room) {
-        const messagePreview = content.length > 50 ? content.substring(0, 50) + '...' : content
-        const senderName = `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email || 'Unknown'
-        await NotificationService.notifyNewChatMessage(
-          roomId,
-          room.name,
-          senderName,
-          messagePreview,
-          sender.id // Pass sender ID to exclude from notifications
-        )
+    // Use setTimeout to make it non-blocking
+    setTimeout(async () => {
+      try {
+        const room = await prisma.chat_rooms.findUnique({
+          where: { id: roomId },
+          select: { name: true }
+        })
+        
+        if (room) {
+          const messagePreview = content.length > 50 ? content.substring(0, 50) + '...' : content
+          const senderName = `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email || 'Unknown'
+          
+          console.log('📱 [CHAT MESSAGE] Creating notification for:', {
+            roomId,
+            roomName: room.name,
+            senderName,
+            senderId: sender.id
+          })
+          
+          const result = await NotificationService.notifyNewChatMessage(
+            roomId,
+            room.name,
+            senderName,
+            messagePreview,
+            sender.id // Pass sender ID to exclude from notifications
+          )
+          
+          console.log('✅ [CHAT MESSAGE] Notification result:', result?.length || 0, 'notifications created')
+        } else {
+          console.warn('⚠️ [CHAT MESSAGE] Room not found:', roomId)
+        }
+      } catch (notificationError) {
+        console.error('❌ [CHAT MESSAGE] Error creating chat notification:', notificationError)
+        // Don't fail the message send if notification fails
       }
-    } catch (notificationError) {
-      console.error('Error creating chat notification:', notificationError)
-      // Don't fail the message send if notification fails
-    }
+    }, 0)
 
     return NextResponse.json(transformedMessage, { status: 201 })
   } catch (error) {
