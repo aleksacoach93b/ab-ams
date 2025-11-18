@@ -427,7 +427,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
               </div>
 
-              {/* Mobile: Second Row - Remaining Quick Access Buttons */}
+              {/* Mobile: Second Row - Remaining Quick Access Buttons, Add new, Logout */}
               <div className="flex items-center gap-2 sm:hidden">
                 {quickAccessButtons.filter(btn => btn.show).slice(3).map((btn) => (
                   <button
@@ -444,6 +444,106 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <btn.icon className="h-5 w-5" />
                   </button>
                 ))}
+                
+                {/* Role-based Add new dropdown - Mobile */}
+                {((user?.role === 'ADMIN' || user?.role === 'COACH') || 
+                  (user?.role === 'STAFF' && (userPermissions?.canCreateEvents || userPermissions?.canEditPlayers))) && (
+                  <div className="relative add-dropdown-container">
+                    <button 
+                      onClick={() => setAddDropdownOpen(!addDropdownOpen)}
+                      className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm"
+                      style={{ 
+                        backgroundColor: colorScheme.primary,
+                        color: 'white',
+                        border: `1px solid ${colorScheme.primary}`
+                      }}
+                      title="Add new"
+                    >
+                      <Plus className="h-5 w-5" />
+                    </button>
+                    <div 
+                      className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg transition-all duration-200 z-50 ${
+                        addDropdownOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+                      }`}
+                      style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}
+                    >
+                      <div className="py-1">
+                        {(user?.role === 'ADMIN' || user?.role === 'COACH') && (
+                          <>
+                            <button
+                              onClick={() => {
+                                router.push('/dashboard/players/new')
+                                setAddDropdownOpen(false)
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
+                              style={{ color: colorScheme.text }}
+                            >
+                              Add Player
+                            </button>
+                            <button
+                              onClick={() => {
+                                router.push('/dashboard/staff/new')
+                                setAddDropdownOpen(false)
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
+                              style={{ color: colorScheme.text }}
+                            >
+                              Add Staff
+                            </button>
+                            <button
+                              onClick={() => {
+                                router.push('/dashboard/events/new')
+                                setAddDropdownOpen(false)
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
+                              style={{ color: colorScheme.text }}
+                            >
+                              Add Event
+                            </button>
+                          </>
+                        )}
+                        {user?.role === 'STAFF' && userPermissions?.canCreateEvents && (
+                          <button
+                            onClick={() => {
+                              router.push('/dashboard/events/new')
+                              setAddDropdownOpen(false)
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
+                            style={{ color: colorScheme.text }}
+                          >
+                            Add Event
+                          </button>
+                        )}
+                        {user?.role === 'STAFF' && userPermissions?.canEditPlayers && (
+                          <button
+                            onClick={() => {
+                              router.push('/dashboard/players/new')
+                              setAddDropdownOpen(false)
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
+                            style={{ color: colorScheme.text }}
+                          >
+                            Add Player
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Logout button */}
+                <button
+                  onClick={logout}
+                  className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm"
+                  style={{ 
+                    backgroundColor: colorScheme.errorLight,
+                    color: colorScheme.error,
+                    border: `1px solid ${colorScheme.error}`
+                  }}
+                  title="Logout"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
               </div>
 
               {/* Desktop: All Quick Access Buttons in one row */}
@@ -630,113 +730,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             </div>
 
-            {/* Mobile: User Info, Logout, and Add new on second row */}
-            <div className="flex items-center justify-between gap-2 sm:hidden">
-              <div className="flex items-center space-x-2">
-                <div className="text-left">
-                  <p className="text-sm font-medium" style={{ color: colorScheme.text }}>
-                    {user?.firstName} {user?.lastName}
-                  </p>
-                  <p className="text-xs" style={{ color: colorScheme.textSecondary }}>
-                    {user?.role}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Role-based Add new dropdown - Mobile */}
-                {((user?.role === 'ADMIN' || user?.role === 'COACH') || 
-                  (user?.role === 'STAFF' && (userPermissions?.canCreateEvents || userPermissions?.canEditPlayers))) && (
-                  <div className="relative add-dropdown-container">
-                    <button 
-                      onClick={() => setAddDropdownOpen(!addDropdownOpen)}
-                      className="px-3 py-2 rounded-md transition-colors font-medium hover:opacity-90"
-                      style={{ 
-                        backgroundColor: colorScheme.primary,
-                        color: 'white'
-                      }}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                    <div 
-                      className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg transition-all duration-200 z-50 ${
-                        addDropdownOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
-                      }`}
-                      style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}
-                    >
-                      <div className="py-1">
-                        {(user?.role === 'ADMIN' || user?.role === 'COACH') && (
-                          <>
-                            <button
-                              onClick={() => {
-                                router.push('/dashboard/players/new')
-                                setAddDropdownOpen(false)
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
-                              style={{ color: colorScheme.text }}
-                            >
-                              Add Player
-                            </button>
-                            <button
-                              onClick={() => {
-                                router.push('/dashboard/staff/new')
-                                setAddDropdownOpen(false)
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
-                              style={{ color: colorScheme.text }}
-                            >
-                              Add Staff
-                            </button>
-                            <button
-                              onClick={() => {
-                                router.push('/dashboard/events/new')
-                                setAddDropdownOpen(false)
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
-                              style={{ color: colorScheme.text }}
-                            >
-                              Add Event
-                            </button>
-                          </>
-                        )}
-                        {user?.role === 'STAFF' && userPermissions?.canCreateEvents && (
-                          <button
-                            onClick={() => {
-                              router.push('/dashboard/events/new')
-                              setAddDropdownOpen(false)
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
-                            style={{ color: colorScheme.text }}
-                          >
-                            Add Event
-                          </button>
-                        )}
-                        {user?.role === 'STAFF' && userPermissions?.canEditPlayers && (
-                          <button
-                            onClick={() => {
-                              router.push('/dashboard/players/new')
-                              setAddDropdownOpen(false)
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
-                            style={{ color: colorScheme.text }}
-                          >
-                            Add Player
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <button
-                  onClick={logout}
-                  className="p-2 rounded-md transition-colors hover:bg-opacity-80"
-                  style={{ 
-                    backgroundColor: colorScheme.errorLight,
-                    color: colorScheme.error,
-                  }}
-                  title="Logout"
-                >
-                  <LogOut className="h-5 w-5" />
-                </button>
+            {/* Mobile: User Info on separate row */}
+            <div className="flex items-center justify-start gap-2 sm:hidden">
+              <div className="text-left">
+                <p className="text-sm font-medium" style={{ color: colorScheme.text }}>
+                  {user?.firstName} {user?.lastName}
+                </p>
+                <p className="text-xs" style={{ color: colorScheme.textSecondary }}>
+                  {user?.role}
+                </p>
               </div>
             </div>
           </div>

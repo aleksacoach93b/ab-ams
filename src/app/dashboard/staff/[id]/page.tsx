@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, User, FileText, Download, Eye, Calendar, Edit } from 'lucide-react'
+import { ArrowLeft, User, FileText, Download, Eye, Calendar, Edit, Heart, Activity } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
 import PDFThumbnail from '@/components/PDFThumbnail'
 import ReadOnlyCalendar from '@/components/ReadOnlyCalendar'
+import DailyWellness from '@/components/DailyWellness'
+import RPEAnalysis from '@/components/RPEAnalysis'
 
 interface Staff {
   id: string
@@ -48,7 +50,7 @@ export default function StaffProfilePage() {
   const [staff, setStaff] = useState<Staff | null>(null)
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'reports' | 'events'>('reports')
+  const [activeTab, setActiveTab] = useState<'reports' | 'events' | 'wellness' | 'rpe'>('reports')
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [previewFile, setPreviewFile] = useState<Report | null>(null)
 
@@ -241,13 +243,13 @@ export default function StaffProfilePage() {
 
       {/* Tabs */}
       <div 
-        className="border-b"
+        className="border-b overflow-x-auto"
         style={{ borderColor: colorScheme.border }}
       >
-        <div className="flex">
+        <div className="flex min-w-max">
           <button
             onClick={() => setActiveTab('reports')}
-            className="px-6 py-3 text-sm font-medium border-b-2 transition-colors hover:opacity-70"
+            className="px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors hover:opacity-70 whitespace-nowrap"
             style={{
               borderColor: activeTab === 'reports' ? colorScheme.primary : 'transparent',
               color: activeTab === 'reports' ? colorScheme.primary : colorScheme.textSecondary
@@ -260,7 +262,7 @@ export default function StaffProfilePage() {
           </button>
           <button
             onClick={() => setActiveTab('events')}
-            className="px-6 py-3 text-sm font-medium border-b-2 transition-colors hover:opacity-70"
+            className="px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors hover:opacity-70 whitespace-nowrap"
             style={{
               borderColor: activeTab === 'events' ? colorScheme.primary : 'transparent',
               color: activeTab === 'events' ? colorScheme.primary : colorScheme.textSecondary
@@ -269,6 +271,32 @@ export default function StaffProfilePage() {
             <div className="flex items-center space-x-2">
               <Calendar className="h-4 w-4" />
               <span>Events</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('wellness')}
+            className="px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors hover:opacity-70 whitespace-nowrap"
+            style={{
+              borderColor: activeTab === 'wellness' ? colorScheme.primary : 'transparent',
+              color: activeTab === 'wellness' ? colorScheme.primary : colorScheme.textSecondary
+            }}
+          >
+            <div className="flex items-center space-x-2">
+              <Heart className="h-4 w-4" />
+              <span>Daily Wellness</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('rpe')}
+            className="px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors hover:opacity-70 whitespace-nowrap"
+            style={{
+              borderColor: activeTab === 'rpe' ? colorScheme.primary : 'transparent',
+              color: activeTab === 'rpe' ? colorScheme.primary : colorScheme.textSecondary
+            }}
+          >
+            <div className="flex items-center space-x-2">
+              <Activity className="h-4 w-4" />
+              <span>RPE Analysis</span>
             </div>
           </button>
         </div>
@@ -398,6 +426,20 @@ export default function StaffProfilePage() {
             userId={staff.userId || staff.user?.id} 
             userRole="STAFF"
           />
+        </div>
+      )}
+
+      {/* Daily Wellness Tab Content */}
+      {activeTab === 'wellness' && (
+        <div className="p-4">
+          <DailyWellness />
+        </div>
+      )}
+
+      {/* RPE Analysis Tab Content */}
+      {activeTab === 'rpe' && (
+        <div className="p-4">
+          <RPEAnalysis />
         </div>
       )}
 
