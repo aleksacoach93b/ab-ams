@@ -258,10 +258,6 @@ model notifications {
   title      String
   message    String
   type       NotificationType @default(GENERAL)
-  category   String?          // 'SYSTEM' | 'PLAYER' | 'EVENT' | 'WELLNESS' | 'CHAT' | 'REPORT' | 'GENERAL'
-  priority   String?          // 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
-  relatedId  String?          // ID of related entity (event, player, chat room, etc.)
-  relatedType String?         // Type of related entity ('event', 'player', 'chat', etc.)
   isRead     Boolean          @default(false)
   createdAt  DateTime         @default(now())
   users      users            @relation(fields: [userId], references: [id], onDelete: Cascade)
