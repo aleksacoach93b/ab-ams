@@ -94,33 +94,74 @@ export async function GET(request: NextRequest) {
       where.isRead = false
     }
 
-    const notifications = await prisma.notifications.findMany({
-      where,
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: limit,
-      skip: offset,
-      select: {
-        id: true,
-        userId: true,
-        title: true,
-        message: true,
-        type: true,
-        category: true,
-        priority: true,
-        relatedId: true,
-        relatedType: true,
-        isRead: true,
-        createdAt: true
+    // Try to fetch with category field, fallback to basic fields if it doesn't exist
+    let notifications: any[]
+    try {
+      notifications = await prisma.notifications.findMany({
+        where,
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: limit,
+        skip: offset
+      })
+    } catch (error: any) {
+      // If category field doesn't exist, fetch without it
+      if (error.code === 'P2022' && error.message?.includes('category')) {
+        console.warn('⚠️ Category field does not exist, fetching without it')
+        notifications = await prisma.notifications.findMany({
+          where,
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: limit,
+          skip: offset,
+          select: {
+            id: true,
+            userId: true,
+            title: true,
+            message: true,
+            type: true,
+            isRead: true,
+            createdAt: true
+          }
+        })
+      } else {
+        throw error
+      }
+    }
+    
+    // Ensure category field exists (fallback for old notifications or if field doesn't exist)
+    // Try to determine category from title/message if not present
+    const notificationsWithCategory = notifications.map((notif: any) => {
+      let category = notif.category
+      
+      // If category doesn't exist, try to infer it from title/message
+      if (!category) {
+        const title = (notif.title || '').toLowerCase()
+        const message = (notif.message || '').toLowerCase()
+        
+        if (title.includes('chat') || title.includes('message in') || message.includes('new message')) {
+          category = 'CHAT'
+        } else if (title.includes('event') || message.includes('scheduled')) {
+          category = 'EVENT'
+        } else if (title.includes('player') || message.includes('player')) {
+          category = 'PLAYER'
+        } else if (title.includes('media') || message.includes('uploaded')) {
+          category = 'PLAYER' // Media is usually player-related
+        } else {
+          category = 'GENERAL'
+        }
+      }
+      
+      return {
+        ...notif,
+        category: category || 'GENERAL',
+        priority: notif.priority || 'MEDIUM',
+        relatedId: notif.relatedId || null,
+        relatedType: notif.relatedType || null
       }
     })
-    
-    // Ensure category field exists (fallback for old notifications)
-    const notificationsWithCategory = notifications.map((notif: any) => ({
-      ...notif,
-      category: notif.category || 'GENERAL'
-    }))
 
     const unreadCount = await prisma.notifications.count({
       where: {

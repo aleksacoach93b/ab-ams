@@ -31,6 +31,7 @@ export class NotificationService {
       const notifications = await Promise.all(
         targetUserIds.map(async (userId) => {
           try {
+            // First try with all fields
             const notificationData: any = {
               id: `notif_${Date.now()}_${userId}_${Math.random().toString(36).substr(2, 9)}`,
               title: data.title,
@@ -39,37 +40,42 @@ export class NotificationService {
               userId
             }
             
-            // Add optional fields if they exist in schema
-            if (data.category) {
-              notificationData.category = data.category
-            }
-            if (data.priority) {
-              notificationData.priority = data.priority
-            }
-            if (data.relatedId) {
-              notificationData.relatedId = data.relatedId
-            }
-            if (data.relatedType) {
-              notificationData.relatedType = data.relatedType
-            }
-            
-            return await prisma.notifications.create({
-              data: notificationData
-            })
-          } catch (error: any) {
-            console.error(`Error creating notification for user ${userId}:`, error)
-            // If category field doesn't exist, try without it
-            if (error.message?.includes('category') || error.message?.includes('Unknown field')) {
+            // Try to add optional fields
+            try {
+              if (data.category) {
+                notificationData.category = data.category
+              }
+              if (data.priority) {
+                notificationData.priority = data.priority
+              }
+              if (data.relatedId) {
+                notificationData.relatedId = data.relatedId
+              }
+              if (data.relatedType) {
+                notificationData.relatedType = data.relatedType
+              }
+              
               return await prisma.notifications.create({
-                data: {
-                  id: `notif_${Date.now()}_${userId}_${Math.random().toString(36).substr(2, 9)}`,
-                  title: data.title,
-                  message: data.message,
-                  type: 'GENERAL' as any,
-                  userId
-                }
+                data: notificationData
               })
+            } catch (createError: any) {
+              // If category/priority/relatedId/relatedType fields don't exist, create without them
+              if (createError.code === 'P2022' || createError.message?.includes('category') || createError.message?.includes('Unknown field')) {
+                console.warn(`⚠️ Optional fields don't exist, creating notification without them for user ${userId}`)
+                return await prisma.notifications.create({
+                  data: {
+                    id: `notif_${Date.now()}_${userId}_${Math.random().toString(36).substr(2, 9)}`,
+                    title: data.title,
+                    message: data.message,
+                    type: 'GENERAL' as any,
+                    userId
+                  }
+                })
+              }
+              throw createError
             }
+          } catch (error: any) {
+            console.error(`❌ Error creating notification for user ${userId}:`, error)
             throw error
           }
         })
