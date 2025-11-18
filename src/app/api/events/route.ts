@@ -790,32 +790,24 @@ export async function POST(request: NextRequest) {
       state.events.push(newEvent)
       await writeState(state)
 
-      // Send notifications to player participants only
+      // Send notifications to ALL users when admin creates event
       try {
         const { createNotification } = await import('@/lib/localDevStore')
-        const playerParticipantIds = selectedPlayers || []
-        
-        if (playerParticipantIds.length > 0) {
-          // Get player user IDs for participants
-          const playerUserIds = playerParticipantIds
-            .map(pid => {
-              const playerUser = state.playerUsers.find((u: any) => u.playerId === pid)
-              return playerUser?.id
-            })
-            .filter((id): id is string => !!id)
-          
-          if (playerUserIds.length > 0) {
+        if (createNotification) {
+          // Notify all users about the new event
+          const allUsers = state.users || []
+          for (const u of allUsers) {
             await createNotification({
               title: 'New Event Created',
               message: `"${title}" has been scheduled`,
               type: 'INFO',
               category: 'EVENT',
-              userIds: playerUserIds,
+              userId: u.id,
               relatedId: eventId,
               relatedType: 'event'
             })
-            console.log(`📱 Sent ${playerUserIds.length} event notifications to players`)
           }
+          console.log(`📱 Sent event notifications to all ${allUsers.length} users`)
         }
       } catch (notificationError) {
         console.error('❌ Error creating event notifications:', notificationError)
@@ -1050,36 +1042,15 @@ export async function POST(request: NextRequest) {
       typeMatches: transformedEvent.type === (type?.toUpperCase() || 'TRAINING')
     })
 
-    // Create notifications for player participants only
+    // Create notifications for ALL users when admin creates event
     try {
-      if (selectedPlayers && selectedPlayers.length > 0) {
-        // Get players and their user IDs
-        const players = await prisma.players.findMany({
-          where: {
-            id: {
-              in: selectedPlayers
-            }
-          },
-          select: { userId: true }
-        })
-        
-        const playerUserIds = players
-          .map(p => p.userId)
-          .filter((id): id is string => !!id)
-        
-        if (playerUserIds.length > 0) {
-          await NotificationService.createNotification({
-            title: 'New Event Created',
-            message: `"${title}" has been scheduled`,
-            type: 'INFO',
-            category: 'EVENT',
-            userIds: playerUserIds,
-            relatedId: event.id,
-            relatedType: 'event'
-          })
-          console.log(`✅ Sent ${playerUserIds.length} event notifications to players`)
-        }
-      }
+      const senderName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Admin'
+      await NotificationService.notifyEventCreated(
+        event.id,
+        event.title,
+        senderName
+      )
+      console.log(`✅ Sent event notification to all users`)
     } catch (notificationError) {
       console.error('❌ Error creating event notifications:', notificationError)
       // Don't fail event creation if notification fails
