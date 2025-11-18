@@ -484,7 +484,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             </div>
 
-            {/* Desktop: Right side - Theme, Chat, Notifications, User Info */}
+            {/* Desktop: Right side - Theme, Chat, Notifications, User Info, Add new */}
             <div className="hidden sm:flex items-center justify-end gap-4">
               {/* Hide ThemeSelector when chat is open */}
               {!showTeamChat && <ThemeSelector />}
@@ -494,6 +494,117 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
               {/* Real-time Notifications */}
               <RealTimeNotifications userId={user?.id} userRole={user?.role} />
+              
+              {/* Role-based Add new dropdown - Desktop */}
+              {((user?.role === 'ADMIN' || user?.role === 'COACH') || 
+                (user?.role === 'STAFF' && (userPermissions?.canCreateEvents || userPermissions?.canEditPlayers))) && (
+                <div className="relative add-dropdown-container">
+                  <button 
+                    onClick={() => setAddDropdownOpen(!addDropdownOpen)}
+                    className="px-3 py-2 sm:px-4 rounded-md transition-colors font-medium hover:opacity-90"
+                    style={{ 
+                      backgroundColor: colorScheme.primary,
+                      color: 'white'
+                    }}
+                  >
+                    <Plus className="h-4 w-4 inline sm:mr-2" />
+                    <span className="hidden sm:inline">Add new</span>
+                    <ChevronDown className={`hidden sm:inline h-4 w-4 ml-2 transition-transform ${addDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  <div 
+                    className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg transition-all duration-200 z-50 ${
+                      addDropdownOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+                    }`}
+                    style={{ backgroundColor: colorScheme.surface }}
+                  >
+                    <div className="py-1">
+                      {/* Add Player - Admin, Coach, or Staff with edit permission */}
+                      {(user?.role === 'ADMIN' || user?.role === 'COACH' || (user?.role === 'STAFF' && userPermissions?.canEditPlayers)) && (
+                        <Link 
+                          href="/dashboard/players/new" 
+                          className="block px-4 py-2 text-sm transition-colors hover:bg-opacity-80"
+                          style={{ 
+                            color: colorScheme.text,
+                            backgroundColor: 'transparent'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = colorScheme.background
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                          }}
+                          onClick={() => setAddDropdownOpen(false)}
+                        >
+                          Add Player
+                        </Link>
+                      )}
+                      
+                      {/* Add Event - Admin, Coach, or Staff with create permission */}
+                      {(user?.role === 'ADMIN' || user?.role === 'COACH' || (user?.role === 'STAFF' && userPermissions?.canCreateEvents)) && (
+                        <Link 
+                          href="/dashboard/events/new" 
+                          className="block px-4 py-2 text-sm transition-colors hover:bg-opacity-80"
+                          style={{ 
+                            color: colorScheme.text,
+                            backgroundColor: 'transparent'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = colorScheme.background
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                          }}
+                          onClick={() => setAddDropdownOpen(false)}
+                        >
+                          Add Event
+                        </Link>
+                      )}
+                      
+                      {/* Add Team - Only Admin and Coach */}
+                      {(user?.role === 'ADMIN' || user?.role === 'COACH') && (
+                        <Link 
+                          href="/dashboard/teams/new" 
+                          className="block px-4 py-2 text-sm transition-colors hover:bg-opacity-80"
+                          style={{ 
+                            color: colorScheme.text,
+                            backgroundColor: 'transparent'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = colorScheme.background
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                          }}
+                          onClick={() => setAddDropdownOpen(false)}
+                        >
+                          Add Team
+                        </Link>
+                      )}
+                      
+                      {/* Add Staff - Only Admin */}
+                      {user?.role === 'ADMIN' && (
+                        <Link 
+                          href="/dashboard/staff/new" 
+                          className="block px-4 py-2 text-sm transition-colors hover:bg-opacity-80"
+                          style={{ 
+                            color: colorScheme.text,
+                            backgroundColor: 'transparent'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = colorScheme.background
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                          }}
+                          onClick={() => setAddDropdownOpen(false)}
+                        >
+                          Add Staff
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* User Info and Logout */}
               <div className="flex items-center space-x-3">
@@ -627,118 +738,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <LogOut className="h-5 w-5" />
                 </button>
               </div>
-            </div>
-
-            {/* Desktop: Role-based Add new dropdown */}
-            {((user?.role === 'ADMIN' || user?.role === 'COACH') || 
-              (user?.role === 'STAFF' && (userPermissions?.canCreateEvents || userPermissions?.canEditPlayers))) && (
-              <div className="hidden sm:block relative add-dropdown-container">
-                  <button 
-                    onClick={() => setAddDropdownOpen(!addDropdownOpen)}
-                    className="px-3 py-2 sm:px-4 rounded-md transition-colors font-medium hover:opacity-90"
-                    style={{ 
-                      backgroundColor: colorScheme.primary,
-                      color: 'white'
-                    }}
-                  >
-                    <Plus className="h-4 w-4 inline sm:mr-2" />
-                    <span className="hidden sm:inline">Add new</span>
-                    <ChevronDown className={`hidden sm:inline h-4 w-4 ml-2 transition-transform ${addDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  <div 
-                    className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg transition-all duration-200 z-50 ${
-                      addDropdownOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
-                    }`}
-                    style={{ backgroundColor: colorScheme.surface }}
-                  >
-                    <div className="py-1">
-                      {/* Add Player - Admin, Coach, or Staff with edit permission */}
-                      {(user?.role === 'ADMIN' || user?.role === 'COACH' || (user?.role === 'STAFF' && userPermissions?.canEditPlayers)) && (
-                        <Link 
-                          href="/dashboard/players/new" 
-                          className="block px-4 py-2 text-sm transition-colors hover:bg-opacity-80"
-                          style={{ 
-                            color: colorScheme.text,
-                            backgroundColor: 'transparent'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = colorScheme.background
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent'
-                          }}
-                          onClick={() => setAddDropdownOpen(false)}
-                        >
-                          Add Player
-                        </Link>
-                      )}
-                      
-                      {/* Add Event - Admin, Coach, or Staff with create permission */}
-                      {(user?.role === 'ADMIN' || user?.role === 'COACH' || (user?.role === 'STAFF' && userPermissions?.canCreateEvents)) && (
-                        <Link 
-                          href="/dashboard/events/new" 
-                          className="block px-4 py-2 text-sm transition-colors hover:bg-opacity-80"
-                          style={{ 
-                            color: colorScheme.text,
-                            backgroundColor: 'transparent'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = colorScheme.background
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent'
-                          }}
-                          onClick={() => setAddDropdownOpen(false)}
-                        >
-                          Add Event
-                        </Link>
-                      )}
-                      
-                      {/* Add Team - Only Admin and Coach */}
-                      {(user?.role === 'ADMIN' || user?.role === 'COACH') && (
-                        <Link 
-                          href="/dashboard/teams/new" 
-                          className="block px-4 py-2 text-sm transition-colors hover:bg-opacity-80"
-                          style={{ 
-                            color: colorScheme.text,
-                            backgroundColor: 'transparent'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = colorScheme.background
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent'
-                          }}
-                          onClick={() => setAddDropdownOpen(false)}
-                        >
-                          Add Team
-                        </Link>
-                      )}
-                      
-                      {/* Add Staff - Only Admin */}
-                      {user?.role === 'ADMIN' && (
-                        <Link 
-                          href="/dashboard/staff/new" 
-                          className="block px-4 py-2 text-sm transition-colors hover:bg-opacity-80"
-                          style={{ 
-                            color: colorScheme.text,
-                            backgroundColor: 'transparent'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = colorScheme.background
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent'
-                          }}
-                          onClick={() => setAddDropdownOpen(false)}
-                        >
-                          Add Staff
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </header>
