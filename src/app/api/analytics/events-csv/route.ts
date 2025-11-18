@@ -5,16 +5,17 @@ import { readState } from '@/lib/localDevStore'
 
 const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
 
+export const runtime = 'nodejs'
+export const maxDuration = 60 // Increase timeout to 60 seconds for large datasets
+
 export async function GET(request: NextRequest) {
   try {
-    // Get date range from query parameters (default to last 30 days)
-    const { searchParams } = new URL(request.url)
-    const days = parseInt(searchParams.get('days') || '30')
+    // Get ALL historical data - no date limit (same as players-csv)
     const endDate = new Date()
-    const startDate = new Date()
-    startDate.setDate(endDate.getDate() - days)
+    endDate.setHours(23, 59, 59, 999) // End of today
+    // Start date will be determined from the earliest event data
 
-    console.log(`📊 Generating event analytics CSV for ${days} days (${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]})`)
+    console.log(`📊 Generating event analytics CSV for ALL historical data (up to ${endDate.toISOString().split('T')[0]})`)
 
     // Local dev mode: use localDevStore
     if (LOCAL_DEV_MODE) {
@@ -136,19 +137,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Database mode: use Prisma
-    // Note: daily_event_analytics model doesn't exist in schema, so we'll use only live events data
-    // Get all dates in range
-    const allDates: string[] = []
-    const currentDate = new Date(startDate)
-    while (currentDate <= endDate) {
-      allDates.push(currentDate.toISOString().split('T')[0])
-      currentDate.setDate(currentDate.getDate() + 1)
-    }
-    
-    // We'll process all dates as "missing" since we don't have saved analytics
-    const missingDates = allDates
-    
-    console.log(`📊 Processing ${missingDates.length} dates from events data`)
+    // OPTIMIZED: Get ALL events at once instead of querying per day (fixes timeout)
+    console.log('📊 Fetching ALL events from database...')
     
     // Map event type values to labels (same as in dropdown)
     const eventTypeMap: { [key: string]: string } = {
@@ -170,84 +160,56 @@ export async function GET(request: NextRequest) {
       'OTHER': 'Other'
     }
 
-    // Get live events data for missing dates
-    let liveData: any[] = []
-    for (const missingDate of missingDates) {
-      const dateStart = new Date(missingDate + 'T00:00:00')
-      const dateEnd = new Date(missingDate + 'T23:59:59')
+    // Get ALL events at once (single query - much faster)
+    const allEvents = await prisma.events.findMany({
+      orderBy: {
+        startTime: 'asc'
+      },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        startTime: true,
+        endTime: true
+      }
+    })
+
+    console.log(`📊 Found ${allEvents.length} total events in database`)
+
+    // Process all events into CSV rows
+    const allData: any[] = []
+    allEvents.forEach(event => {
+      const typeLabel = eventTypeMap[event.type] || event.type
       
-      const dayEvents = await prisma.events.findMany({
-        where: {
-          startTime: {
-            gte: dateStart,
-            lte: dateEnd
-          }
-        },
-        include: {
-          event_participants: true
-        }
+      // Calculate duration
+      let duration = 0
+      if (event.startTime && event.endTime) {
+        const start = new Date(event.startTime)
+        const end = new Date(event.endTime)
+        duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60))
+      }
+      
+      // Format startTime and endTime for CSV
+      const startTimeStr = event.startTime ? new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A'
+      const endTimeStr = event.endTime ? new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A'
+      
+      // Get date from startTime (set to 00:00:00 for that day)
+      const eventDate = event.startTime ? new Date(event.startTime) : new Date()
+      eventDate.setHours(0, 0, 0, 0)
+      
+      allData.push({
+        date: eventDate,
+        eventType: typeLabel,
+        eventTitle: event.title || 'Untitled Event',
+        startTime: startTimeStr,
+        endTime: endTimeStr,
+        duration: duration,
+        matchDayTag: 'N/A' // matchDayTag is not in events model
       })
+    })
 
-      console.log(`📊 Found ${dayEvents.length} events for ${missingDate}`)
-
-      // Process events data for this day
-      const eventTypes = dayEvents.reduce((acc, event) => {
-        const type = event.type || 'OTHER'
-        const typeLabel = eventTypeMap[type] || type
-        if (!acc[typeLabel]) {
-          acc[typeLabel] = {
-            count: 0,
-            totalDuration: 0,
-            events: []
-          }
-        }
-        acc[typeLabel].count += 1
-        acc[typeLabel].events.push(event)
-        
-        // Calculate duration
-        if (event.startTime && event.endTime) {
-          const start = new Date(`2000-01-01T${event.startTime}`)
-          const end = new Date(`2000-01-01T${event.endTime}`)
-          const duration = (end.getTime() - start.getTime()) / (1000 * 60)
-          acc[typeLabel].totalDuration += duration
-        }
-        
-        return acc
-      }, {} as Record<string, any>)
-
-      // Create separate rows for each event instead of grouping by type
-      const dayData: any[] = []
-      dayEvents.forEach(event => {
-        const typeLabel = eventTypeMap[event.type] || event.type
-        
-        // Calculate duration
-        let duration = 0
-        if (event.startTime && event.endTime) {
-          const start = new Date(event.startTime)
-          const end = new Date(event.endTime)
-          duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60))
-        }
-        
-        // Format startTime and endTime for CSV
-        const startTimeStr = event.startTime ? new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A'
-        const endTimeStr = event.endTime ? new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A'
-        
-        dayData.push({
-          date: dateStart,
-          eventType: typeLabel,
-          eventTitle: event.title || 'Untitled Event',
-          startTime: startTimeStr,
-          endTime: endTimeStr,
-          duration: duration,
-          matchDayTag: 'N/A' // matchDayTag is not in events model
-        })
-      })
-
-      liveData.push(...dayData)
-    }
-
-    // Since we don't have saved daily analytics, use only live data
-    const allData = liveData
+    // Sort by date
+    allData.sort((a, b) => a.date.getTime() - b.date.getTime())
 
     // Generate CSV content
     let csvContent = 'Date,Event Type,Event Title,Start Time,End Time,Duration (minutes),Match Day Tag\n'
