@@ -216,18 +216,38 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const quickAccessButtons = [
     {
-      key: 'wellness',
-      icon: Heart,
-      label: 'Wellness',
-      onClick: () => router.push('/dashboard/wellness'),
-      show: user?.role === 'ADMIN' || user?.role === 'COACH'
+      key: 'dashboard',
+      icon: LayoutDashboard,
+      label: 'Main Dashboard',
+      onClick: () => router.push('/dashboard'),
+      show: true // Always show for all users
+    },
+    {
+      key: 'calendar',
+      icon: Calendar,
+      label: 'Calendar',
+      onClick: () => router.push('/dashboard/calendar'),
+      show:
+        user?.role === 'ADMIN' ||
+        user?.role === 'COACH' ||
+        (user?.role === 'STAFF' && userPermissions?.canViewCalendar)
+    },
+    {
+      key: 'players',
+      icon: Users,
+      label: 'Players',
+      onClick: () => router.push('/dashboard/players'),
+      show:
+        user?.role === 'ADMIN' ||
+        user?.role === 'COACH' ||
+        (user?.role === 'STAFF' && userPermissions?.canViewAllPlayers)
     },
     {
       key: 'dailyWellness',
       icon: HeartPulse,
       label: 'Daily Wellness',
       onClick: () => router.push('/dashboard/daily-wellness'),
-      show: user?.role === 'ADMIN'
+      show: user?.role === 'ADMIN' || user?.role === 'COACH'
     },
     {
       key: 'rpeAnalysis',
