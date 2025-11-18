@@ -120,15 +120,17 @@ export async function GET(request: NextRequest) {
       // If select fails, use raw query
       if (error.code === 'P2022' || error.message?.includes('category')) {
         console.warn('⚠️ Using raw query to fetch notifications (category field issue)')
-        const result = await prisma.$queryRaw`
-          SELECT id, "userId", title, message, type, "isRead", "createdAt"
-          FROM notifications
-          WHERE "userId" = ${userId}
-          ${unreadOnly ? prisma.$queryRaw`AND "isRead" = false` : prisma.$queryRaw``}
-          ORDER BY "createdAt" DESC
-          LIMIT ${limit}
-          OFFSET ${offset}
-        `
+        let query = `SELECT id, "userId", title, message, type, "isRead", "createdAt" FROM notifications WHERE "userId" = $1`
+        const params: any[] = [userId]
+        
+        if (unreadOnly) {
+          query += ` AND "isRead" = false`
+        }
+        
+        query += ` ORDER BY "createdAt" DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
+        params.push(limit, offset)
+        
+        const result = await prisma.$queryRawUnsafe(query, ...params)
         notifications = result as any[]
       } else {
         throw error
