@@ -45,12 +45,32 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
 
       if (response.ok) {
         const data = await response.json()
+        
+        console.log('🔔 [REAL TIME NOTIFICATIONS] Fetched:', {
+          total: data.notifications?.length || 0,
+          allNotifications: data.notifications
+        })
+        
         // Filter out chat notifications - they should be shown on chat icon
-        // Also filter out read notifications - only show unread ones
-        const nonChatNotifications = data.notifications.filter((notification: Notification) => 
-          notification.category !== 'CHAT' && !notification.isRead
-        )
+        // Show all unread notifications (EVENT, PLAYER, etc.) on notification icon
+        const nonChatNotifications = (data.notifications || []).filter((notification: Notification) => {
+          const category = notification.category || 'GENERAL'
+          const isChat = category === 'CHAT'
+          const isRead = notification.isRead
+          
+          if (isChat) {
+            console.log('🔔 [REAL TIME NOTIFICATIONS] Filtering out CHAT notification:', notification.title)
+          }
+          
+          return !isChat && !isRead
+        })
         const nonChatUnreadCount = nonChatNotifications.length
+        
+        console.log('🔔 [REAL TIME NOTIFICATIONS] Filtered results:', {
+          nonChat: nonChatNotifications.length,
+          unread: nonChatUnreadCount,
+          notifications: nonChatNotifications
+        })
         
         setNotifications(nonChatNotifications)
         setUnreadCount(nonChatUnreadCount)

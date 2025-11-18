@@ -242,18 +242,23 @@ export async function POST(
 
     console.log('✅ Event media upload successful:', transformedMedia)
 
-    // Create notification for event media upload
-    try {
-      await NotificationService.notifyEventMediaUploaded(
-        id,
-        newMedia.fileName,
-        user.userId
-      )
-      console.log('✅ Notification created for event media upload')
-    } catch (notificationError) {
-      console.error('❌ Error creating notification:', notificationError)
-      // Don't fail the upload if notification fails
-    }
+    // Create notification for event media upload - send to ALL users
+    Promise.resolve().then(async () => {
+      try {
+        const senderName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Admin'
+        await NotificationService.notifyEventMediaUploaded(
+          id,
+          newMedia.fileName,
+          senderName
+        )
+        console.log('✅ Notification created for event media upload - sent to all users')
+      } catch (notificationError) {
+        console.error('❌ Error creating event media notification:', notificationError)
+        // Don't fail the upload if notification fails
+      }
+    }).catch(err => {
+      console.error('❌ Promise error in event media notification:', err)
+    })
 
     return NextResponse.json({
       message: 'Media uploaded successfully',

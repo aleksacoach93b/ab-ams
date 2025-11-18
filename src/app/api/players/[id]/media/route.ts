@@ -341,21 +341,31 @@ export async function POST(
     console.log('✅ Successfully uploaded files:', uploadedFiles.length)
     console.log('✅ Uploaded files details:', uploadedFiles)
 
-    // Create notification for player media upload (async, don't block)
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (token) {
-      verifyToken(token).then(user => {
-        if (user) {
-          const playerName = `${player.firstName} ${player.lastName}`.trim()
-          NotificationService.notifyPlayerMediaUploaded(
-            player.id,
-            playerName,
-            uploadedFiles.length,
-            user.userId || user.id || 'system'
-          ).catch(err => console.error('❌ Error creating notification:', err))
+    // Create notification for player media upload - send to ALL users
+    Promise.resolve().then(async () => {
+      try {
+        const token = request.headers.get('authorization')?.replace('Bearer ', '')
+        if (token) {
+          const user = await verifyToken(token)
+          if (user) {
+            const playerName = `${player.firstName} ${player.lastName}`.trim()
+            const senderName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Admin'
+            await NotificationService.notifyPlayerMediaUploaded(
+              player.id,
+              playerName,
+              uploadedFiles.length,
+              senderName
+            )
+            console.log('✅ Notification created for player media upload - sent to all users')
+          }
         }
-      }).catch(err => console.error('❌ Error verifying token for notification:', err))
-    }
+      } catch (notificationError) {
+        console.error('❌ Error creating player media notification:', notificationError)
+        // Don't fail the upload if notification fails
+      }
+    }).catch(err => {
+      console.error('❌ Promise error in player media notification:', err)
+    })
 
     return NextResponse.json(uploadedFiles, { status: 201 })
   } catch (error) {
