@@ -532,19 +532,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   </div>
                 )}
                 
-                {/* Logout button */}
-                <button
-                  onClick={logout}
-                  className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm"
-                  style={{ 
-                    backgroundColor: colorScheme.errorLight,
-                    color: colorScheme.error,
-                    border: `1px solid ${colorScheme.error}`
-                  }}
-                  title="Logout"
-                >
-                  <LogOut className="h-5 w-5" />
-                </button>
+                {/* User Info and Logout - Mobile */}
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <p className="text-xs font-medium" style={{ color: colorScheme.text }}>
+                      {user?.firstName} {user?.lastName ? `${user.lastName.charAt(0)}.` : ''} {user?.role}
+                    </p>
+                  </div>
+                  <button
+                    onClick={logout}
+                    className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm"
+                    style={{ 
+                      backgroundColor: colorScheme.errorLight,
+                      color: colorScheme.error,
+                      border: `1px solid ${colorScheme.error}`
+                    }}
+                    title="Logout"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Desktop: All Quick Access Buttons in one row */}
@@ -730,17 +737,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             </div>
 
-            {/* Mobile: User Info on separate row */}
-            <div className="flex items-center justify-start gap-2 sm:hidden">
-              <div className="text-left">
-                <p className="text-sm font-medium" style={{ color: colorScheme.text }}>
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-xs" style={{ color: colorScheme.textSecondary }}>
-                  {user?.role}
-                </p>
-              </div>
-            </div>
           </div>
         </header>
 
