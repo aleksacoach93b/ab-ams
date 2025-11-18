@@ -374,25 +374,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </button>
 
                 {/* Quick Access Buttons - First 3 for mobile, all for desktop */}
-                {quickAccessButtons.filter(btn => btn.show).length > 0 && (
-                  <div className="flex items-center gap-2 sm:ml-4">
-                    {quickAccessButtons.filter(btn => btn.show).slice(0, 3).map((btn) => (
-                      <button
-                        key={btn.key}
-                        onClick={btn.onClick}
-                        className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm sm:w-9 sm:h-9"
-                        style={{
-                          backgroundColor: colorScheme.surface,
-                          color: colorScheme.text,
-                          border: `1px solid ${colorScheme.border}`
-                        }}
-                        title={btn.label}
-                      >
-                        <btn.icon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div className="flex items-center gap-2 sm:ml-4">
+                  {quickAccessButtons.filter(btn => btn.show).slice(0, 3).map((btn) => (
+                    <button
+                      key={btn.key}
+                      onClick={btn.onClick}
+                      className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm sm:w-9 sm:h-9"
+                      style={{
+                        backgroundColor: colorScheme.surface,
+                        color: colorScheme.text,
+                        border: `1px solid ${colorScheme.border}`
+                      }}
+                      title={btn.label}
+                    >
+                      <btn.icon className="h-5 w-5 sm:h-4 sm:w-4" />
+                    </button>
+                  ))}
+                </div>
 
                 {/* Mobile: Theme, Chat, Notifications on first row */}
                 <div className="flex items-center gap-2 sm:hidden">
@@ -403,25 +401,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
 
               {/* Mobile: Second Row - Remaining Quick Access Buttons, Add new, Logout */}
-              {quickAccessButtons.filter(btn => btn.show).length > 3 && (
-                <div className="flex items-center gap-2 sm:hidden">
-                  {quickAccessButtons.filter(btn => btn.show).slice(3).map((btn) => (
-                    <button
-                      key={btn.key}
-                      onClick={btn.onClick}
-                      className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm"
-                      style={{
-                        backgroundColor: colorScheme.surface,
-                        color: colorScheme.text,
-                        border: `1px solid ${colorScheme.border}`
-                      }}
-                      title={btn.label}
-                    >
-                      <btn.icon className="h-5 w-5" />
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="flex items-center gap-2 sm:hidden">
+                {quickAccessButtons.filter(btn => btn.show).slice(3).map((btn) => (
+                  <button
+                    key={btn.key}
+                    onClick={btn.onClick}
+                    className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm"
+                    style={{
+                      backgroundColor: colorScheme.surface,
+                      color: colorScheme.text,
+                      border: `1px solid ${colorScheme.border}`
+                    }}
+                    title={btn.label}
+                  >
+                    <btn.icon className="h-5 w-5" />
+                  </button>
+                ))}
                 
                 {/* Role-based Add new dropdown - Mobile */}
                 {((user?.role === 'ADMIN' || user?.role === 'COACH') || 
@@ -525,25 +520,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
 
               {/* Desktop: All Quick Access Buttons in one row */}
-              {quickAccessButtons.filter(btn => btn.show).length > 0 && (
-                <div className="hidden sm:flex items-center gap-2">
-                  {quickAccessButtons.filter(btn => btn.show).map((btn) => (
-                    <button
-                      key={btn.key}
-                      onClick={btn.onClick}
-                      className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:opacity-90 shadow-sm"
-                      style={{
-                        backgroundColor: colorScheme.surface,
-                        color: colorScheme.text,
-                        border: `1px solid ${colorScheme.border}`
-                      }}
-                      title={btn.label}
-                    >
-                      <btn.icon className="h-4 w-4" />
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="hidden sm:flex items-center gap-2">
+                {quickAccessButtons.filter(btn => btn.show).map((btn) => (
+                  <button
+                    key={btn.key}
+                    onClick={btn.onClick}
+                    className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:opacity-90 shadow-sm"
+                    style={{
+                      backgroundColor: colorScheme.surface,
+                      color: colorScheme.text,
+                      border: `1px solid ${colorScheme.border}`
+                    }}
+                    title={btn.label}
+                  >
+                    <btn.icon className="h-4 w-4" />
+                  </button>
+                ))}
+              </div>
 
               {/* Search bar (desktop only) */}
               <div className="hidden md:block md:ml-3">
