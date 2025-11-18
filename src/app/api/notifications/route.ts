@@ -95,24 +95,45 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch notifications without category field (it doesn't exist in database)
-    // Use select to explicitly specify fields that exist
-    const notifications = await prisma.notifications.findMany({
-      where,
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: limit,
-      skip: offset,
-      select: {
-        id: true,
-        userId: true,
-        title: true,
-        message: true,
-        type: true,
-        isRead: true,
-        createdAt: true
+    // Use raw query or select to explicitly specify fields that exist
+    let notifications: any[]
+    try {
+      // Try with select first
+      notifications = await prisma.notifications.findMany({
+        where,
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: limit,
+        skip: offset,
+        select: {
+          id: true,
+          userId: true,
+          title: true,
+          message: true,
+          type: true,
+          isRead: true,
+          createdAt: true
+        }
+      })
+    } catch (error: any) {
+      // If select fails, use raw query
+      if (error.code === 'P2022' || error.message?.includes('category')) {
+        console.warn('⚠️ Using raw query to fetch notifications (category field issue)')
+        const result = await prisma.$queryRaw`
+          SELECT id, "userId", title, message, type, "isRead", "createdAt"
+          FROM notifications
+          WHERE "userId" = ${userId}
+          ${unreadOnly ? prisma.$queryRaw`AND "isRead" = false` : prisma.$queryRaw``}
+          ORDER BY "createdAt" DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `
+        notifications = result as any[]
+      } else {
+        throw error
       }
-    })
+    }
     
     // Ensure category field exists (fallback for old notifications or if field doesn't exist)
     // Try to determine category from title/message if not present
