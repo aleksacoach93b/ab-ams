@@ -565,6 +565,49 @@ export default function RPEAnalysis() {
     })
   }
 
+  // Get color for RPE value (1 = green, 10 = red, gradient in between)
+  const getRPEColor = (rpeValue: string | undefined): string => {
+    if (!rpeValue) return colorScheme.text
+    
+    const rpe = parseInt(rpeValue)
+    if (isNaN(rpe) || rpe < 1 || rpe > 10) return colorScheme.text
+    
+    // RPE 1 = green (#10B981), RPE 10 = red (#EF4444)
+    // Calculate gradient between green and red
+    const ratio = (rpe - 1) / 9 // 0 for RPE 1, 1 for RPE 10
+    
+    // Green RGB: rgb(16, 185, 129)
+    // Red RGB: rgb(239, 68, 68)
+    const greenR = 16
+    const greenG = 185
+    const greenB = 129
+    const redR = 239
+    const redG = 68
+    const redB = 68
+    
+    const r = Math.round(greenR + (redR - greenR) * ratio)
+    const g = Math.round(greenG + (redG - greenG) * ratio)
+    const b = Math.round(greenB + (redB - greenB) * ratio)
+    
+    return `rgb(${r}, ${g}, ${b})`
+  }
+
+  // Get background color for RPE value (lighter version for background)
+  const getRPEBackgroundColor = (rpeValue: string | undefined): string => {
+    if (!rpeValue) return 'transparent'
+    
+    const rpe = parseInt(rpeValue)
+    if (isNaN(rpe) || rpe < 1 || rpe > 10) return 'transparent'
+    
+    const color = getRPEColor(rpeValue)
+    // Extract RGB values and add opacity
+    const rgbMatch = color.match(/\d+/g)
+    if (rgbMatch && rgbMatch.length === 3) {
+      return `rgba(${rgbMatch[0]}, ${rgbMatch[1]}, ${rgbMatch[2]}, 0.15)`
+    }
+    return 'transparent'
+  }
+
   const sortedData = getSortedData()
 
   if (loading) {
@@ -866,8 +909,11 @@ export default function RPEAnalysis() {
                       <td 
                         className="text-center p-3 font-bold"
                         style={{ 
-                          color: colorScheme.text,
-                          borderRight: `1px solid ${colorScheme.border}40`
+                          color: getRPEColor(row.sessionHardness),
+                          backgroundColor: getRPEBackgroundColor(row.sessionHardness),
+                          borderRight: `1px solid ${colorScheme.border}40`,
+                          fontWeight: 'bold',
+                          fontSize: '16px'
                         }}
                       >
                         {row.sessionHardness || '-'}
@@ -952,11 +998,21 @@ export default function RPEAnalysis() {
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="text-center p-2 rounded-lg" style={{ backgroundColor: `${colorScheme.background}80` }}>
+                  <div 
+                    className="text-center p-2 rounded-lg" 
+                    style={{ 
+                      backgroundColor: getRPEBackgroundColor(row.sessionHardness) || `${colorScheme.background}80`
+                    }}
+                  >
                     <div className="text-[10px] font-semibold mb-1 uppercase tracking-wide" style={{ color: colorScheme.textSecondary }}>
                       RPE
                     </div>
-                    <span className="text-sm font-bold" style={{ color: colorScheme.text }}>
+                    <span 
+                      className="text-sm font-bold" 
+                      style={{ 
+                        color: getRPEColor(row.sessionHardness)
+                      }}
+                    >
                       {row.sessionHardness || '-'}
                     </span>
                   </div>
