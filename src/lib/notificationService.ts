@@ -35,8 +35,12 @@ export class NotificationService {
               id: `notif_${Date.now()}_${userId}_${Math.random().toString(36).substr(2, 9)}`,
               title: data.title,
               message: data.message,
-              type: data.type || 'GENERAL',
-              userId
+              type: data.type || 'INFO',
+              category: data.category || 'GENERAL',
+              priority: data.priority || 'MEDIUM',
+              userId,
+              relatedId: data.relatedId,
+              relatedType: data.relatedType
             }
           })
         )
