@@ -535,8 +535,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 {/* User Info and Logout - Mobile */}
                 <div className="flex items-center gap-2">
                   <div className="text-right">
-                    <p className="text-xs font-medium" style={{ color: colorScheme.text }}>
-                      {user?.firstName} {user?.lastName ? `${user.lastName.charAt(0)}.` : ''} {user?.role}
+                    <p className="text-xs font-medium whitespace-nowrap" style={{ color: colorScheme.text }}>
+                      {user?.firstName} {user?.lastName ? `${user.lastName.charAt(0)}.` : ''} • {user?.role}
                     </p>
                   </div>
                   <button
