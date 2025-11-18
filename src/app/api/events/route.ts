@@ -349,7 +349,7 @@ export async function GET(request: NextRequest) {
         return `${hours}:${minutes}`
       }
       
-      return {
+      const transformedEvent = {
         ...event,
         date: eventDate, // Add date field for frontend
         startTime: formatTime(event.startTime),
@@ -361,7 +361,24 @@ export async function GET(request: NextRequest) {
         event_participants: undefined,
         event_media: undefined
       }
+      
+      // Log event type to ensure it's correctly preserved
+      if (transformedEvent.type && transformedEvent.type !== event.type) {
+        console.log('⚠️ [GET EVENTS] Event type mismatch:', {
+          eventId: event.id,
+          originalType: event.type,
+          transformedType: transformedEvent.type
+        })
+      }
+      
+      return transformedEvent
     })
+
+    console.log('✅ [GET EVENTS] Returning events with types:', transformedEvents.map((e: any) => ({
+      id: e.id,
+      title: e.title,
+      type: e.type
+    })))
 
     return NextResponse.json(transformedEvents)
   } catch (error) {
