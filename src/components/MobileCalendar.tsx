@@ -138,10 +138,10 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
             ?.filter((p: any) => p.staffId)
             ?.map((p: any) => p.staffId) || []
 
-          return {
+          const transformedEvent = {
             id: event.id,
             title: event.title,
-            type: event.type,
+            type: event.type, // Preserve original type from API - DO NOT TRANSFORM
             date: eventDate ? formatLocalDate(eventDate) : '',
             startTime: extractTime(event.startTime),
             endTime: extractTime(event.endTime),
@@ -153,6 +153,17 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
             selectedPlayers,
             selectedStaff
           }
+          
+          // Log if type is missing or seems incorrect
+          if (!transformedEvent.type) {
+            console.warn('⚠️ [MobileCalendar] Event missing type:', {
+              eventId: event.id,
+              title: event.title,
+              originalType: event.type
+            })
+          }
+          
+          return transformedEvent
         })
         setEvents(transformedEvents)
       }
