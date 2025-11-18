@@ -214,6 +214,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navigation = getNavigation()
 
+  // Quick Access Buttons - no duplicates, only unique buttons
   const quickAccessButtons = [
     {
       key: 'dashboard',
@@ -256,7 +257,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       onClick: () => router.push('/dashboard/rpe-analysis'),
       show: user?.role === 'ADMIN' || user?.role === 'COACH'
     }
-  ]
+  ].filter((btn, index, self) => 
+    // Remove duplicates by checking if this is the first occurrence of this key
+    index === self.findIndex(b => b.key === btn.key)
+  )
 
   return (
     <div 
