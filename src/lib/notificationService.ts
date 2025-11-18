@@ -155,50 +155,74 @@ export class NotificationService {
 
   // Chat-related notifications
   static async notifyNewChatMessage(roomId: string, roomName: string, senderName: string, messagePreview: string, senderId?: string) {
-    // Get all participants except the sender
-    const participants = await prisma.chat_room_participants.findMany({
-      where: {
+    try {
+      console.log('📱 [NOTIFY CHAT] Starting notification creation:', {
         roomId,
-        isActive: true
-      },
-      include: {
-        users: {
-          select: { id: true, firstName: true, lastName: true, email: true }
+        roomName,
+        senderName,
+        senderId
+      })
+
+      // Get all participants except the sender
+      const participants = await prisma.chat_room_participants.findMany({
+        where: {
+          roomId,
+          isActive: true
+        },
+        include: {
+          users: {
+            select: { id: true, firstName: true, lastName: true, email: true }
+          }
         }
+      })
+
+      console.log('📱 [NOTIFY CHAT] Found participants:', {
+        total: participants.length,
+        participants: participants.map(p => ({
+          userId: p.users.id,
+          name: `${p.users.firstName} ${p.users.lastName}`,
+          email: p.users.email
+        }))
+      })
+
+      // Filter out the sender from notifications
+      const participantIds = participants
+        .filter(p => {
+          const isSender = senderId && p.users.id === senderId
+          if (isSender) {
+            console.log('📱 [NOTIFY CHAT] Excluding sender:', p.users.id)
+          }
+          return !isSender
+        })
+        .map(p => p.users.id)
+
+      console.log('📱 [NOTIFY CHAT] Participant IDs for notifications:', {
+        participantIds,
+        count: participantIds.length,
+        totalParticipants: participants.length
+      })
+
+      if (participantIds.length === 0) {
+        console.warn('⚠️ [NOTIFY CHAT] No participants found for chat notification (excluding sender)')
+        return []
       }
-    })
 
-    // Filter out the sender from notifications
-    const participantIds = participants
-      .filter(p => !senderId || p.users.id !== senderId)
-      .map(p => p.users.id)
+      const result = await this.createNotification({
+        title: `New message in ${roomName}`,
+        message: `${senderName}: ${messagePreview}`,
+        type: 'INFO',
+        category: 'CHAT',
+        userIds: participantIds,
+        relatedId: roomId,
+        relatedType: 'chat'
+      })
 
-    console.log('📱 Creating chat notification:', {
-      roomId,
-      roomName,
-      senderName,
-      senderId,
-      participantIds,
-      totalParticipants: participants.length
-    })
-
-    if (participantIds.length === 0) {
-      console.warn('⚠️ No participants found for chat notification (excluding sender)')
-      return []
+      console.log(`✅ [NOTIFY CHAT] Created ${result.length} chat notifications for room ${roomName}`)
+      return result
+    } catch (error) {
+      console.error('❌ [NOTIFY CHAT] Error in notifyNewChatMessage:', error)
+      throw error
     }
-
-    const result = await this.createNotification({
-      title: `New message in ${roomName}`,
-      message: `${senderName}: ${messagePreview}`,
-      type: 'INFO',
-      category: 'CHAT',
-      userIds: participantIds,
-      relatedId: roomId,
-      relatedType: 'chat'
-    })
-
-    console.log(`✅ Created ${result.length} chat notifications for room ${roomName}`)
-    return result
   }
 
   static async notifyAddedToChat(roomId: string, roomName: string, userId: string) {
