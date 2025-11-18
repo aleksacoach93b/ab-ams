@@ -431,9 +431,14 @@ export default function RPEAnalysis() {
     return acwr
   }
 
-  // Sort data
-  const getSortedData = (): RPEData[] => {
-    const filtered = getFilteredData()
+  // Get filtered data
+  const getFilteredData = useMemo(() => {
+    return rpeData
+  }, [rpeData])
+
+  // Sort data - Memoized for performance
+  const getSortedData = useMemo((): RPEData[] => {
+    const filtered = getFilteredData
     if (!sortColumn) return filtered
 
     return [...filtered].sort((a, b) => {
@@ -483,7 +488,7 @@ export default function RPEAnalysis() {
         }
       }
     })
-  }
+  }, [getFilteredData, sortColumn, sortDirection])
 
   // Render mini calendar
   const renderMiniCalendar = () => {
@@ -581,7 +586,7 @@ export default function RPEAnalysis() {
     return '#EF4444' // Red for high RPE (7-10) - max
   }
 
-  const sortedData = getSortedData()
+  const sortedData = getSortedData
 
   if (loading) {
     return (
