@@ -216,23 +216,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const quickAccessButtons = [
     {
-      key: 'dashboard',
-      icon: LayoutDashboard,
-      label: 'Main Dashboard',
-      onClick: () => router.push('/dashboard'),
-      show: true
-    },
-    {
-      key: 'players',
-      icon: Users,
-      label: 'Players',
-      onClick: () => router.push('/dashboard/players'),
-      show:
-        user?.role === 'ADMIN' ||
-        user?.role === 'COACH' ||
-        (user?.role === 'STAFF' && userPermissions?.canViewAllPlayers)
-    },
-    {
       key: 'wellness',
       icon: Heart,
       label: 'Wellness',
@@ -252,16 +235,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       label: 'RPE Analysis',
       onClick: () => router.push('/dashboard/rpe-analysis'),
       show: user?.role === 'ADMIN' || user?.role === 'COACH'
-    },
-    {
-      key: 'calendar',
-      icon: Calendar,
-      label: 'Calendar',
-      onClick: () => router.push('/dashboard/calendar'),
-      show:
-        user?.role === 'ADMIN' ||
-        user?.role === 'COACH' ||
-        (user?.role === 'STAFF' && userPermissions?.canViewCalendar)
     }
   ]
 
