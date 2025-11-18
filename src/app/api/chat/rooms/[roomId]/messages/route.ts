@@ -508,9 +508,9 @@ export async function POST(
       readBy: []
     }
 
-    // Create notification for new message (async, don't wait)
-    // Use setTimeout to make it non-blocking
-    setTimeout(async () => {
+    // Create notification for new message (don't wait, but don't use setTimeout to ensure it runs)
+    // Execute immediately but don't block response
+    Promise.resolve().then(async () => {
       try {
         const room = await prisma.chat_rooms.findUnique({
           where: { id: roomId },
@@ -542,9 +542,15 @@ export async function POST(
         }
       } catch (notificationError) {
         console.error('❌ [CHAT MESSAGE] Error creating chat notification:', notificationError)
+        console.error('❌ [CHAT MESSAGE] Error details:', {
+          message: notificationError instanceof Error ? notificationError.message : 'Unknown',
+          stack: notificationError instanceof Error ? notificationError.stack : undefined
+        })
         // Don't fail the message send if notification fails
       }
-    }, 0)
+    }).catch(err => {
+      console.error('❌ [CHAT MESSAGE] Promise error:', err)
+    })
 
     return NextResponse.json(transformedMessage, { status: 201 })
   } catch (error) {
