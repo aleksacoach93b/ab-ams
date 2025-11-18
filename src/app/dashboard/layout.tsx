@@ -216,33 +216,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const quickAccessButtons = [
     {
-      key: 'dashboard',
-      icon: LayoutDashboard,
-      label: 'Main Dashboard',
-      onClick: () => router.push('/dashboard'),
-      show: true // Always show for all users
-    },
-    {
-      key: 'players',
-      icon: Users,
-      label: 'Players',
-      onClick: () => router.push('/dashboard/players'),
-      show:
-        user?.role === 'ADMIN' ||
-        user?.role === 'COACH' ||
-        (user?.role === 'STAFF' && userPermissions?.canViewAllPlayers)
-    },
-    {
-      key: 'calendar',
-      icon: Calendar,
-      label: 'Calendar',
-      onClick: () => router.push('/dashboard/calendar'),
-      show:
-        user?.role === 'ADMIN' ||
-        user?.role === 'COACH' ||
-        (user?.role === 'STAFF' && userPermissions?.canViewCalendar)
-    },
-    {
       key: 'wellness',
       icon: Heart,
       label: 'Wellness',
