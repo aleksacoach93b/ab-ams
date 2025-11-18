@@ -94,11 +94,17 @@ const DraggableSections: React.FC<DraggableSectionsProps> = ({ sections, storage
     if (savedOrder) {
       try {
         const parsed = JSON.parse(savedOrder)
-        if (Array.isArray(parsed) && parsed.length === visibleSections.length) {
+        if (Array.isArray(parsed)) {
           // Validate that all saved IDs exist in visible sections
           const validOrder = parsed.filter(id => visibleSections.some(section => section.id === id))
-          if (validOrder.length === visibleSections.length) {
-            setItems(validOrder)
+          // Add any missing sections that weren't in saved order
+          const missingSections = visibleSections
+            .filter(section => !validOrder.includes(section.id))
+            .map(section => section.id)
+          const finalOrder = [...validOrder, ...missingSections]
+          
+          if (finalOrder.length === visibleSections.length) {
+            setItems(finalOrder)
             return
           }
         }

@@ -382,20 +382,88 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           className="shadow-sm"
           style={{ backgroundColor: colorScheme.background }}
         >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 py-3 sm:px-6 lg:px-8">
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:flex-1 sm:justify-start">
-              {/* 3 Dots Menu Button */}
-              <button
-                className="p-2 rounded-md transition-colors"
-                style={{ 
-                  backgroundColor: colorScheme.surface,
-                  color: colorScheme.text,
-                }}
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                title="Toggle Navigation Menu"
-              >
-                <MoreVertical className="h-5 w-5" />
-              </button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 sm:px-6 lg:px-8">
+            {/* Mobile: First Row - Menu, Quick Access Buttons (first 3), Theme, Chat, Notifications */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-1 sm:justify-start">
+              {/* Mobile: First Row */}
+              <div className="flex items-center justify-between gap-2 sm:gap-2">
+                {/* 3 Dots Menu Button */}
+                <button
+                  className="p-2 rounded-md transition-colors"
+                  style={{ 
+                    backgroundColor: colorScheme.surface,
+                    color: colorScheme.text,
+                  }}
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  title="Toggle Navigation Menu"
+                >
+                  <MoreVertical className="h-5 w-5" />
+                </button>
+
+                {/* Quick Access Buttons - First 3 for mobile, all for desktop */}
+                <div className="flex items-center gap-2 sm:ml-4">
+                  {quickAccessButtons.filter(btn => btn.show).slice(0, 3).map((btn) => (
+                    <button
+                      key={btn.key}
+                      onClick={btn.onClick}
+                      className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm sm:w-9 sm:h-9"
+                      style={{
+                        backgroundColor: colorScheme.surface,
+                        color: colorScheme.text,
+                        border: `1px solid ${colorScheme.border}`
+                      }}
+                      title={btn.label}
+                    >
+                      <btn.icon className="h-5 w-5 sm:h-4 sm:w-4" />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Mobile: Theme, Chat, Notifications on first row */}
+                <div className="flex items-center gap-2 sm:hidden">
+                  {!showTeamChat && <ThemeSelector />}
+                  <ChatNotifications onOpenChat={() => setShowTeamChat(true)} />
+                  <RealTimeNotifications userId={user?.id} userRole={user?.role} />
+                </div>
+              </div>
+
+              {/* Mobile: Second Row - Remaining Quick Access Buttons */}
+              <div className="flex items-center gap-2 sm:hidden">
+                {quickAccessButtons.filter(btn => btn.show).slice(3).map((btn) => (
+                  <button
+                    key={btn.key}
+                    onClick={btn.onClick}
+                    className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm"
+                    style={{
+                      backgroundColor: colorScheme.surface,
+                      color: colorScheme.text,
+                      border: `1px solid ${colorScheme.border}`
+                    }}
+                    title={btn.label}
+                  >
+                    <btn.icon className="h-5 w-5" />
+                  </button>
+                ))}
+              </div>
+
+              {/* Desktop: All Quick Access Buttons in one row */}
+              <div className="hidden sm:flex items-center gap-2">
+                {quickAccessButtons.filter(btn => btn.show).map((btn) => (
+                  <button
+                    key={btn.key}
+                    onClick={btn.onClick}
+                    className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:opacity-90 shadow-sm"
+                    style={{
+                      backgroundColor: colorScheme.surface,
+                      color: colorScheme.text,
+                      border: `1px solid ${colorScheme.border}`
+                    }}
+                    title={btn.label}
+                  >
+                    <btn.icon className="h-4 w-4" />
+                  </button>
+                ))}
+              </div>
 
               {/* Search bar (desktop only) */}
               <div className="hidden md:block md:ml-3">
@@ -414,28 +482,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                 </div>
               </div>
-
-              {/* Quick Access Buttons */}
-              <div className="flex flex-1 flex-wrap items-center justify-center gap-2 sm:flex-none sm:justify-start sm:ml-4">
-                {quickAccessButtons.filter(btn => btn.show).map((btn) => (
-                  <button
-                    key={btn.key}
-                    onClick={btn.onClick}
-                    className="flex items-center justify-center w-12 h-12 rounded-lg transition-colors hover:opacity-90 shadow-sm sm:w-9 sm:h-9"
-                    style={{
-                      backgroundColor: colorScheme.surface,
-                      color: colorScheme.text,
-                      border: `1px solid ${colorScheme.border}`
-                    }}
-                    title={btn.label}
-                  >
-                    <btn.icon className="h-5 w-5 sm:h-4 sm:w-4" />
-                  </button>
-                ))}
-              </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:flex-nowrap sm:justify-end sm:gap-4">
+            {/* Desktop: Right side - Theme, Chat, Notifications, User Info */}
+            <div className="hidden sm:flex items-center justify-end gap-4">
               {/* Hide ThemeSelector when chat is open */}
               {!showTeamChat && <ThemeSelector />}
               
@@ -467,11 +517,122 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <LogOut className="h-5 w-5" />
                 </button>
               </div>
+            </div>
 
-              {/* Role-based Add new dropdown */}
-              {((user?.role === 'ADMIN' || user?.role === 'COACH') || 
-                (user?.role === 'STAFF' && (userPermissions?.canCreateEvents || userPermissions?.canEditPlayers))) && (
-                <div className="relative add-dropdown-container">
+            {/* Mobile: User Info, Logout, and Add new on second row */}
+            <div className="flex items-center justify-between gap-2 sm:hidden">
+              <div className="flex items-center space-x-2">
+                <div className="text-left">
+                  <p className="text-sm font-medium" style={{ color: colorScheme.text }}>
+                    {user?.firstName} {user?.lastName}
+                  </p>
+                  <p className="text-xs" style={{ color: colorScheme.textSecondary }}>
+                    {user?.role}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Role-based Add new dropdown - Mobile */}
+                {((user?.role === 'ADMIN' || user?.role === 'COACH') || 
+                  (user?.role === 'STAFF' && (userPermissions?.canCreateEvents || userPermissions?.canEditPlayers))) && (
+                  <div className="relative add-dropdown-container">
+                    <button 
+                      onClick={() => setAddDropdownOpen(!addDropdownOpen)}
+                      className="px-3 py-2 rounded-md transition-colors font-medium hover:opacity-90"
+                      style={{ 
+                        backgroundColor: colorScheme.primary,
+                        color: 'white'
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                    <div 
+                      className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg transition-all duration-200 z-50 ${
+                        addDropdownOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+                      }`}
+                      style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}
+                    >
+                      <div className="py-1">
+                        {(user?.role === 'ADMIN' || user?.role === 'COACH') && (
+                          <>
+                            <button
+                              onClick={() => {
+                                router.push('/dashboard/players/new')
+                                setAddDropdownOpen(false)
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
+                              style={{ color: colorScheme.text }}
+                            >
+                              Add Player
+                            </button>
+                            <button
+                              onClick={() => {
+                                router.push('/dashboard/staff/new')
+                                setAddDropdownOpen(false)
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
+                              style={{ color: colorScheme.text }}
+                            >
+                              Add Staff
+                            </button>
+                            <button
+                              onClick={() => {
+                                router.push('/dashboard/events/new')
+                                setAddDropdownOpen(false)
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
+                              style={{ color: colorScheme.text }}
+                            >
+                              Add Event
+                            </button>
+                          </>
+                        )}
+                        {user?.role === 'STAFF' && userPermissions?.canCreateEvents && (
+                          <button
+                            onClick={() => {
+                              router.push('/dashboard/events/new')
+                              setAddDropdownOpen(false)
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
+                            style={{ color: colorScheme.text }}
+                          >
+                            Add Event
+                          </button>
+                        )}
+                        {user?.role === 'STAFF' && userPermissions?.canEditPlayers && (
+                          <button
+                            onClick={() => {
+                              router.push('/dashboard/players/new')
+                              setAddDropdownOpen(false)
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm transition-colors hover:opacity-80"
+                            style={{ color: colorScheme.text }}
+                          >
+                            Add Player
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={logout}
+                  className="p-2 rounded-md transition-colors hover:bg-opacity-80"
+                  style={{ 
+                    backgroundColor: colorScheme.errorLight,
+                    color: colorScheme.error,
+                  }}
+                  title="Logout"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Desktop: Role-based Add new dropdown */}
+            {((user?.role === 'ADMIN' || user?.role === 'COACH') || 
+              (user?.role === 'STAFF' && (userPermissions?.canCreateEvents || userPermissions?.canEditPlayers))) && (
+              <div className="hidden sm:block relative add-dropdown-container">
                   <button 
                     onClick={() => setAddDropdownOpen(!addDropdownOpen)}
                     className="px-3 py-2 sm:px-4 rounded-md transition-colors font-medium hover:opacity-90"
