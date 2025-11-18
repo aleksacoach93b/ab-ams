@@ -240,21 +240,30 @@ export default function NewEventPage() {
               </div>
         </div>
 
-        {/* Match Day Tag - Only visible to Admin */}
+        {/* Match Day Tag - REQUIRED - Only visible to Admin */}
         {user?.role === 'ADMIN' && (
           <div 
             data-match-day-tag-section
-            className="rounded-lg shadow p-6" 
-            style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}
+            className="rounded-lg shadow p-6 border-2" 
+            style={{ 
+              backgroundColor: colorScheme.surface, 
+              borderColor: !formData.matchDayTag ? '#EF4444' : colorScheme.border,
+              borderWidth: !formData.matchDayTag ? '2px' : '1px'
+            }}
           >
             <h3 style={{ color: colorScheme.text }} className="text-lg font-medium mb-6">
-              Match Day Tag <span style={{ color: '#EF4444' }}>*</span>
+              Match Day Tag <span style={{ color: '#EF4444', fontSize: '1.2em', fontWeight: 'bold' }}>* REQUIRED</span>
             </h3>
             
             <div>
               <label style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
-                Select Match Day Tag <span style={{ color: '#EF4444' }}>*</span>
+                Select Match Day Tag <span style={{ color: '#EF4444', fontSize: '1.1em', fontWeight: 'bold' }}>* REQUIRED</span>
               </label>
+              {!formData.matchDayTag && (
+                <p style={{ color: '#EF4444', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  ⚠️ This field is required. Please select a Match Day Tag.
+                </p>
+              )}
               <MatchDayTagSelector
                 value={formData.matchDayTag}
                 onChange={(tag) => setFormData(prev => ({ ...prev, matchDayTag: tag }))}
