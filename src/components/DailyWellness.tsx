@@ -37,6 +37,11 @@ export default function DailyWellness() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [sortColumn, setSortColumn] = useState<string | null>('playerName')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  // Separate sort states for Painful Areas and Sore Areas tables
+  const [painfulAreasSortColumn, setPainfulAreasSortColumn] = useState<string | null>('athleteName')
+  const [painfulAreasSortDirection, setPainfulAreasSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [soreAreasSortColumn, setSoreAreasSortColumn] = useState<string | null>('athleteName')
+  const [soreAreasSortDirection, setSoreAreasSortDirection] = useState<'asc' | 'desc'>('asc')
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null)
   const [dateRangeStart, setDateRangeStart] = useState<Date | null>(null)
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | null>(null)
@@ -480,6 +485,25 @@ export default function DailyWellness() {
 
   // Get body parts table data (Athlete Name, Body Part, Pain/Soreness Scale)
   // Uses selectedDate from calendar picker (same as main table)
+  // Handle sort for Painful Areas and Sore Areas tables
+  const handleBodyPartsSort = (column: string, type: 'pain' | 'soreness') => {
+    if (type === 'pain') {
+      if (painfulAreasSortColumn === column) {
+        setPainfulAreasSortDirection(painfulAreasSortDirection === 'asc' ? 'desc' : 'asc')
+      } else {
+        setPainfulAreasSortColumn(column)
+        setPainfulAreasSortDirection('asc')
+      }
+    } else {
+      if (soreAreasSortColumn === column) {
+        setSoreAreasSortDirection(soreAreasSortDirection === 'asc' ? 'desc' : 'asc')
+      } else {
+        setSoreAreasSortColumn(column)
+        setSoreAreasSortDirection('asc')
+      }
+    }
+  }
+
   const getBodyPartsTableData = (type: 'pain' | 'soreness') => {
     // Use getFilteredData() which already filters by selectedDate from calendar
     const filtered = getFilteredData()
@@ -505,12 +529,40 @@ export default function DailyWellness() {
       })
     })
     
+    // Get sort column and direction based on type
+    const sortCol = type === 'pain' ? painfulAreasSortColumn : soreAreasSortColumn
+    const sortDir = type === 'pain' ? painfulAreasSortDirection : soreAreasSortDirection
+    
+    // Sort data based on selected column
     return tableData.sort((a, b) => {
-      // Sort by athlete name first, then by body part
-      if (a.athleteName !== b.athleteName) {
-        return a.athleteName.localeCompare(b.athleteName)
+      let aValue: any
+      let bValue: any
+      
+      switch (sortCol) {
+        case 'athleteName':
+          aValue = a.athleteName.toLowerCase()
+          bValue = b.athleteName.toLowerCase()
+          break
+        case 'bodyPart':
+          aValue = a.bodyPart.toLowerCase()
+          bValue = b.bodyPart.toLowerCase()
+          break
+        case 'scale':
+          aValue = a.scale
+          bValue = b.scale
+          break
+        default:
+          // Default: sort by athlete name first, then by body part
+          if (a.athleteName !== b.athleteName) {
+            return a.athleteName.localeCompare(b.athleteName)
+          }
+          return a.bodyPart.localeCompare(b.bodyPart)
       }
-      return a.bodyPart.localeCompare(b.bodyPart)
+      
+      // Compare values
+      if (aValue < bValue) return sortDir === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortDir === 'asc' ? 1 : -1
+      return 0
     })
   }
 
