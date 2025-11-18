@@ -14,10 +14,19 @@ export interface CreateNotificationData {
 export class NotificationService {
   static async createNotification(data: CreateNotificationData) {
     try {
+      console.log('📢 [CREATE NOTIFICATION] Starting:', {
+        title: data.title,
+        message: data.message,
+        category: data.category,
+        hasUserIds: !!(data.userIds && data.userIds.length > 0),
+        userIdsCount: data.userIds?.length || 0
+      })
+      
       let targetUserIds: string[] = []
       
       if (data.userIds && data.userIds.length > 0) {
         targetUserIds = data.userIds
+        console.log('📢 [CREATE NOTIFICATION] Using provided userIds:', targetUserIds.length)
       } else {
         // Send to all active users
         const allUsers = await prisma.users.findMany({
@@ -25,6 +34,12 @@ export class NotificationService {
           select: { id: true }
         })
         targetUserIds = allUsers.map(u => u.id)
+        console.log('📢 [CREATE NOTIFICATION] Sending to all active users:', targetUserIds.length)
+      }
+      
+      if (targetUserIds.length === 0) {
+        console.warn('⚠️ [CREATE NOTIFICATION] No target users found!')
+        return []
       }
 
       // Create notifications for all target users
@@ -55,14 +70,16 @@ export class NotificationService {
                 notificationData.relatedType = data.relatedType
               }
               
-              return await prisma.notifications.create({
+              const created = await prisma.notifications.create({
                 data: notificationData
               })
+              console.log(`✅ [CREATE NOTIFICATION] Created for user ${userId}:`, created.id)
+              return created
             } catch (createError: any) {
               // If category/priority/relatedId/relatedType fields don't exist, create without them
               if (createError.code === 'P2022' || createError.message?.includes('category') || createError.message?.includes('Unknown field')) {
-                console.warn(`⚠️ Optional fields don't exist, creating notification without them for user ${userId}`)
-                return await prisma.notifications.create({
+                console.warn(`⚠️ [CREATE NOTIFICATION] Optional fields don't exist, creating without them for user ${userId}`)
+                const created = await prisma.notifications.create({
                   data: {
                     id: `notif_${Date.now()}_${userId}_${Math.random().toString(36).substr(2, 9)}`,
                     title: data.title,
@@ -71,16 +88,19 @@ export class NotificationService {
                     userId
                   }
                 })
+                console.log(`✅ [CREATE NOTIFICATION] Created (without optional fields) for user ${userId}:`, created.id)
+                return created
               }
               throw createError
             }
           } catch (error: any) {
-            console.error(`❌ Error creating notification for user ${userId}:`, error)
+            console.error(`❌ [CREATE NOTIFICATION] Error for user ${userId}:`, error)
             throw error
           }
         })
       )
 
+      console.log(`✅ [CREATE NOTIFICATION] Successfully created ${notifications.length} notifications`)
       return notifications
     } catch (error) {
       console.error('Error creating notification:', error)

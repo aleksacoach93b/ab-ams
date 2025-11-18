@@ -1043,18 +1043,33 @@ export async function POST(request: NextRequest) {
     })
 
     // Create notifications for ALL users when admin creates event
-    try {
-      const senderName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Admin'
-      await NotificationService.notifyEventCreated(
-        event.id,
-        event.title,
-        senderName
-      )
-      console.log(`✅ Sent event notification to all users`)
-    } catch (notificationError) {
-      console.error('❌ Error creating event notifications:', notificationError)
-      // Don't fail event creation if notification fails
-    }
+    Promise.resolve().then(async () => {
+      try {
+        const senderName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Admin'
+        console.log('📢 [EVENT CREATED] Creating notifications for event:', {
+          eventId: event.id,
+          eventTitle: event.title,
+          senderName
+        })
+        
+        const result = await NotificationService.notifyEventCreated(
+          event.id,
+          event.title,
+          senderName
+        )
+        
+        console.log(`✅ [EVENT CREATED] Sent ${result?.length || 0} event notifications to all users`)
+      } catch (notificationError) {
+        console.error('❌ [EVENT CREATED] Error creating event notifications:', notificationError)
+        console.error('❌ [EVENT CREATED] Error details:', {
+          message: notificationError instanceof Error ? notificationError.message : 'Unknown',
+          stack: notificationError instanceof Error ? notificationError.stack : undefined
+        })
+        // Don't fail event creation if notification fails
+      }
+    }).catch(err => {
+      console.error('❌ [EVENT CREATED] Promise error:', err)
+    })
 
     return NextResponse.json(
       { message: 'Event created successfully', event: transformedEvent },

@@ -36,7 +36,7 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
       const token = localStorage.getItem('token')
       if (!token) return
 
-      const response = await fetch('/api/notifications?limit=20', {
+      const response = await fetch('/api/notifications?limit=100&unreadOnly=false', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -48,32 +48,43 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
         
         console.log('🔔 [REAL TIME NOTIFICATIONS] Fetched:', {
           total: data.notifications?.length || 0,
+          unreadCount: data.unreadCount || 0,
           allNotifications: data.notifications
         })
         
         // Filter out chat notifications - they should be shown on chat icon
-        // Show all unread notifications (EVENT, PLAYER, etc.) on notification icon
+        // Show ALL notifications (read and unread) except CHAT on notification icon
         const nonChatNotifications = (data.notifications || []).filter((notification: Notification) => {
           const category = notification.category || 'GENERAL'
           const isChat = category === 'CHAT'
-          const isRead = notification.isRead
           
           if (isChat) {
             console.log('🔔 [REAL TIME NOTIFICATIONS] Filtering out CHAT notification:', notification.title)
           }
           
-          return !isChat && !isRead
+          return !isChat
         })
-        const nonChatUnreadCount = nonChatNotifications.length
+        
+        // Count only unread for badge
+        const unreadNonChatNotifications = nonChatNotifications.filter((notification: Notification) => !notification.isRead)
+        const nonChatUnreadCount = unreadNonChatNotifications.length
         
         console.log('🔔 [REAL TIME NOTIFICATIONS] Filtered results:', {
-          nonChat: nonChatNotifications.length,
-          unread: nonChatUnreadCount,
-          notifications: nonChatNotifications
+          totalNonChat: nonChatNotifications.length,
+          unreadNonChat: nonChatUnreadCount,
+          notifications: nonChatNotifications.map((n: Notification) => ({
+            id: n.id,
+            title: n.title,
+            category: n.category,
+            isRead: n.isRead
+          }))
         })
         
         setNotifications(nonChatNotifications)
         setUnreadCount(nonChatUnreadCount)
+      } else {
+        const errorText = await response.text()
+        console.error('❌ [REAL TIME NOTIFICATIONS] Failed to fetch:', response.status, errorText)
       }
     } catch (error) {
       console.error('Error fetching notifications:', error)
