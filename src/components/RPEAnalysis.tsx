@@ -431,10 +431,36 @@ export default function RPEAnalysis() {
     return acwr
   }
 
-  // Get filtered data
+  // Get filtered data - Memoized for performance
   const getFilteredData = useMemo(() => {
-    return rpeData
-  }, [rpeData])
+    if (!selectedDate) return rpeData
+    
+    const selectedDateStr = selectedDate.toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric'
+    })
+    
+    return rpeData.filter(row => {
+      if (!row.submittedAt) return false
+      try {
+        const dateStr = row.submittedAt.split(',')[0]
+        const [month, day, year] = dateStr.split('/')
+        if (month && day && year) {
+          const itemDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+          const itemDateStr = itemDate.toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric'
+          })
+          return itemDateStr === selectedDateStr
+        }
+      } catch (e) {
+        return false
+      }
+      return false
+    })
+  }, [rpeData, selectedDate])
 
   // Sort data - Memoized for performance
   const getSortedData = useMemo((): RPEData[] => {
