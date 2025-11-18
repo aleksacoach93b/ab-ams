@@ -163,27 +163,6 @@ export default function RPEAnalysis() {
   }
 
   // Filter data by selected date
-  const getFilteredData = (): RPEData[] => {
-    if (!selectedDate) return rpeData
-    
-    const selectedDateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
-    
-    return rpeData.filter(row => {
-      if (!row.submittedAt) return false
-      try {
-        const dateStr = row.submittedAt.split(',')[0]
-        const [month, day, year] = dateStr.split('/')
-        if (month && day && year) {
-          const rowDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-          const rowDateStr = `${rowDate.getFullYear()}-${String(rowDate.getMonth() + 1).padStart(2, '0')}-${String(rowDate.getDate()).padStart(2, '0')}`
-          return rowDateStr === selectedDateStr
-        }
-      } catch (e) {
-        return false
-      }
-      return false
-    })
-  }
 
   // Handle sorting
   const handleSort = (column: string) => {
