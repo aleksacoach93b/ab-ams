@@ -13,7 +13,7 @@
     "db:reset": "npx prisma db push --force-reset && npm run db:seed",
     "db:push": "npx prisma db push",
     "db:migrate": "npx prisma migrate deploy",
-    "postinstall": "rm -rf node_modules/.prisma && npx prisma generate"
+    "postinstall": "PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1 rm -rf node_modules/.prisma && npx prisma generate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
