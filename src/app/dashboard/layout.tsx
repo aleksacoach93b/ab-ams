@@ -594,15 +594,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className="relative add-dropdown-container">
                   <button 
                     onClick={() => setAddDropdownOpen(!addDropdownOpen)}
-                    className="px-3 py-2 sm:px-4 rounded-md transition-colors font-medium hover:opacity-90"
+                    className="flex items-center justify-center w-9 h-9 rounded-md transition-colors font-medium hover:opacity-90"
                     style={{ 
                       backgroundColor: colorScheme.primary,
                       color: 'white'
                     }}
+                    title="Add new"
                   >
-                    <Plus className="h-4 w-4 inline sm:mr-2" />
-                    <span className="hidden sm:inline">Add new</span>
-                    <ChevronDown className={`hidden sm:inline h-4 w-4 ml-2 transition-transform ${addDropdownOpen ? 'rotate-180' : ''}`} />
+                    <Plus className="h-4 w-4" />
                   </button>
                   <div 
                     className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg transition-all duration-200 z-50 ${
