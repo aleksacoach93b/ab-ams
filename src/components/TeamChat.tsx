@@ -133,13 +133,19 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
       if (showMoreOptions) {
         setShowMoreOptions(false)
       }
+      if (showMobileChatList) {
+        const target = event.target as HTMLElement
+        if (!target.closest('.mobile-chat-dropdown')) {
+          setShowMobileChatList(false)
+        }
+      }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showMoreOptions])
+  }, [showMoreOptions, showMobileChatList])
 
   // Prevent body scroll when chat is open
   useEffect(() => {
@@ -1184,7 +1190,7 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
              }}>
           <div className="flex items-center space-x-3 flex-1">
             {/* Mobile: Chat Groups Dropdown Button */}
-            <div className="relative sm:hidden">
+            <div className="relative sm:hidden mobile-chat-dropdown">
               <button
                 onClick={() => setShowMobileChatList(!showMobileChatList)}
                 className="flex items-center space-x-2 p-2 rounded-lg hover:bg-opacity-20 transition-colors"
@@ -1204,7 +1210,7 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
               {/* Mobile Chat List Dropdown */}
               {showMobileChatList && (
                 <div 
-                  className="absolute top-full left-0 mt-2 w-64 max-h-96 overflow-y-auto rounded-lg shadow-lg z-50 border"
+                  className="absolute top-full left-0 mt-2 w-64 max-h-96 overflow-y-auto rounded-lg shadow-lg z-50 border mobile-chat-dropdown"
                   style={{ 
                     backgroundColor: colorScheme.surface,
                     borderColor: colorScheme.border
