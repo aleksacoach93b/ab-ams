@@ -93,6 +93,7 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([])
+  const [showMobileChatList, setShowMobileChatList] = useState(false)
 
   useEffect(() => {
     // Load messages for active room only when a valid DB room id is selected
@@ -1181,11 +1182,147 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
                backgroundColor: colorScheme.surface,
                borderColor: colorScheme.border 
              }}>
-          <div className="flex items-center space-x-3">
-            <MessageCircle className="h-6 w-6" style={{ color: colorScheme.primary }} />
-            <h2 className="text-xl font-bold" style={{ color: colorScheme.text }}>
-              Team Chat
-            </h2>
+          <div className="flex items-center space-x-3 flex-1">
+            {/* Mobile: Chat Groups Dropdown Button */}
+            <div className="relative sm:hidden">
+              <button
+                onClick={() => setShowMobileChatList(!showMobileChatList)}
+                className="flex items-center space-x-2 p-2 rounded-lg hover:bg-opacity-20 transition-colors"
+                style={{ 
+                  backgroundColor: showMobileChatList ? colorScheme.primary : 'transparent',
+                  color: showMobileChatList ? (colorScheme.primaryText || 'white') : colorScheme.text
+                }}
+                title="Select Chat Group"
+              >
+                <MessageCircle className="h-5 w-5" />
+                <span className="text-sm font-medium">
+                  {chatRooms.find(r => r.id === activeRoom)?.name || 'Select Chat'}
+                </span>
+                <X className={`h-4 w-4 transform transition-transform ${showMobileChatList ? 'rotate-45' : ''}`} />
+              </button>
+              
+              {/* Mobile Chat List Dropdown */}
+              {showMobileChatList && (
+                <div 
+                  className="absolute top-full left-0 mt-2 w-64 max-h-96 overflow-y-auto rounded-lg shadow-lg z-50 border"
+                  style={{ 
+                    backgroundColor: colorScheme.surface,
+                    borderColor: colorScheme.border
+                  }}
+                >
+                  {/* Search in mobile dropdown */}
+                  <div className="p-3 border-b sticky top-0" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" 
+                              style={{ color: colorScheme.textSecondary }} />
+                      <input
+                        type="text"
+                        placeholder="Search conversations..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50"
+                        style={{ 
+                          backgroundColor: colorScheme.background,
+                          color: colorScheme.text,
+                          border: `1px solid ${colorScheme.border}`,
+                          focusRingColor: colorScheme.primary
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Chat Rooms List */}
+                  <div className="max-h-80 overflow-y-auto">
+                    {chatRooms.length === 0 ? (
+                      <div className="p-4 text-center">
+                        <p className="text-sm" style={{ color: colorScheme.textSecondary }}>
+                          No chat rooms available
+                        </p>
+                      </div>
+                    ) : (
+                      chatRooms
+                        .filter(room => 
+                          room.name.toLowerCase().includes(searchQuery.toLowerCase())
+                        )
+                        .map((room) => (
+                          <div
+                            key={room.id}
+                            onClick={() => {
+                              setActiveRoom(room.id)
+                              setShowMobileChatList(false)
+                            }}
+                            className={`p-3 border-b cursor-pointer transition-colors ${
+                              activeRoom === room.id ? 'bg-opacity-50' : 'hover:bg-opacity-20'
+                            }`}
+                            style={{ 
+                              borderColor: colorScheme.border,
+                              backgroundColor: activeRoom === room.id ? colorScheme.primary : 'transparent'
+                            }}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="relative">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white text-sm"
+                                     style={{ backgroundColor: colorScheme.primary }}>
+                                  {room.name.charAt(0)}
+                                </div>
+                                {room.participants.some(p => p.isOnline) && (
+                                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-medium truncate text-sm" 
+                                      style={{ color: activeRoom === room.id ? (colorScheme.primaryText || 'white') : colorScheme.text }}>
+                                    {room.name}
+                                  </h3>
+                                  {room.unreadCount > 0 && (
+                                    <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[18px] text-center">
+                                      {room.unreadCount}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs truncate mt-0.5" 
+                                   style={{ color: activeRoom === room.id ? 'rgba(255,255,255,0.8)' : colorScheme.textSecondary }}>
+                                  {room.lastMessage?.content || 'No messages yet'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                  
+                  {/* New Chat Button for Admin - Mobile */}
+                  {user && user.role === 'ADMIN' && (
+                    <div className="p-3 border-t" style={{ borderColor: colorScheme.border }}>
+                      <button
+                        onClick={async () => {
+                          await fetchAvailableUsers()
+                          setShowCreateChatModal(true)
+                          setShowMobileChatList(false)
+                        }}
+                        className="w-full flex items-center justify-center px-3 py-2 rounded-lg font-medium transition-colors"
+                        style={{ 
+                          backgroundColor: colorScheme.primary,
+                          color: colorScheme.primaryText || 'white'
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        New Chat
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Desktop: Team Chat Title */}
+            <div className="hidden sm:flex items-center space-x-3">
+              <MessageCircle className="h-6 w-6" style={{ color: colorScheme.primary }} />
+              <h2 className="text-xl font-bold" style={{ color: colorScheme.text }}>
+                Team Chat
+              </h2>
+            </div>
           </div>
           <button onClick={onClose}
                   className="p-2 rounded-lg hover:bg-opacity-20 transition-colors"
