@@ -1373,8 +1373,6 @@ export default function DailyWellness() {
     }
   }
 
-  const filteredData = getFilteredData()
-
   // Get top 3 players with lowest Fatigue
   const getTop3LowestFatigue = () => {
     const sorted = [...filteredData].filter(row => row.fatigue && parseInt(row.fatigue) > 0)
