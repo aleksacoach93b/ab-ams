@@ -153,7 +153,12 @@ export class NotificationService {
       totalParticipants: participants.length
     })
 
-    return this.createNotification({
+    if (participantIds.length === 0) {
+      console.warn('⚠️ No participants found for chat notification (excluding sender)')
+      return []
+    }
+
+    const result = await this.createNotification({
       title: `New message in ${roomName}`,
       message: `${senderName}: ${messagePreview}`,
       type: 'INFO',
@@ -162,6 +167,9 @@ export class NotificationService {
       relatedId: roomId,
       relatedType: 'chat'
     })
+
+    console.log(`✅ Created ${result.length} chat notifications for room ${roomName}`)
+    return result
   }
 
   static async notifyAddedToChat(roomId: string, roomName: string, userId: string) {
