@@ -397,13 +397,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <MoreVertical className="h-5 w-5" />
                 </button>
 
-                {/* Quick Access Buttons - First 3 for mobile, all for desktop */}
-                <div className="flex items-center gap-2 sm:ml-4">
+                {/* Quick Access Buttons - First 3 for mobile ONLY */}
+                <div className="flex items-center gap-2 sm:hidden">
                   {quickAccessButtons.filter(btn => btn.show).slice(0, 3).map((btn) => (
                     <button
                       key={btn.key}
                       onClick={btn.onClick}
-                      className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm sm:w-9 sm:h-9"
+                      className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 shadow-sm"
                       style={{
                         backgroundColor: colorScheme.surface,
                         color: colorScheme.text,
@@ -411,7 +411,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       }}
                       title={btn.label}
                     >
-                      <btn.icon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      <btn.icon className="h-5 w-5" />
                     </button>
                   ))}
                 </div>
