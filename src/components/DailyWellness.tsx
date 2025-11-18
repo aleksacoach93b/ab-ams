@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Calendar, ChevronLeft, ChevronRight, AlertTriangle, ChevronUp, ChevronDown, Download } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 import jsPDF from 'jspdf'
@@ -345,7 +345,7 @@ export default function DailyWellness() {
   }
 
   // Handle column sorting
-  const handleSort = (column: string) => {
+  const handleSort = useCallback((column: string) => {
     if (sortColumn === column) {
       // Toggle direction if same column
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
@@ -354,7 +354,7 @@ export default function DailyWellness() {
       setSortColumn(column)
       setSortDirection('asc')
     }
-  }
+  }, [sortColumn, sortDirection])
 
   // Sort data based on column and direction
   const sortData = (data: WellnessData[]): WellnessData[] => {
@@ -418,8 +418,8 @@ export default function DailyWellness() {
     })
   }
 
-  // Get filtered data for table and cards (only by selected date from calendar)
-  const getFilteredData = () => {
+  // Get filtered data for table and cards (only by selected date from calendar) - Memoized for performance
+  const filteredData = useMemo(() => {
     let filtered = wellnessData
 
     // Filter only by selected date from calendar
@@ -444,7 +444,10 @@ export default function DailyWellness() {
 
     // Apply sorting
     return sortData(filtered)
-  }
+  }, [wellnessData, selectedDate, sortColumn, sortDirection])
+  
+  // Function wrapper for backward compatibility
+  const getFilteredData = () => filteredData
 
   // Get filtered data for charts (by selected player and date range)
   const getFilteredDataForCharts = () => {

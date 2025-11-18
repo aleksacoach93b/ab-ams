@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { 
   MessageCircle, 
   Send, 
@@ -295,9 +295,11 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
     }
   }
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' })
+    }
+  }, [])
 
   const sendMessage = async () => {
     if (!newMessage.trim()) return
@@ -1246,11 +1248,11 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
                         </p>
                       </div>
                     ) : (
-                      chatRooms
-                        .filter(room => 
+                      (() => {
+                        const filteredRooms = chatRooms.filter(room => 
                           room.name.toLowerCase().includes(searchQuery.toLowerCase())
                         )
-                        .map((room) => (
+                        return filteredRooms.map((room) => (
                           <div
                             key={room.id}
                             onClick={() => {
@@ -1295,6 +1297,7 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
                             </div>
                           </div>
                         ))
+                      })()
                     )}
                   </div>
                   
