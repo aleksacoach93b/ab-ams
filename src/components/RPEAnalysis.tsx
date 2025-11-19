@@ -143,19 +143,24 @@ export default function RPEAnalysis() {
   // Get unique dates from data
   const getDatesWithData = (): Set<string> => {
     const dates = new Set<string>()
+    if (!rpeData || !Array.isArray(rpeData)) return dates
+    
     rpeData.forEach(row => {
-      if (row.submittedAt) {
+      if (row && row.submittedAt) {
         try {
           // Parse date from format like "11/12/2025, 6:02:52 PM"
           const dateStr = row.submittedAt.split(',')[0] // Get "11/12/2025"
           const [month, day, year] = dateStr.split('/')
           if (month && day && year) {
             const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-            const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-            dates.add(formattedDate)
+            if (!isNaN(date.getTime())) {
+              const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+              dates.add(formattedDate)
+            }
           }
         } catch (e) {
           // Skip invalid dates
+          console.warn('Error parsing date:', e)
         }
       }
     })
@@ -522,6 +527,8 @@ export default function RPEAnalysis() {
       const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
       const hasData = datesWithData.has(dateStr)
       const isSelected = selectedDate && 
+        selectedDate instanceof Date &&
+        !isNaN(selectedDate.getTime()) &&
         selectedDate.getDate() === day &&
         selectedDate.getMonth() === currentMonth.getMonth() &&
         selectedDate.getFullYear() === currentMonth.getFullYear()
