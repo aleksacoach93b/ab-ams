@@ -19,7 +19,7 @@ export async function DELETE(
       )
     }
 
-    const user = await verifyToken(token)
+    const user = verifyToken(token)
     if (!user) {
       return NextResponse.json(
         { message: 'Invalid token' },
@@ -111,14 +111,14 @@ export async function DELETE(
     }
 
     // Get the message to check ownership and room access
-    const message = await prisma.chatMessage.findUnique({
+    const message = await prisma.chat_messages.findUnique({
       where: {
         id: messageId
       },
       include: {
-        room: {
+        chat_rooms: {
           include: {
-            participants: {
+            chat_room_participants: {
               where: {
                 userId: user.userId,
                 isActive: true
@@ -137,7 +137,7 @@ export async function DELETE(
     }
 
     // Check if user is participant in the chat room
-    if (message.room.participants.length === 0) {
+    if (message.chat_rooms.chat_room_participants.length === 0) {
       return NextResponse.json(
         { message: 'Access denied to this chat room' },
         { status: 403 }
@@ -153,9 +153,9 @@ export async function DELETE(
     }
 
     // Check if user is the sender of the message or admin of the room
-    const participant = message.room.participants[0]
+    const participant = message.chat_rooms.chat_room_participants[0]
     const isMessageSender = message.senderId === user.userId
-    const isRoomAdmin = participant.role === 'admin'
+    const isRoomAdmin = participant.role === 'admin' || user.role === 'ADMIN'
 
     if (!isMessageSender && !isRoomAdmin) {
       return NextResponse.json(
@@ -167,7 +167,7 @@ export async function DELETE(
     console.log('🗑️ Deleting message:', messageId, 'by user:', user.userId)
 
     // Soft delete the message (set deletedAt timestamp)
-    await prisma.chatMessage.update({
+    await prisma.chat_messages.update({
       where: {
         id: messageId
       },
