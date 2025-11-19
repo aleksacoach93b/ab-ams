@@ -1,4 +1,6 @@
 export const runtime = 'nodejs'
+export const maxDuration = 60 // Increase timeout to 60 seconds for chat room creation
+
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
@@ -18,7 +20,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const user = await verifyToken(token)
+    const user = verifyToken(token)
     if (!user) {
       return NextResponse.json(
         { message: 'Invalid token' },
@@ -243,7 +245,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const user = await verifyToken(token)
+    const user = verifyToken(token)
     if (!user) {
       return NextResponse.json(
         { message: 'Invalid token' },
@@ -403,7 +405,7 @@ export async function POST(request: NextRequest) {
       const newRoom = {
         id: newRoomId,
         name: name.trim(),
-        type: type || 'group',
+        type: 'group',
         createdBy: user.userId,
         createdAt: now,
         updatedAt: now,
@@ -441,48 +443,55 @@ export async function POST(request: NextRequest) {
     // Generate unique ID for chat room
     const roomId = `chat_room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
-    // Map participantIds to user IDs
+    // Map participantIds to user IDs - OPTIMIZED: batch queries instead of N queries
     // participantIds can be player.id or staff.id, but we need users.id for chat_room_participants
     const userIds: string[] = []
     
     // First, add creator's userId
     userIds.push(user.userId)
     
-    // Map participantIds to user IDs
-    for (const participantId of participantIds) {
-      // Try to find as player first
-      const player = await prisma.players.findUnique({
-        where: { id: participantId },
-        select: { userId: true }
+    if (participantIds.length > 0) {
+      // Batch query: find all players at once
+      const players = await prisma.players.findMany({
+        where: { id: { in: participantIds } },
+        select: { id: true, userId: true }
       })
       
-      if (player) {
-        userIds.push(player.userId)
-        continue
+      // Batch query: find all staff at once
+      const staffMembers = await prisma.staff.findMany({
+        where: { id: { in: participantIds } },
+        select: { id: true, userId: true }
+      })
+      
+      // Create maps for quick lookup
+      const playerMap = new Map(players.map(p => [p.id, p.userId]))
+      const staffMap = new Map(staffMembers.map(s => [s.id, s.userId]))
+      
+      // Get remaining IDs that weren't found as players or staff
+      const foundIds = new Set([...players.map(p => p.id), ...staffMembers.map(s => s.id)])
+      const remainingIds = participantIds.filter(id => !foundIds.has(id))
+      
+      // Batch query: check if remaining IDs are user IDs
+      let userMap = new Map<string, string>()
+      if (remainingIds.length > 0) {
+        const users = await prisma.users.findMany({
+          where: { id: { in: remainingIds } },
+          select: { id: true }
+        })
+        userMap = new Map(users.map(u => [u.id, u.id]))
       }
       
-      // Try to find as staff
-      const staff = await prisma.staff.findUnique({
-        where: { id: participantId },
-        select: { userId: true }
-      })
-      
-      if (staff) {
-        userIds.push(staff.userId)
-        continue
-      }
-      
-      // If not found as player or staff, assume it's already a user ID
-      // But verify it exists in users table
-      const userExists = await prisma.users.findUnique({
-        where: { id: participantId },
-        select: { id: true }
-      })
-      
-      if (userExists) {
-        userIds.push(participantId)
-      } else {
-        console.warn(`⚠️ Participant ID ${participantId} not found as player, staff, or user`)
+      // Map all participantIds to userIds
+      for (const participantId of participantIds) {
+        if (playerMap.has(participantId)) {
+          userIds.push(playerMap.get(participantId)!)
+        } else if (staffMap.has(participantId)) {
+          userIds.push(staffMap.get(participantId)!)
+        } else if (userMap.has(participantId)) {
+          userIds.push(userMap.get(participantId)!)
+        } else {
+          console.warn(`⚠️ Participant ID ${participantId} not found as player, staff, or user`)
+        }
       }
     }
     
