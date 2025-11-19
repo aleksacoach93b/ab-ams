@@ -21,8 +21,15 @@ export async function GET(request: NextRequest) {
     if (LOCAL_DEV_MODE) {
       const state = await readState()
       
+      // Find earliest date from saved analytics or use a default
+      const savedAnalyticsRaw = state.dailyEventAnalytics || []
+      const startDate = savedAnalyticsRaw.length > 0
+        ? new Date(Math.min(...savedAnalyticsRaw.map((item: any) => new Date(item.date).getTime())))
+        : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) // Default to 1 year ago
+      startDate.setHours(0, 0, 0, 0)
+      
       // Get saved daily analytics data from localDevStore
-      const savedAnalytics = (state.dailyEventAnalytics || []).filter((item: any) => {
+      const savedAnalytics = savedAnalyticsRaw.filter((item: any) => {
         const itemDate = new Date(item.date)
         return itemDate >= startDate && itemDate <= endDate
       }).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -266,13 +273,16 @@ export async function GET(request: NextRequest) {
       const analyticsDate = new Date(analytics.date)
       analyticsDate.setHours(0, 0, 0, 0)
       
+      // Map event type to label
+      const typeLabel = eventTypeMap[analytics.eventType] || analytics.eventType
+      
       // If eventTitles exist, split them and create separate rows
       if (analytics.eventTitles) {
         const titles = analytics.eventTitles.split('; ')
         titles.forEach((title: string, index: number) => {
           processedSavedAnalytics.push({
             date: analyticsDate,
-            eventType: analytics.eventType,
+            eventType: typeLabel,
             eventTitle: title.trim(),
             startTime: 'N/A', // Saved data doesn't have individual times
             endTime: 'N/A',
@@ -284,7 +294,7 @@ export async function GET(request: NextRequest) {
         // If no titles, create one row with count
         processedSavedAnalytics.push({
           date: analyticsDate,
-          eventType: analytics.eventType,
+          eventType: typeLabel,
           eventTitle: `${analytics.count} event(s)`,
           startTime: 'N/A',
           endTime: 'N/A',
