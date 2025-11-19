@@ -196,13 +196,18 @@ export async function POST(request: NextRequest) {
     const { 
       title, 
       message, 
-      type = 'INFO', 
+      type = 'GENERAL', 
       priority = 'MEDIUM', 
       category = 'GENERAL',
       userIds, // Array of user IDs to send notification to
       relatedId,
       relatedType
     } = await request.json()
+    
+    // Map common type values to valid enum values
+    const validType = (type === 'INFO' || type === 'SUCCESS' || type === 'WARNING' || type === 'ERROR') 
+      ? 'GENERAL' 
+      : (type || 'GENERAL')
 
     if (!title || !message) {
       return NextResponse.json(
@@ -226,21 +231,47 @@ export async function POST(request: NextRequest) {
     }
 
     // Create notifications for all target users
+    // Try to create with optional fields first, fallback to basic fields if they don't exist
     const notifications = await Promise.all(
-      targetUserIds.map(userId =>
-        prisma.notifications.create({
-          data: {
+      targetUserIds.map(async (userId) => {
+        try {
+          // First try with all fields
+          const notificationData: any = {
             title,
             message,
-            type,
-            priority,
-            category,
-            userId,
-            relatedId,
-            relatedType
+            type: validType,
+            userId
           }
-        })
-      )
+          
+          // Try to add optional fields
+          if (priority) notificationData.priority = priority
+          if (category) notificationData.category = category
+          if (relatedId) notificationData.relatedId = relatedId
+          if (relatedType) notificationData.relatedType = relatedType
+          
+          try {
+            return await prisma.notifications.create({
+              data: notificationData
+            })
+          } catch (createError: any) {
+            // If optional fields don't exist, create without them
+            if (createError.code === 'P2022' || createError.message?.includes('category') || createError.message?.includes('Unknown field')) {
+              return await prisma.notifications.create({
+                data: {
+                  title,
+                  message,
+                  type: validType,
+                  userId
+                }
+              })
+            }
+            throw createError
+          }
+        } catch (error) {
+          console.error(`Error creating notification for user ${userId}:`, error)
+          throw error
+        }
+      })
     )
 
     return NextResponse.json({

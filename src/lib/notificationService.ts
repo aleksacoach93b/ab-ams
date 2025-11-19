@@ -3,7 +3,7 @@ import { prisma } from './prisma'
 export interface CreateNotificationData {
   title: string
   message: string
-  type?: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR'
+  type?: 'EVENT_REMINDER' | 'MEDIA_UPLOADED' | 'NOTE_ADDED' | 'WELLNESS_ALERT' | 'ATTENDANCE_REMINDER' | 'GENERAL'
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
   category?: 'SYSTEM' | 'PLAYER' | 'EVENT' | 'WELLNESS' | 'CHAT' | 'REPORT' | 'GENERAL'
   userIds?: string[] // If not provided, sends to all users
@@ -12,6 +12,20 @@ export interface CreateNotificationData {
 }
 
 export class NotificationService {
+  // Map old type values to valid enum values
+  private static mapTypeToValidEnum(type?: string): 'EVENT_REMINDER' | 'MEDIA_UPLOADED' | 'NOTE_ADDED' | 'WELLNESS_ALERT' | 'ATTENDANCE_REMINDER' | 'GENERAL' {
+    if (!type) return 'GENERAL'
+    const typeUpper = type.toUpperCase()
+    if (['EVENT_REMINDER', 'MEDIA_UPLOADED', 'NOTE_ADDED', 'WELLNESS_ALERT', 'ATTENDANCE_REMINDER', 'GENERAL'].includes(typeUpper)) {
+      return typeUpper as any
+    }
+    // Map old values to new ones
+    if (typeUpper === 'INFO' || typeUpper === 'SUCCESS') return 'GENERAL'
+    if (typeUpper === 'WARNING') return 'WELLNESS_ALERT'
+    if (typeUpper === 'ERROR') return 'GENERAL'
+    return 'GENERAL'
+  }
+
   static async createNotification(data: CreateNotificationData) {
     try {
       console.log('📢 [CREATE NOTIFICATION] Starting:', {
@@ -47,11 +61,14 @@ export class NotificationService {
         targetUserIds.map(async (userId) => {
           try {
             // First try with all fields
+            // Map type to valid enum value
+            const validType = this.mapTypeToValidEnum(data.type)
+            
             const notificationData: any = {
               id: `notif_${Date.now()}_${userId}_${Math.random().toString(36).substr(2, 9)}`,
               title: data.title,
               message: data.message,
-              type: 'GENERAL' as any, // Use enum value
+              type: validType,
               userId
             }
             
@@ -84,7 +101,7 @@ export class NotificationService {
                     id: `notif_${Date.now()}_${userId}_${Math.random().toString(36).substr(2, 9)}`,
                     title: data.title,
                     message: data.message,
-                    type: 'GENERAL' as any,
+                    type: validType,
                     userId
                   }
                 })
@@ -113,7 +130,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'New Event Created',
       message: `"${eventTitle}" has been scheduled`,
-      type: 'INFO',
+      type: 'EVENT_REMINDER',
       category: 'EVENT',
       relatedId: eventId,
       relatedType: 'event'
@@ -124,7 +141,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'Event Updated',
       message: `"${eventTitle}" has been modified`,
-      type: 'INFO',
+      type: 'EVENT_REMINDER',
       category: 'EVENT',
       relatedId: eventId,
       relatedType: 'event'
@@ -135,7 +152,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'Event Cancelled',
       message: `"${eventTitle}" has been cancelled`,
-      type: 'WARNING',
+      type: 'EVENT_REMINDER',
       category: 'EVENT',
       relatedId: eventId,
       relatedType: 'event'
@@ -160,7 +177,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'Player Status Update',
       message: `${playerName} is now ${newStatus}`,
-      type: 'SUCCESS',
+      type: 'GENERAL',
       category: 'PLAYER',
       relatedId: playerId,
       relatedType: 'player',
@@ -172,7 +189,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'New Player Added',
       message: `${playerName} has been added to the team`,
-      type: 'SUCCESS',
+      type: 'GENERAL',
       category: 'PLAYER',
       relatedId: playerId,
       relatedType: 'player'
@@ -236,7 +253,7 @@ export class NotificationService {
       const result = await this.createNotification({
         title: `New message in ${roomName}`,
         message: `${senderName}: ${messagePreview}`,
-        type: 'INFO',
+        type: 'NOTE_ADDED',
         category: 'CHAT',
         userIds: participantIds,
         relatedId: roomId,
@@ -255,7 +272,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'Added to Chat',
       message: `You've been added to "${roomName}"`,
-      type: 'INFO',
+      type: 'NOTE_ADDED',
       category: 'CHAT',
       userIds: [userId],
       relatedId: roomId,
@@ -268,7 +285,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'New Report Uploaded',
       message: `${uploadedBy} uploaded "${reportName}"`,
-      type: 'INFO',
+      type: 'MEDIA_UPLOADED',
       category: 'REPORT',
       relatedId: reportId,
       relatedType: 'report'
@@ -280,7 +297,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'New Player Media Uploaded',
       message: `${uploadedBy} uploaded ${fileCount} file(s) for ${playerName}`,
-      type: 'INFO',
+      type: 'MEDIA_UPLOADED',
       category: 'PLAYER',
       relatedId: playerId,
       relatedType: 'player'
@@ -292,7 +309,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'New Event Media Uploaded',
       message: `${uploadedBy} uploaded "${fileName}" to event`,
-      type: 'INFO',
+      type: 'MEDIA_UPLOADED',
       category: 'EVENT',
       relatedId: eventId,
       relatedType: 'event'
@@ -304,7 +321,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'Wellness Survey Reminder',
       message: 'Please complete today\'s wellness survey',
-      type: 'WARNING',
+      type: 'WELLNESS_ALERT',
       priority: 'MEDIUM',
       category: 'WELLNESS',
       userIds: playerIds
@@ -316,7 +333,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'System Maintenance',
       message,
-      type: 'INFO',
+      type: 'GENERAL',
       category: 'SYSTEM',
       priority: 'HIGH'
     })
@@ -326,7 +343,7 @@ export class NotificationService {
     return this.createNotification({
       title: 'System Error',
       message,
-      type: 'ERROR',
+      type: 'GENERAL',
       category: 'SYSTEM',
       priority: 'URGENT'
     })
