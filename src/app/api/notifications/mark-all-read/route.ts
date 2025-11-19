@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const user = await verifyToken(token)
+    const user = verifyToken(token)
     if (!user) {
       return NextResponse.json(
         { message: 'Invalid token' },
@@ -118,8 +118,7 @@ export async function POST(request: NextRequest) {
         isRead: false
       },
       data: {
-        isRead: true,
-        readAt: new Date()
+        isRead: true
       }
     })
 

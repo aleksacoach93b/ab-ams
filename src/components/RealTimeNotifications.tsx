@@ -199,8 +199,14 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
 
   const markAllAsRead = async () => {
     try {
+      setLoading(true)
       const token = localStorage.getItem('token')
-      if (!token) return
+      if (!token) {
+        setLoading(false)
+        return
+      }
+
+      console.log('📝 [MARK ALL READ] Marking all notifications as read...')
 
       const response = await fetch('/api/notifications/mark-all-read', {
         method: 'POST',
@@ -211,14 +217,23 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
       })
 
       if (response.ok) {
-        // Clear all notifications when marked as read
-        setNotifications([])
+        const data = await response.json()
+        console.log('✅ [MARK ALL READ] Success:', data)
+        
+        // Update all notifications to read status locally
+        setNotifications(prev => prev.map(notif => ({ ...notif, isRead: true })))
         setUnreadCount(0)
-        // Refresh to ensure sync
-        setTimeout(() => fetchNotifications(), 500)
+        
+        // Refresh to ensure sync with server
+        await fetchNotifications()
+      } else {
+        const errorText = await response.text()
+        console.error('❌ [MARK ALL READ] Failed:', response.status, errorText)
       }
     } catch (error) {
-      console.error('Error marking all notifications as read:', error)
+      console.error('❌ [MARK ALL READ] Error:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -300,14 +315,19 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
               <div className="flex items-center space-x-2">
                 {unreadCount > 0 && (
                   <button
-                    onClick={markAllAsRead}
-                    className="text-xs font-medium px-2 py-1 rounded-lg transition-colors"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      markAllAsRead()
+                    }}
+                    disabled={loading}
+                    className="text-xs font-medium px-2 py-1 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ 
                       backgroundColor: colorScheme.primary,
                       color: colorScheme.primaryText || 'white'
                     }}
                   >
-                    Mark all read
+                    {loading ? 'Marking...' : 'Mark all read'}
                   </button>
                 )}
                 <button
