@@ -95,47 +95,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch notifications without category field (it doesn't exist in database)
-    // Use raw query or select to explicitly specify fields that exist
-    let notifications: any[]
-    try {
-      // Try with select first
-      notifications = await prisma.notifications.findMany({
-        where,
-        orderBy: {
-          createdAt: 'desc'
-        },
-        take: limit,
-        skip: offset,
-        select: {
-          id: true,
-          userId: true,
-          title: true,
-          message: true,
-          type: true,
-          isRead: true,
-          createdAt: true
-        }
-      })
-    } catch (error: any) {
-      // If select fails, use raw query
-      if (error.code === 'P2022' || error.message?.includes('category')) {
-        console.warn('⚠️ Using raw query to fetch notifications (category field issue)')
-        let query = `SELECT id, "userId", title, message, type, "isRead", "createdAt" FROM notifications WHERE "userId" = $1`
-        const params: any[] = [userId]
-        
-        if (unreadOnly) {
-          query += ` AND "isRead" = false`
-        }
-        
-        query += ` ORDER BY "createdAt" DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
-        params.push(limit, offset)
-        
-        const result = await prisma.$queryRawUnsafe(query, ...params)
-        notifications = result as any[]
-      } else {
-        throw error
-      }
+    // Use raw query directly to avoid Prisma Client trying to fetch category field
+    let query = `SELECT id, "userId", title, message, type, "isRead", "createdAt" FROM notifications WHERE "userId" = $1`
+    const params: any[] = [userId]
+    
+    if (unreadOnly) {
+      query += ` AND "isRead" = false`
     }
+    
+    query += ` ORDER BY "createdAt" DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
+    params.push(limit, offset)
+    
+    const notifications = await prisma.$queryRawUnsafe(query, ...params) as any[]
     
     // Ensure category field exists (fallback for old notifications or if field doesn't exist)
     // Try to determine category from title/message if not present

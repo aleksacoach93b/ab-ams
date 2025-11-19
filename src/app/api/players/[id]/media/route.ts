@@ -61,7 +61,7 @@ export async function GET(
       )
     }
 
-    const user = await verifyToken(token)
+    const user = verifyToken(token)
     if (!user) {
       return NextResponse.json(
         { message: 'Invalid token' },
@@ -346,7 +346,7 @@ export async function POST(
       try {
         const token = request.headers.get('authorization')?.replace('Bearer ', '')
         if (token) {
-          const user = await verifyToken(token)
+          const user = verifyToken(token)
           if (user) {
             const playerName = `${player.firstName} ${player.lastName}`.trim()
             const senderName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Admin'
