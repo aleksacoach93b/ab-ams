@@ -252,6 +252,24 @@ model login_logs {
   users         users    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model file_access_logs {
+  id        String   @id @default(cuid())
+  userId    String
+  fileType  String   // REPORT, MEDIA, AVATAR, PLAYER_MEDIA, EVENT_MEDIA
+  fileId    String?
+  fileName  String?
+  action    String   // VIEW, DOWNLOAD, UPLOAD, DELETE
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  users     users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([fileType])
+  @@map("file_access_logs")
+}
+
 model notifications {
   id         String           @id
   userId     String
@@ -531,6 +549,7 @@ model users {
   coach_notes              coach_notes[]
   coaches                  coaches?
   file_analytics           file_analytics[]
+  file_access_logs         file_access_logs[]
   login_logs               login_logs[]
   notifications            notifications[]
   player_report_visibility player_report_visibility[]

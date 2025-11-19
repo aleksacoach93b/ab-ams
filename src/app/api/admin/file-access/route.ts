@@ -1,123 +1,91 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) {
+      return NextResponse.json(
+        { message: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const user = verifyToken(token)
+    if (!user || user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { message: 'Admin access required' },
+        { status: 403 }
+      )
+    }
+
     // Get query parameters
     const { searchParams } = new URL(request.url)
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const limit = parseInt(searchParams.get('limit') || '20')
     const offset = parseInt(searchParams.get('offset') || '0')
-    const action = searchParams.get('action')
-    const fileType = searchParams.get('fileType')
 
-    // Build where clause
-    const whereClause: any = {}
-    if (action) {
-      whereClause.action = action
-    }
-    if (fileType) {
-      whereClause.fileType = fileType
-    }
-
-    // Fetch file access logs with pagination
-    const fileAccessLogs = await prisma.fileAccessLog.findMany({
-      where: whereClause,
-      include: {
-        user: {
-          include: {
-            player: true,
-            staff: true
-          }
-        }
-      },
+    // Fetch file access logs with user information
+    const fileAccessLogs = await prisma.file_access_logs.findMany({
+      take: limit,
+      skip: offset,
       orderBy: {
         createdAt: 'desc'
       },
-      take: limit,
-      skip: offset
-    })
-
-    // Get total count for pagination
-    const totalCount = await prisma.fileAccessLog.count({
-      where: whereClause
-    })
-
-    // Transform the data for frontend
-    const transformedLogs = fileAccessLogs.map(log => {
-      let displayName = log.user.name
-      if (!displayName) {
-        if (log.user.player) {
-          displayName = log.user.player.name
-        } else if (log.user.staff) {
-          displayName = log.user.staff.name
-        } else {
-          displayName = log.user.email.split('@')[0]
-        }
-      }
-
-      return {
-        id: log.id,
-        userId: log.userId,
-        fileType: log.fileType,
-        fileId: log.fileId,
-        fileName: log.fileName,
-        action: log.action,
-        ipAddress: log.ipAddress,
-        userAgent: log.userAgent,
-        createdAt: log.createdAt.toISOString(),
-        user: {
-          id: log.user.id,
-          email: log.user.email,
-          name: displayName,
-          role: log.user.role,
-          playerData: log.user.player,
-          staffData: log.user.staff
+      include: {
+        users: {
+          include: {
+            players: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true
+              }
+            },
+            staff: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
         }
       }
     })
+
+    // Format response
+    const formattedLogs = fileAccessLogs.map(log => ({
+      id: log.id,
+      userId: log.userId,
+      fileType: log.fileType,
+      fileId: log.fileId,
+      fileName: log.fileName,
+      action: log.action,
+      ipAddress: log.ipAddress,
+      userAgent: log.userAgent,
+      createdAt: log.createdAt.toISOString(),
+      user: {
+        id: log.users.id,
+        name: log.users.firstName && log.users.lastName 
+          ? `${log.users.firstName} ${log.users.lastName}` 
+          : log.users.email,
+        email: log.users.email,
+        role: log.users.role,
+        playerData: log.users.players,
+        staffData: log.users.staff
+      }
+    }))
 
     return NextResponse.json({
-      fileAccessLogs: transformedLogs,
-      totalCount,
-      hasMore: offset + limit < totalCount
+      fileAccessLogs: formattedLogs,
+      totalCount: fileAccessLogs.length
     })
-
   } catch (error) {
     console.error('Error fetching file access logs:', error)
     return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { userId, fileType, fileId, fileName, action, ipAddress, userAgent } = body
-
-    // Create file access log entry
-    const fileAccessLog = await prisma.fileAccessLog.create({
-      data: {
-        userId,
-        fileType,
-        fileId,
-        fileName,
-        action,
-        ipAddress,
-        userAgent
-      }
-    })
-
-    return NextResponse.json({
-      message: 'File access logged successfully',
-      logId: fileAccessLog.id
-    })
-
-  } catch (error) {
-    console.error('Error creating file access log:', error)
-    return NextResponse.json(
-      { message: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

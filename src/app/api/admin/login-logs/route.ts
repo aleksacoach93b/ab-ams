@@ -1,90 +1,106 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get query parameters
-    const { searchParams } = new URL(request.url)
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const offset = parseInt(searchParams.get('offset') || '0')
-    const success = searchParams.get('success')
-
-    // Build where clause
-    const whereClause: any = {}
-    if (success !== null && success !== undefined) {
-      whereClause.success = success === 'true'
-    }
-
-    // Fetch login logs with pagination
-    const loginLogs = await prisma.loginLog.findMany({
-      where: whereClause,
-      include: {
-        user: {
-          include: {
-            player: true,
-            staff: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: limit,
-      skip: offset
-    })
-
-    // Get total count for pagination
-    const totalCount = await prisma.loginLog.count({
-      where: whereClause
-    })
-
-    return NextResponse.json({
-      loginLogs,
-      totalCount,
-      hasMore: offset + limit < totalCount
-    })
-
-  } catch (error) {
-    console.error('Error fetching login logs:', error)
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const olderThan = searchParams.get('olderThan')
-
-    if (!olderThan) {
+    // Check authentication
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) {
       return NextResponse.json(
-        { message: 'olderThan parameter is required' },
-        { status: 400 }
+        { message: 'Authentication required' },
+        { status: 401 }
       )
     }
 
-    const cutoffDate = new Date(olderThan)
-    
-    // Delete login logs older than the specified date
-    const deletedCount = await prisma.loginLog.deleteMany({
-      where: {
-        createdAt: {
-          lt: cutoffDate
+    const user = verifyToken(token)
+    if (!user || user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { message: 'Admin access required' },
+        { status: 403 }
+      )
+    }
+
+    // Get query parameters
+    const { searchParams } = new URL(request.url)
+    const limit = parseInt(searchParams.get('limit') || '20')
+    const offset = parseInt(searchParams.get('offset') || '0')
+
+    // Fetch login logs with user information
+    const loginLogs = await prisma.login_logs.findMany({
+      take: limit,
+      skip: offset,
+      orderBy: {
+        createdAt: 'desc'
+      },
+      include: {
+        users: {
+          include: {
+            players: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                imageUrl: true
+              }
+            },
+            staff: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                avatar: true
+              }
+            }
+          }
         }
       }
     })
 
-    return NextResponse.json({
-      message: `Deleted ${deletedCount.count} login logs older than ${cutoffDate.toISOString()}`,
-      deletedCount: deletedCount.count
-    })
+    // Get total count
+    const totalCount = await prisma.login_logs.count()
 
+    // Format response
+    const formattedLogs = loginLogs.map(log => ({
+      id: log.id,
+      userId: log.userId,
+      email: log.email,
+      role: log.role,
+      ipAddress: log.ipAddress,
+      userAgent: log.userAgent,
+      location: log.location,
+      success: log.success,
+      failureReason: log.failureReason,
+      createdAt: log.createdAt.toISOString(),
+      user: {
+        id: log.users.id,
+        name: log.users.firstName && log.users.lastName 
+          ? `${log.users.firstName} ${log.users.lastName}` 
+          : log.users.email,
+        email: log.users.email,
+        role: log.users.role,
+        player: log.users.players ? {
+          id: log.users.players.id,
+          name: `${log.users.players.firstName} ${log.users.players.lastName}`,
+          imageUrl: log.users.players.imageUrl
+        } : null,
+        staff: log.users.staff ? {
+          id: log.users.staff.id,
+          firstName: log.users.staff.firstName,
+          lastName: log.users.staff.lastName,
+          avatar: log.users.staff.avatar
+        } : null
+      }
+    }))
+
+    return NextResponse.json({
+      loginLogs: formattedLogs,
+      totalCount
+    })
   } catch (error) {
-    console.error('Error deleting login logs:', error)
+    console.error('Error fetching login logs:', error)
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

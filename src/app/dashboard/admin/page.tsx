@@ -122,11 +122,28 @@ export default function AdminPage() {
   useEffect(() => {
     fetchLoginData()
     fetchAnalyticsData()
+    
+    // Real-time polling every 5 seconds
+    const loginInterval = setInterval(fetchLoginData, 5000)
+    const analyticsInterval = setInterval(fetchAnalyticsData, 5000)
+    
+    return () => {
+      clearInterval(loginInterval)
+      clearInterval(analyticsInterval)
+    }
   }, [])
 
   const fetchLoginData = async () => {
     try {
-      const response = await fetch('/api/admin/login-logs?limit=20')
+      const token = localStorage.getItem('token')
+      if (!token) return
+      
+      const response = await fetch('/api/admin/login-logs?limit=20', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         setLoginLogs(data.loginLogs)
@@ -153,7 +170,15 @@ export default function AdminPage() {
 
   const fetchAnalyticsData = async () => {
     try {
-      const response = await fetch('/api/admin/file-access?limit=20')
+      const token = localStorage.getItem('token')
+      if (!token) return
+      
+      const response = await fetch('/api/admin/file-access?limit=20', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         setFileAnalytics(data.fileAccessLogs)

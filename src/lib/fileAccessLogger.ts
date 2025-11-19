@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { prisma } from './prisma'
 
 export interface FileAccessLogData {
   userId: string
@@ -12,11 +13,22 @@ export interface FileAccessLogData {
 
 export async function logFileAccess(logData: FileAccessLogData) {
   try {
-    // Skip logging in server-side context to avoid fetch URL issues
-    // This is just for debugging - in production you'd use a proper logging service
-    console.log('📝 File access log:', logData)
+    // Save to database
+    await prisma.file_access_logs.create({
+      data: {
+        userId: logData.userId,
+        fileType: logData.fileType,
+        fileId: logData.fileId,
+        fileName: logData.fileName,
+        action: logData.action,
+        ipAddress: logData.ipAddress,
+        userAgent: logData.userAgent
+      }
+    })
+    console.log('📝 File access logged:', logData)
   } catch (error) {
     console.error('Error logging file access:', error)
+    // Don't throw - logging should not break the main flow
   }
 }
 
