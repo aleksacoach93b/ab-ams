@@ -148,14 +148,24 @@ export async function GET(request: NextRequest) {
     console.log('📊 Fetching saved daily event analytics from database...')
     
     // Get ALL saved daily event analytics (PRIMARY DATA SOURCE - locked at 00:00)
-    const savedAnalytics = await prisma.daily_event_analytics.findMany({
-      orderBy: [
-        { date: 'asc' },
-        { eventType: 'asc' }
-      ]
-    })
-
-    console.log(`📊 Found ${savedAnalytics.length} saved daily event analytics records`)
+    // Fallback to empty array if table doesn't exist
+    let savedAnalytics: any[] = []
+    try {
+      savedAnalytics = await prisma.daily_event_analytics.findMany({
+        orderBy: [
+          { date: 'asc' },
+          { eventType: 'asc' }
+        ]
+      })
+      console.log(`📊 Found ${savedAnalytics.length} saved daily event analytics records`)
+    } catch (error: any) {
+      if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+        console.warn('⚠️ daily_event_analytics table does not exist, using live events data only')
+        savedAnalytics = []
+      } else {
+        throw error
+      }
+    }
 
     // Map event type values to labels (same as in dropdown)
     const eventTypeMap: { [key: string]: string } = {
@@ -177,11 +187,21 @@ export async function GET(request: NextRequest) {
       'OTHER': 'Other'
     }
 
-    // Find the earliest date from saved analytics
-    const allDates = savedAnalytics.map(analytics => analytics.date)
-    const earliestDate = allDates.length > 0 
-      ? new Date(Math.min(...allDates.map(d => d.getTime())))
-      : new Date() // If no data, start from today
+    // Find the earliest date from saved analytics or events
+    let earliestDate: Date
+    if (savedAnalytics.length > 0) {
+      const allDates = savedAnalytics.map(analytics => analytics.date)
+      earliestDate = new Date(Math.min(...allDates.map(d => d.getTime())))
+    } else {
+      // If no saved analytics, find earliest event date
+      const earliestEvent = await prisma.events.findFirst({
+        orderBy: { startTime: 'asc' },
+        select: { startTime: true }
+      })
+      earliestDate = earliestEvent?.startTime 
+        ? new Date(earliestEvent.startTime)
+        : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) // Default to 1 year ago
+    }
     earliestDate.setHours(0, 0, 0, 0)
 
     const today = new Date()
@@ -202,7 +222,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Find missing dates (dates without saved analytics)
-    const savedDates = new Set(savedAnalytics.map(a => a.date.toISOString().split('T')[0]))
+    // If no saved analytics, all dates are "missing" (will use live data)
+    const savedDates = savedAnalytics.length > 0 
+      ? new Set(savedAnalytics.map(a => a.date.toISOString().split('T')[0]))
+      : new Set<string>()
     const missingDates = allDatesInRange.filter(date => !savedDates.has(date))
 
     console.log(`📊 Processing ${allDatesInRange.length} dates (${savedAnalytics.length} saved, ${missingDates.length} missing)`)
