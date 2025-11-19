@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { readState, initializePlayerUsers } from '@/lib/localDevStore'
+import { NotificationService } from '@/lib/notificationService'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
@@ -389,7 +390,56 @@ export async function POST(request: NextRequest) {
       where: { id: user.id },
       data: { 
         lastLoginAt: new Date(),
+        loginIp: ipAddress
       }
+    })
+
+    // Create login log
+    try {
+      await prisma.login_logs.create({
+        data: {
+          id: `login_${Date.now()}_${user.id}_${Math.random().toString(36).substr(2, 9)}`,
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          avatar: user.avatar || null,
+          ipAddress: ipAddress,
+          userAgent: userAgent,
+          success: true
+        }
+      })
+    } catch (logError) {
+      console.error('Error creating login log:', logError)
+      // Don't fail login if log creation fails
+    }
+
+    // Notify admin about login (async, don't block response)
+    Promise.resolve().then(async () => {
+      try {
+        // Get all admin users
+        const admins = await prisma.users.findMany({
+          where: { role: 'ADMIN', isActive: true },
+          select: { id: true }
+        })
+        
+        if (admins.length > 0) {
+          const userName = user.name || `${user.firstName} ${user.lastName}`.trim() || user.email
+          await NotificationService.createNotification({
+            title: 'User Login Detected',
+            message: `${userName} (${user.email}) logged in from ${ipAddress}`,
+            type: 'GENERAL',
+            category: 'SYSTEM',
+            userIds: admins.map(a => a.id)
+          })
+        }
+      } catch (notificationError) {
+        console.error('Error creating login notification:', notificationError)
+        // Don't fail login if notification fails
+      }
+    }).catch(err => {
+      console.error('Promise error in login notification:', err)
     })
 
     // Create JWT token
