@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Calendar, ChevronLeft, ChevronRight, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line, ComposedChart, ReferenceLine, Cell, LabelList } from 'recharts'
