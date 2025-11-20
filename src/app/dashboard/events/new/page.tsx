@@ -319,23 +319,17 @@ export default function NewEventPage() {
                 <label htmlFor="date" style={{ color: colorScheme.text }} className="block text-sm font-medium mb-2">
                   Date *
                 </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: colorScheme.textSecondary }} />
-                  <input
-                    type="date"
-                    id="date"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: colorScheme.surface,
-                      borderColor: colorScheme.border,
-                      color: colorScheme.text
-                    }}
-                  />
-                </div>
+                <DatePicker
+                  value={formData.date}
+                  onChange={(date) => {
+                    setFormData(prev => ({ ...prev, date }))
+                  }}
+                  placeholder="Select date"
+                  required
+                  name="date"
+                  id="date"
+                  className="w-full"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
