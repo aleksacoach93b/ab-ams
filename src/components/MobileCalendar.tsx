@@ -260,9 +260,10 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
     const startingDayOfWeek = firstDay.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
     
     // Convert to Monday-first week (0 = Sunday becomes 6, 1 = Monday becomes 0, etc.)
+    // Monday = 0, Tuesday = 1, ..., Sunday = 6
     const mondayFirstDay = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1
 
-    const days = []
+    const days: (Date | null)[] = []
     
     // Add empty cells for days before the first day of the month (Monday-first)
     for (let i = 0; i < mondayFirstDay; i++) {
@@ -272,6 +273,16 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
     // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(new Date(year, month, day))
+    }
+    
+    // Ensure we always have a multiple of 7 days for proper grid layout
+    const totalCells = days.length
+    const remainingCells = totalCells % 7
+    if (remainingCells !== 0) {
+      const cellsToAdd = 7 - remainingCells
+      for (let i = 0; i < cellsToAdd; i++) {
+        days.push(null)
+      }
     }
     
     return days
@@ -549,19 +560,37 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
           {/* Day headers - Monday first */}
           <div 
             className="grid grid-cols-7 text-center text-xs font-semibold py-3"
-            style={{ color: colorScheme.textSecondary }}
+            style={{ 
+              color: colorScheme.textSecondary,
+              gridTemplateColumns: 'repeat(7, 1fr)' // Explicitly set 7 columns
+            }}
           >
             {days.map((day, index) => {
               // Debug: Log to ensure Monday is first
               if (index === 0) {
                 console.log('📅 [MobileCalendar] First day in header:', day, 'Expected: M (Monday)')
               }
-              return <div key={index} className="py-2">{day}</div>
+              return (
+                <div 
+                  key={index} 
+                  className="py-2"
+                  style={{ 
+                    order: index // Explicit order to ensure Monday is first
+                  }}
+                >
+                  {day}
+                </div>
+              )
             })}
           </div>
 
           {/* Calendar days */}
-          <div className="grid grid-cols-7 gap-1 px-1 sm:px-2 pb-2">
+          <div 
+            className="grid grid-cols-7 gap-1 px-1 sm:px-2 pb-2"
+            style={{ 
+              gridTemplateColumns: 'repeat(7, 1fr)' // Explicitly set 7 columns
+            }}
+          >
           {monthDays.map((day, index) => {
             if (!day) {
               return <div key={`empty-${index}`} className="h-14"></div>
