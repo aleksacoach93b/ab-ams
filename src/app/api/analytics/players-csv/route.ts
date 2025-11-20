@@ -345,25 +345,32 @@ export async function GET(request: NextRequest) {
     // Create a map of analytics by date and player (PRIMARY DATA SOURCE - from daily_player_analytics)
     const analyticsMap = new Map<string, { status: string; date: Date }>()
     savedAnalytics.forEach(analytics => {
-      const key = `${analytics.date.toISOString().split('T')[0]}_${analytics.playerId}`
+      const dateStr = analytics.date.toISOString().split('T')[0]
+      const key = `${dateStr}_${analytics.playerId}`
+      // Store the raw status from database (will be mapped later when used)
       analyticsMap.set(key, {
         status: analytics.status || 'Unknown',
         date: analytics.date
       })
     })
+    console.log(`📊 Created analyticsMap with ${analyticsMap.size} entries from daily_player_analytics`)
 
     // Also add player_availability data to analyticsMap (if not already present in daily_player_analytics)
+    let addedFromAvailability = 0
     playerAvailability.forEach(av => {
-      const key = `${av.date.toISOString().split('T')[0]}_${av.playerId}`
+      const dateStr = av.date.toISOString().split('T')[0]
+      const key = `${dateStr}_${av.playerId}`
       // Only add if not already in analyticsMap (daily_player_analytics takes priority)
       if (!analyticsMap.has(key)) {
-        const statusLabel = statusMap[av.status] || av.status || 'Unknown'
+        // Store the raw status from database (will be mapped later when used)
         analyticsMap.set(key, {
-          status: statusLabel,
+          status: av.status || 'Unknown',
           date: av.date
         })
+        addedFromAvailability++
       }
     })
+    console.log(`📊 Added ${addedFromAvailability} entries from player_availability to analyticsMap`)
 
     // Create a map of notes by date and player (for reason and notes only)
     const notesMap = new Map<string, { reason: string; notes: string | null }>()
