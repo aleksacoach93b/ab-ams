@@ -546,14 +546,18 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
       {/* Enhanced Calendar Grid */}
       <div className="px-0 sm:px-4 pb-4 w-full" style={{ backgroundColor: colorScheme.surface }}>
         <div className="rounded-2xl shadow-lg mx-0 sm:mx-4" style={{ backgroundColor: colorScheme.surface }}>
-          {/* Day headers */}
+          {/* Day headers - Monday first */}
           <div 
             className="grid grid-cols-7 text-center text-xs font-semibold py-3"
             style={{ color: colorScheme.textSecondary }}
           >
-            {days.map((day, index) => (
-              <div key={index} className="py-2">{day}</div>
-            ))}
+            {days.map((day, index) => {
+              // Debug: Log to ensure Monday is first
+              if (index === 0) {
+                console.log('📅 [MobileCalendar] First day in header:', day, 'Expected: M (Monday)')
+              }
+              return <div key={index} className="py-2">{day}</div>
+            })}
           </div>
 
           {/* Calendar days */}
