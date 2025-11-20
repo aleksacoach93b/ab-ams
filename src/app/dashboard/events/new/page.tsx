@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Calendar, Clock, MapPin, Users } from 'lucide-react'
 import EventIconSelector from '@/components/EventIconSelector'
 import MatchDayTagSelector from '@/components/MatchDayTagSelector'
+import DatePicker from '@/components/DatePicker'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
 

@@ -7,6 +7,7 @@ import { Calendar, Clock, MapPin, Users, Edit, Trash2, X, Save, User, UserCheck,
 import CustomIcon from './CustomIcon'
 import EventIconSelector from './EventIconSelector'
 import MatchDayTagSelector from './MatchDayTagSelector'
+import DatePicker from './DatePicker'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
 import PDFThumbnail from '@/components/PDFThumbnail'
@@ -692,17 +693,15 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
                               >
                                 Date *
                               </label>
-                              <input
-                                type="date"
-                                name="date"
+                              <DatePicker
                                 value={formData?.date || ''}
-                                onChange={handleInputChange}
-                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-2"
-                                style={{
-                                  backgroundColor: colorScheme.surface,
-                                  borderColor: colorScheme.border,
-                                  color: colorScheme.text
+                                onChange={(date) => {
+                                  setFormData(prev => prev ? { ...prev, date } : null)
                                 }}
+                                placeholder="Select date"
+                                required
+                                name="date"
+                                className="w-full"
                               />
                             </div>
 
