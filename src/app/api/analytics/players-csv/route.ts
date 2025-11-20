@@ -428,13 +428,14 @@ export async function GET(request: NextRequest) {
       }
 
       // Generate data for each day
-      // Start with current status, but update it as we encounter analytics
-      let lastKnownStatus = currentStatus // Default to current status
+      // IMPORTANT: Start with NULL status - we'll only use actual historical data, not current status
+      // This ensures we use real historical data, not current status which might have changed
+      let lastKnownStatus: string | null = null // Start with null - will be set from first analytics
       let lastKnownReason = '' // Track last known reason for forward fill
       let lastKnownNotes: string | null = null // Track last known notes for forward fill
       
-      // If player has no analytics/availability, use current status for all days
       // If player has analytics/availability, start from the first status
+      // If no analytics/availability, we'll use current status only as last resort
       if (allPlayerDates.length > 0) {
         // Find first status from either source
         const allPlayerData = [
@@ -446,6 +447,9 @@ export async function GET(request: NextRequest) {
         })
         const firstData = sortedPlayerData[0]
         lastKnownStatus = statusMap[firstData.status] || firstData.status || 'Fully Available'
+      } else {
+        // No historical data - use current status as fallback
+        lastKnownStatus = currentStatus
       }
       
       for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
@@ -461,20 +465,19 @@ export async function GET(request: NextRequest) {
           // Use status from analytics and update lastKnownStatus
           const statusLabel = statusMap[analytics.status] || analytics.status || 'Unknown'
           lastKnownStatus = statusLabel
+          const isFullyAvailableNow = lastKnownStatus === 'Fully Available'
           
-          // Get reason and notes from notes if available, otherwise use last known
+          // Get reason and notes from notes if available, otherwise use last known (forward fill)
           if (note) {
             // If note exists for this day, use it and update lastKnownReason/Notes
-            lastKnownReason = isFullyAvailable ? '' : (note.reason || '')
-            lastKnownNotes = isFullyAvailable ? null : (note.notes || null)
-          } else {
-            // If no note for this day but status changed, clear reason/notes
-            // Otherwise keep last known (forward fill)
-            if (statusLabel !== lastKnownStatus) {
-              lastKnownReason = ''
-              lastKnownNotes = null
-            }
-            // Otherwise keep lastKnownReason and lastKnownNotes (forward fill)
+            lastKnownReason = isFullyAvailableNow ? '' : (note.reason || '')
+            lastKnownNotes = isFullyAvailableNow ? null : (note.notes || null)
+          }
+          // If no note for this day, keep lastKnownReason and lastKnownNotes (forward fill)
+          // Only clear if status changed to Fully Available
+          if (isFullyAvailableNow && !note) {
+            lastKnownReason = ''
+            lastKnownNotes = null
           }
           
           allData.push({
@@ -489,22 +492,28 @@ export async function GET(request: NextRequest) {
         } else {
           // No analytics for this day - use last known status, reason, and notes (forward fill)
           // Check if there's a note for this day, if yes use it, otherwise forward fill
+          const isFullyAvailableNow = lastKnownStatus === 'Fully Available'
+          
           if (note) {
             // If note exists for this day, use it and update lastKnownReason/Notes
-            lastKnownReason = isFullyAvailable ? '' : (note.reason || '')
-            lastKnownNotes = isFullyAvailable ? null : (note.notes || null)
+            lastKnownReason = isFullyAvailableNow ? '' : (note.reason || '')
+            lastKnownNotes = isFullyAvailableNow ? null : (note.notes || null)
           }
           // Otherwise use lastKnownReason and lastKnownNotes (forward fill)
           
-          allData.push({
-            date: new Date(d),
-            playerId,
-            playerName: playerData?.name || `${player.firstName} ${player.lastName}`.trim(),
-            activity: lastKnownStatus,
-            availabilityStatus: lastKnownStatus,
-            reason: lastKnownReason,
-            notes: lastKnownNotes
-          })
+          // Only use lastKnownStatus if it's not null (we have historical data)
+          // If null, skip this day (shouldn't happen if we have data)
+          if (lastKnownStatus !== null) {
+            allData.push({
+              date: new Date(d),
+              playerId,
+              playerName: playerData?.name || `${player.firstName} ${player.lastName}`.trim(),
+              activity: lastKnownStatus,
+              availabilityStatus: lastKnownStatus,
+              reason: lastKnownReason,
+              notes: lastKnownNotes
+            })
+          }
         }
       }
     })
