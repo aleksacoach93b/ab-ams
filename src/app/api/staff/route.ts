@@ -285,7 +285,7 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = email.toLowerCase().trim()
     
     // Check if email already exists
-    const existingUser = await prisma.users.findUnique({
+    const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail }
     })
 
@@ -305,7 +305,7 @@ export async function POST(request: NextRequest) {
     const userId = `staff_user_${Date.now()}`
 
     // Create user first
-    const user = await prisma.users.create({
+    const user = await prisma.user.create({
       data: {
         id: userId,
         email: normalizedEmail,
