@@ -535,19 +535,25 @@ export async function DELETE(
       // Continue with player deletion even if some related records fail
     }
 
-    // Delete the player record
-    await prisma.players.delete({
-      where: { id: playerId }
-    })
-    console.log('✅ Deleted player record')
-
-    // Delete the associated user record if it exists
-    if (player.userId) {
-      await prisma.users.delete({
-        where: { id: player.userId }
+    // CRITICAL SECURITY: Delete both player AND user in transaction to prevent login
+    await prisma.$transaction(async (tx) => {
+      // Delete the player record
+      await tx.players.delete({
+        where: { id: playerId }
       })
-      console.log('✅ Deleted user record')
-    }
+      console.log('✅ Deleted player record')
+      
+      // Delete the associated user record (this prevents login)
+      if (player.userId) {
+        await tx.users.delete({
+          where: { id: player.userId }
+        }).catch((error: any) => {
+          // If user was already deleted or doesn't exist, log but don't fail
+          console.log('⚠️ User already deleted or not found:', player.userId, error.message)
+        })
+        console.log('✅ Deleted user record')
+      }
+    })
 
     console.log('🎉 Successfully deleted player:', playerId)
 
