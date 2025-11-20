@@ -865,6 +865,14 @@ export async function POST(request: NextRequest) {
       selectedPlayers,
       selectedStaff
     })
+    
+    // Log icon information for debugging
+    console.log('🎨 [CREATE EVENT] Icon information:', {
+      providedIcon: icon,
+      iconType: typeof icon,
+      iconLength: icon?.length,
+      isEmpty: !icon || icon.trim() === ''
+    })
 
     // Set appropriate default icon based on event type
     const getDefaultIcon = (eventType: string) => {
@@ -918,7 +926,9 @@ export async function POST(request: NextRequest) {
       startTime: startDateTime, // DateTime object
       endTime: endDateTime, // DateTime object
       locationId: location || null, // Use locationId instead of location
-      icon: icon || getDefaultIcon(finalEventType), // Use icon instead of iconName
+      // CRITICAL: Use provided icon if it exists and is not empty, otherwise use default
+      // Don't override user's icon selection with default
+      icon: (icon && icon.trim() !== '') ? icon.trim() : getDefaultIcon(finalEventType),
       isRecurring: body.isRecurring || false,
       isAllDay: body.isAllDay || false,
       allowPlayerCreation: body.allowPlayerCreation || false,
