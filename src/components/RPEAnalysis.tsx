@@ -513,12 +513,14 @@ export default function RPEAnalysis() {
     const datesWithData = getDatesWithData()
     const year = currentMonth.getFullYear()
     const month = currentMonth.getMonth()
-    const firstDay = new Date(year, month, 1).getDay()
+    const firstDay = new Date(year, month, 1).getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    // Convert to Monday-first week (0 = Sunday becomes 6, 1 = Monday becomes 0, etc.)
+    const mondayFirstDay = firstDay === 0 ? 6 : firstDay - 1
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const days = []
 
-    // Empty cells for days before month starts
-    for (let i = 0; i < firstDay; i++) {
+    // Empty cells for days before month starts (Monday-first)
+    for (let i = 0; i < mondayFirstDay; i++) {
       days.push(<div key={`empty-${i}`} className="w-7 h-7 md:w-8 md:h-8"></div>)
     }
 
@@ -688,9 +690,9 @@ export default function RPEAnalysis() {
           </button>
         </div>
         
-        {/* Week day headers */}
+        {/* Week day headers - Monday first */}
         <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
             <div key={day} className="text-[10px] md:text-xs text-center font-bold uppercase tracking-wide" style={{ color: colorScheme.textSecondary }}>
               {day}
             </div>

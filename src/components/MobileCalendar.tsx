@@ -149,13 +149,6 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
             description: event.description || '',
             color: getEventColor(event.type),
             icon: event.icon || event.iconName || 'Calendar', // Use icon or iconName, fallback to Calendar
-            // Debug: Log icon information
-            _debugIcon: {
-              hasIcon: !!event.icon,
-              iconValue: event.icon,
-              iconNameValue: event.iconName,
-              finalIcon: event.icon || event.iconName || 'Calendar'
-            }
             media: event.media || [],
             selectedPlayers,
             selectedStaff
@@ -264,12 +257,15 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
     const firstDay = new Date(year, month, 1)
     const lastDay = new Date(year, month + 1, 0)
     const daysInMonth = lastDay.getDate()
-    const startingDayOfWeek = firstDay.getDay()
+    const startingDayOfWeek = firstDay.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    
+    // Convert to Monday-first week (0 = Sunday becomes 6, 1 = Monday becomes 0, etc.)
+    const mondayFirstDay = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1
 
     const days = []
     
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < startingDayOfWeek; i++) {
+    // Add empty cells for days before the first day of the month (Monday-first)
+    for (let i = 0; i < mondayFirstDay; i++) {
       days.push(null)
     }
     
@@ -352,7 +348,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
     setCurrentDate(newDate)
   }
 
-  const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] // Monday first
   const monthDays = getDaysInMonth(currentDate)
   const todayEvents = getEventsForSelectedDate()
 
