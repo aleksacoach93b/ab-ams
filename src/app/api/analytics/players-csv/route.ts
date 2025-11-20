@@ -331,6 +331,16 @@ export async function GET(request: NextRequest) {
     console.log(`📊 Earliest date found: ${earliestDate.toISOString().split('T')[0]}, Today: ${today.toISOString().split('T')[0]}`)
     console.log(`📊 Total days to generate: ${Math.ceil((today.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1}`)
     console.log(`📊 Found ${savedAnalytics.length} saved analytics and ${playerAvailability.length} player availability records`)
+    
+    // Debug: Log sample analytics data
+    if (savedAnalytics.length > 0) {
+      const sampleAnalytics = savedAnalytics.slice(0, 5)
+      console.log(`📊 Sample analytics data:`, sampleAnalytics.map(a => ({
+        date: a.date.toISOString().split('T')[0],
+        playerId: a.playerId,
+        status: a.status
+      })))
+    }
 
     // Create a map of analytics by date and player (PRIMARY DATA SOURCE - from daily_player_analytics)
     const analyticsMap = new Map<string, { status: string; date: Date }>()
@@ -459,11 +469,11 @@ export async function GET(request: NextRequest) {
         // Check if we have analytics for this day (PRIMARY SOURCE)
         const analytics = analyticsMap.get(key)
         const note = notesMap.get(key)
-        const isFullyAvailable = lastKnownStatus === 'Fully Available'
         
         if (analytics) {
           // Use status from analytics and update lastKnownStatus
           const statusLabel = statusMap[analytics.status] || analytics.status || 'Unknown'
+          const previousStatus = lastKnownStatus // Save previous status for comparison
           lastKnownStatus = statusLabel
           const isFullyAvailableNow = lastKnownStatus === 'Fully Available'
           
