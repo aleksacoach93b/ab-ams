@@ -140,13 +140,16 @@ model coaches {
 }
 
 model daily_player_analytics {
-  id        String   @id
+  id        String   @id @default(cuid())
   playerId  String
   date      DateTime
   status    String
   notes     String?
   createdAt DateTime @default(now())
   players   players  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  
+  @@unique([date, playerId])
+  @@map("daily_player_analytics")
 }
 
 model daily_event_analytics {

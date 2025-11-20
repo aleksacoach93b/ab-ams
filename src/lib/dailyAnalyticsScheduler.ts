@@ -200,30 +200,38 @@ export class DailyAnalyticsScheduler {
       }
 
       // Store availability status for each player for this date
+      // Set date to 00:00:00 for that day to ensure consistency
+      const dateStart = new Date(date)
+      dateStart.setHours(0, 0, 0, 0)
+      
       for (const player of players) {
         const statusLabel = statusMap[player.availabilityStatus] || player.availabilityStatus || 'Unknown'
         
-        await prisma.dailyPlayerAnalytics.upsert({
+        // Upsert daily player analytics - use dateStart (00:00:00) to ensure consistency
+        // Once saved at 00:00, this data cannot be changed (no update, only create if doesn't exist)
+        const existing = await prisma.daily_player_analytics.findUnique({
           where: {
-            date_playerId_activity: {
-              date: date,
-              playerId: player.id,
-              activity: statusLabel
+            date_playerId: {
+              date: dateStart,
+              playerId: player.id
             }
-          },
-          update: {
-            playerName: player.name,
-            count: 1, // Always 1 for availability status
-            updatedAt: new Date()
-          },
-          create: {
-            date,
-            playerId: player.id,
-            playerName: player.name,
-            activity: statusLabel,
-            count: 1
           }
         })
+
+        if (!existing) {
+          // Only create if doesn't exist - once saved at 00:00, it cannot be changed
+          await prisma.daily_player_analytics.create({
+            data: {
+              date: dateStart,
+              playerId: player.id,
+              status: statusLabel,
+              notes: null
+            }
+          })
+          console.log(`✅ Created player analytics for ${player.name || player.id} on ${dateStart.toISOString().split('T')[0]}`)
+        } else {
+          console.log(`⚠️ Player analytics already exists for ${player.name || player.id} on ${dateStart.toISOString().split('T')[0]} - skipping (data locked at 00:00)`)
+        }
       }
 
       console.log(`Player availability analytics collected for ${players.length} players on ${date.toISOString().split('T')[0]}`)
