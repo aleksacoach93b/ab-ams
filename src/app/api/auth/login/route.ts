@@ -11,14 +11,54 @@ const FALLBACK_ADMIN_EMAIL = process.env.LOCAL_ADMIN_EMAIL || 'admin@localhost.c
 const FALLBACK_ADMIN_PASSWORD = process.env.LOCAL_ADMIN_PASSWORD || 'admin1234'
 const DEFAULT_PLAYER_PASSWORD = 'player123' // Default password for players in LOCAL_DEV_MODE
 
+// Helper function to get location from IP address
+async function getLocationFromIP(ipAddress: string): Promise<string | null> {
+  try {
+    // Skip for localhost or unknown IPs
+    if (!ipAddress || ipAddress === 'unknown' || ipAddress.startsWith('127.') || ipAddress.startsWith('192.168.') || ipAddress.startsWith('10.') || ipAddress === '::1') {
+      return null
+    }
+    
+    // Use ip-api.com free service (no API key required, 45 requests/minute limit)
+    const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,message,city,regionName,country`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+    
+    if (!response.ok) {
+      return null
+    }
+    
+    const data = await response.json()
+    
+    if (data.status === 'success' && data.city) {
+      // Format: "City, Country" or "City, Region, Country"
+      const parts = []
+      if (data.city) parts.push(data.city)
+      if (data.regionName && data.regionName !== data.city) parts.push(data.regionName)
+      if (data.country) parts.push(data.country)
+      return parts.join(', ')
+    }
+    
+    return null
+  } catch (error) {
+    console.error('Error fetching location from IP:', error)
+    return null
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
     // Get client information for tracking
-    const ipAddress = request.headers.get('x-forwarded-for') || 
-                     request.headers.get('x-real-ip') || 
-                     'unknown'
+    const ipAddressRaw = request.headers.get('x-forwarded-for') || 
+                         request.headers.get('x-real-ip') || 
+                         'unknown'
+    // Extract first IP if multiple (x-forwarded-for can contain multiple IPs)
+    const ipAddress = ipAddressRaw.split(',')[0].trim()
     const userAgent = request.headers.get('user-agent') || 'unknown'
 
     if (!email || !password) {
@@ -393,6 +433,14 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Get location from IP (wait a bit for async call, but don't block too long)
+    let location: string | null = null
+    try {
+      location = await getLocationFromIP(ipAddress)
+    } catch (error) {
+      console.error('Error getting location:', error)
+    }
+    
     // Create login log
     try {
       await prisma.login_logs.create({
@@ -406,6 +454,7 @@ export async function POST(request: NextRequest) {
           avatar: user.avatar || null,
           ipAddress: ipAddress,
           userAgent: userAgent,
+          location: location,
           success: true
         }
       })
@@ -425,9 +474,19 @@ export async function POST(request: NextRequest) {
         
         if (admins.length > 0) {
           const userName = user.name || `${user.firstName} ${user.lastName}`.trim() || user.email
+          // Get location for notification (try again if not already fetched)
+          let locationForNotification = location
+          if (!locationForNotification) {
+            try {
+              locationForNotification = await getLocationFromIP(ipAddress)
+            } catch (error) {
+              console.error('Error getting location for notification:', error)
+            }
+          }
+          const locationText = locationForNotification ? `, ${locationForNotification}` : ''
           await NotificationService.createNotification({
             title: 'User Login Detected',
-            message: `${userName} (${user.email}) logged in from ${ipAddress}`,
+            message: `${userName} (${user.email}) logged in from ${ipAddress}${locationText}`,
             type: 'GENERAL',
             category: 'SYSTEM',
             userIds: admins.map(a => a.id)
