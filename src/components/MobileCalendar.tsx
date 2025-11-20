@@ -601,15 +601,15 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
       {/* Enhanced Calendar Grid */}
       <div className="px-0 sm:px-4 pb-4 w-full" style={{ backgroundColor: colorScheme.surface }}>
         <div className="rounded-2xl shadow-lg mx-0 sm:mx-4" style={{ backgroundColor: colorScheme.surface }}>
-          {/* Day headers - Monday first - EXPLICIT ORDER - NO ORDER PROPERTY */}
+          {/* Day headers - Monday first - EXPLICIT GRID POSITIONING */}
           <div 
             className="grid text-center text-xs font-semibold py-3"
             style={{ 
               color: colorScheme.textSecondary,
-              gridTemplateColumns: 'repeat(7, 1fr) !important', // Explicitly set 7 columns with !important
-              display: 'grid !important',
-              order: 'unset !important' // Remove any order property
-            } as React.CSSProperties}
+              gridTemplateColumns: 'repeat(7, 1fr)',
+              display: 'grid',
+              gridAutoFlow: 'column' // Force column flow
+            }}
             ref={(el) => {
               if (el) {
                 console.log('📅 [MobileCalendar] Header div rendered!')
@@ -617,9 +617,11 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
                 console.log('📅 [MobileCalendar] Number of header children:', children.length)
                 const firstChild = children[0]
                 if (firstChild) {
+                  const computedStyle = window.getComputedStyle(firstChild)
                   console.log('📅 [MobileCalendar] Header rendered - First column text:', firstChild.textContent, 'Expected: M (Monday)')
-                  console.log('📅 [MobileCalendar] All header columns:', children.map(c => c.textContent).join(', '))
-                  console.log('📅 [MobileCalendar] First child computed style gridColumn:', window.getComputedStyle(firstChild).gridColumn)
+                  console.log('📅 [MobileCalendar] All header columns:', children.map((c, i) => `${i}: ${c.textContent}`).join(', '))
+                  console.log('📅 [MobileCalendar] First child gridColumn:', computedStyle.gridColumn)
+                  console.log('📅 [MobileCalendar] First child order:', computedStyle.order)
                 } else {
                   console.warn('⚠️ [MobileCalendar] Header has no children!')
                 }
@@ -628,20 +630,20 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
               }
             }}
           >
-            {/* Monday - EXPLICIT FIRST - NO ORDER PROPERTY */}
-            <div className="py-2" style={{ gridColumn: '1 / 2 !important', order: 'unset !important' } as React.CSSProperties}>M</div>
-            {/* Tuesday */}
-            <div className="py-2" style={{ gridColumn: '2 / 3 !important', order: 'unset !important' } as React.CSSProperties}>T</div>
-            {/* Wednesday */}
-            <div className="py-2" style={{ gridColumn: '3 / 4 !important', order: 'unset !important' } as React.CSSProperties}>W</div>
-            {/* Thursday */}
-            <div className="py-2" style={{ gridColumn: '4 / 5 !important', order: 'unset !important' } as React.CSSProperties}>T</div>
-            {/* Friday */}
-            <div className="py-2" style={{ gridColumn: '5 / 6 !important', order: 'unset !important' } as React.CSSProperties}>F</div>
-            {/* Saturday */}
-            <div className="py-2" style={{ gridColumn: '6 / 7 !important', order: 'unset !important' } as React.CSSProperties}>S</div>
-            {/* Sunday - EXPLICIT LAST */}
-            <div className="py-2" style={{ gridColumn: '7 / 8 !important', order: 'unset !important' } as React.CSSProperties}>S</div>
+            {/* Monday - POSITION 1 - NO ORDER PROPERTY */}
+            <div className="py-2" style={{ gridColumnStart: 1, gridColumnEnd: 2 }}>M</div>
+            {/* Tuesday - POSITION 2 */}
+            <div className="py-2" style={{ gridColumnStart: 2, gridColumnEnd: 3 }}>T</div>
+            {/* Wednesday - POSITION 3 */}
+            <div className="py-2" style={{ gridColumnStart: 3, gridColumnEnd: 4 }}>W</div>
+            {/* Thursday - POSITION 4 */}
+            <div className="py-2" style={{ gridColumnStart: 4, gridColumnEnd: 5 }}>T</div>
+            {/* Friday - POSITION 5 */}
+            <div className="py-2" style={{ gridColumnStart: 5, gridColumnEnd: 6 }}>F</div>
+            {/* Saturday - POSITION 6 */}
+            <div className="py-2" style={{ gridColumnStart: 6, gridColumnEnd: 7 }}>S</div>
+            {/* Sunday - POSITION 7 */}
+            <div className="py-2" style={{ gridColumnStart: 7, gridColumnEnd: 8 }}>S</div>
           </div>
 
           {/* Calendar days */}
