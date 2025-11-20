@@ -217,6 +217,80 @@ export async function PUT(
       }
     }
 
+    // Automatically save/update analytics data for today when status changes
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    try {
+      // Map status to label for analytics
+      const statusMap: { [key: string]: string } = {
+        'FULLY_AVAILABLE': 'Fully Available',
+        'PARTIAL_TRAINING': 'Partially Available - Training',
+        'PARTIAL_TEAM_INDIVIDUAL': 'Partially Available - Team + Individual',
+        'REHAB_INDIVIDUAL': 'Rehabilitation - Individual',
+        'NOT_AVAILABLE_INJURY': 'Unavailable - Injury',
+        'PARTIAL_ILLNESS': 'Partially Available - Illness',
+        'NOT_AVAILABLE_ILLNESS': 'Unavailable - Illness',
+        'INDIVIDUAL_WORK': 'Individual Work',
+        'RECOVERY': 'Recovery',
+        'NOT_AVAILABLE_OTHER': 'Unavailable - Other',
+        'DAY_OFF': 'Day Off',
+        'NATIONAL_TEAM': 'National Team',
+        'PHYSIO_THERAPY': 'Physio Therapy',
+        'ACTIVE': 'Active',
+        'INJURED': 'Injured',
+        'SUSPENDED': 'Suspended',
+        'INACTIVE': 'Inactive',
+        'RETIRED': 'Retired'
+      }
+      const statusLabel = statusMap[body.status] || body.status || 'Unknown'
+      
+      // Check if analytics already exists for today
+      const existingAnalytics = await prisma.daily_player_analytics.findUnique({
+        where: {
+          date_playerId: {
+            date: today,
+            playerId: id
+          }
+        }
+      })
+      
+      if (existingAnalytics) {
+        // Update existing analytics (only if it's today - data from previous days is locked)
+        const analyticsDate = new Date(existingAnalytics.date)
+        analyticsDate.setHours(0, 0, 0, 0)
+        const todayDate = new Date(today)
+        todayDate.setHours(0, 0, 0, 0)
+        
+        if (analyticsDate.getTime() === todayDate.getTime()) {
+          // Only update if it's today's data
+          await prisma.daily_player_analytics.update({
+            where: { id: existingAnalytics.id },
+            data: {
+              status: statusLabel
+            }
+          })
+          console.log(`✅ [STATUS UPDATE] Updated analytics for today: ${id} -> ${statusLabel}`)
+        } else {
+          console.log(`⚠️ [STATUS UPDATE] Analytics exists for ${analyticsDate.toISOString().split('T')[0]}, but it's locked (not today)`)
+        }
+      } else {
+        // Create new analytics entry for today
+        await prisma.daily_player_analytics.create({
+          data: {
+            date: today,
+            playerId: id,
+            status: statusLabel,
+            notes: null
+          }
+        })
+        console.log(`✅ [STATUS UPDATE] Created analytics for today: ${id} -> ${statusLabel}`)
+      }
+    } catch (analyticsError) {
+      console.error('Error saving analytics for status update:', analyticsError)
+      // Don't fail the status update if analytics save fails
+    }
+
     // Create notification for player status change
     const playerName = `${playerBefore.firstName} ${playerBefore.lastName}`.trim()
     if (playerBefore && playerBefore.status !== body.status) {
