@@ -279,7 +279,7 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
     setCurrentDate(newDate)
   }
 
-  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] // Monday first
+  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] // Monday first: Mon, Tue, Wed, Thu, Fri, Sat, Sun
   const monthDays = getDaysInMonth(currentDate)
   const todayEvents = getEventsForSelectedDate()
 
