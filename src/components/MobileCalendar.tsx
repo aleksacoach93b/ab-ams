@@ -61,6 +61,9 @@ interface MobileCalendarProps {
 }
 
 export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPermissions, showAddButtons = true }: MobileCalendarProps) {
+  // ALWAYS log when component mounts/renders
+  console.log('🚀 [MobileCalendar] Component MOUNTED/RENDERED at:', new Date().toISOString())
+  
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState<Event[]>([])
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -608,12 +611,18 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
             }}
             ref={(el) => {
               if (el) {
+                console.log('📅 [MobileCalendar] Header div rendered!')
                 const children = Array.from(el.children) as HTMLElement[]
+                console.log('📅 [MobileCalendar] Number of header children:', children.length)
                 const firstChild = children[0]
                 if (firstChild) {
                   console.log('📅 [MobileCalendar] Header rendered - First column text:', firstChild.textContent, 'Expected: M (Monday)')
                   console.log('📅 [MobileCalendar] All header columns:', children.map(c => c.textContent).join(', '))
+                } else {
+                  console.warn('⚠️ [MobileCalendar] Header has no children!')
                 }
+              } else {
+                console.warn('⚠️ [MobileCalendar] Header ref is null!')
               }
             }}
           >
