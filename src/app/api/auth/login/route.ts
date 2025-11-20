@@ -20,7 +20,8 @@ async function getLocationFromIP(ipAddress: string): Promise<string | null> {
     }
     
     // Use ip-api.com free service (no API key required, 45 requests/minute limit)
-    const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,message,city,regionName,country`, {
+    // Request more fields for better accuracy: city, district, region, country, zip, lat, lon
+    const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,message,city,district,regionName,country,countryCode,zip,lat,lon`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
@@ -33,13 +34,45 @@ async function getLocationFromIP(ipAddress: string): Promise<string | null> {
     
     const data = await response.json()
     
-    if (data.status === 'success' && data.city) {
-      // Format: "City, Country" or "City, Region, Country"
+    if (data.status === 'success') {
+      // Build precise location string with all available details
       const parts = []
-      if (data.city) parts.push(data.city)
-      if (data.regionName && data.regionName !== data.city) parts.push(data.regionName)
-      if (data.country) parts.push(data.country)
-      return parts.join(', ')
+      
+      // Add district (most specific area) if available
+      if (data.district && data.district.trim()) {
+        parts.push(data.district.trim())
+      }
+      
+      // Add city if available and different from district
+      if (data.city && data.city.trim()) {
+        const city = data.city.trim()
+        if (!parts.includes(city)) {
+          parts.push(city)
+        }
+      }
+      
+      // Add region/state if available and different from city
+      if (data.regionName && data.regionName.trim()) {
+        const region = data.regionName.trim()
+        if (!parts.includes(region) && region !== data.city) {
+          parts.push(region)
+        }
+      }
+      
+      // Add postal code if available (for more precision)
+      if (data.zip && data.zip.trim()) {
+        parts.push(`(${data.zip.trim()})`)
+      }
+      
+      // Add country at the end
+      if (data.country && data.country.trim()) {
+        parts.push(data.country.trim())
+      }
+      
+      // Return formatted location string
+      if (parts.length > 0) {
+        return parts.join(', ')
+      }
     }
     
     return null
