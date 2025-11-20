@@ -311,19 +311,28 @@ export async function POST(request: NextRequest) {
     let user: any = null
     try {
       const normalizedEmail = email.toLowerCase().trim()
-      console.log('🔍 Looking for user with email:', normalizedEmail)
+      console.log('🔍 [LOGIN] Looking for user with email:', normalizedEmail)
       
       user = await prisma.users.findUnique({
         where: { email: normalizedEmail }
       })
       
-      console.log('🔍 User found:', user ? {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-        hasPassword: !!user.password
-      } : 'NOT FOUND')
+      if (user) {
+        console.log('🔍 [LOGIN] User found:', {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          hasPassword: !!user.password
+        })
+      } else {
+        console.log('❌ [LOGIN] User NOT FOUND in database for email:', normalizedEmail)
+        // CRITICAL: Return error immediately if user doesn't exist
+        return NextResponse.json(
+          { message: 'Invalid email or password' },
+          { status: 401 }
+        )
+      }
     } catch (dbError) {
       console.error('❌ Database error during login:', dbError)
       // Fallback path if Prisma is not configured locally

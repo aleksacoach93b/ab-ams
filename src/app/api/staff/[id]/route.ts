@@ -376,17 +376,40 @@ export async function DELETE(
       await tx.staff.delete({
         where: { id }
       })
+      console.log('✅ Staff record deleted:', id)
       
       // Then delete user record (this prevents login)
       if (staff.userId) {
-        await tx.users.delete({
-          where: { id: staff.userId }
-        }).catch((error: any) => {
+        try {
+          const deletedUser = await tx.users.delete({
+            where: { id: staff.userId }
+          })
+          console.log('✅ User record deleted:', { userId: staff.userId, email: deletedUser.email })
+        } catch (error: any) {
           // If user was already deleted or doesn't exist, log but don't fail
           console.log('⚠️ User already deleted or not found:', staff.userId, error.message)
-        })
+        }
+      } else {
+        console.warn('⚠️ Staff has no userId:', id)
       }
     })
+
+    // VERIFY: Double-check that user is actually deleted
+    if (staff.userId) {
+      const verifyUser = await prisma.users.findUnique({
+        where: { id: staff.userId }
+      })
+      if (verifyUser) {
+        console.error('🚨 CRITICAL: User still exists after deletion!', { userId: staff.userId, email: verifyUser.email })
+        // Force delete again
+        await prisma.users.delete({
+          where: { id: staff.userId }
+        })
+        console.log('✅ Force deleted user:', staff.userId)
+      } else {
+        console.log('✅ Verified: User successfully deleted from database')
+      }
+    }
 
     console.log('✅ Staff member and user deleted successfully:', { staffId: id, userId: staff.userId })
 
