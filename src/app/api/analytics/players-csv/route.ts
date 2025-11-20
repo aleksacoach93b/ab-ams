@@ -362,9 +362,11 @@ export async function GET(request: NextRequest) {
       const key = `${dateStr}_${av.playerId}`
       // Only add if not already in analyticsMap (daily_player_analytics takes priority)
       if (!analyticsMap.has(key)) {
+        // player_availability uses PlayerStatus enum, convert to string
+        const statusValue = typeof av.status === 'string' ? av.status : String(av.status)
         // Store the raw status from database (will be mapped later when used)
         analyticsMap.set(key, {
-          status: av.status || 'Unknown',
+          status: statusValue || 'Unknown',
           date: av.date
         })
         addedFromAvailability++
