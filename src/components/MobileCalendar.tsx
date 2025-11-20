@@ -393,8 +393,16 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
     { label: 'S', dayOfWeek: 6 }, // Saturday
     { label: 'S', dayOfWeek: 0 }  // Sunday
   ]
+  
+  // ALWAYS log when component renders calendar
+  console.log('📅 [MobileCalendar] Component rendering calendar for:', currentDate.toLocaleDateString())
+  console.log('📅 [MobileCalendar] Days array (should start with Monday):', days.map(d => d.label).join(', '))
+  
   const monthDays = getDaysInMonth(currentDate)
   const todayEvents = getEventsForSelectedDate()
+  
+  // Log the first few days to verify order
+  console.log('📅 [MobileCalendar] First 7 items in monthDays array:', monthDays.slice(0, 7).map(d => d ? d.toLocaleDateString() : 'null').join(', '))
 
   const handleEventClick = (event: Event) => {
     setSelectedEvent(event)
@@ -598,21 +606,31 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
               gridTemplateColumns: 'repeat(7, 1fr)', // Explicitly set 7 columns
               display: 'grid'
             }}
+            ref={(el) => {
+              if (el) {
+                const children = Array.from(el.children) as HTMLElement[]
+                const firstChild = children[0]
+                if (firstChild) {
+                  console.log('📅 [MobileCalendar] Header rendered - First column text:', firstChild.textContent, 'Expected: M (Monday)')
+                  console.log('📅 [MobileCalendar] All header columns:', children.map(c => c.textContent).join(', '))
+                }
+              }
+            }}
           >
             {/* Monday - EXPLICIT FIRST */}
-            <div className="py-2" style={{ gridColumn: '1' }}>M</div>
+            <div className="py-2" style={{ gridColumn: '1', order: 0 }}>M</div>
             {/* Tuesday */}
-            <div className="py-2" style={{ gridColumn: '2' }}>T</div>
+            <div className="py-2" style={{ gridColumn: '2', order: 1 }}>T</div>
             {/* Wednesday */}
-            <div className="py-2" style={{ gridColumn: '3' }}>W</div>
+            <div className="py-2" style={{ gridColumn: '3', order: 2 }}>W</div>
             {/* Thursday */}
-            <div className="py-2" style={{ gridColumn: '4' }}>T</div>
+            <div className="py-2" style={{ gridColumn: '4', order: 3 }}>T</div>
             {/* Friday */}
-            <div className="py-2" style={{ gridColumn: '5' }}>F</div>
+            <div className="py-2" style={{ gridColumn: '5', order: 4 }}>F</div>
             {/* Saturday */}
-            <div className="py-2" style={{ gridColumn: '6' }}>S</div>
+            <div className="py-2" style={{ gridColumn: '6', order: 5 }}>S</div>
             {/* Sunday - EXPLICIT LAST */}
-            <div className="py-2" style={{ gridColumn: '7' }}>S</div>
+            <div className="py-2" style={{ gridColumn: '7', order: 6 }}>S</div>
           </div>
 
           {/* Calendar days */}
