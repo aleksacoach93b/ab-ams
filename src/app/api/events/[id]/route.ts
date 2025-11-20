@@ -217,45 +217,47 @@ export async function PUT(
     const startDateTime = new Date(`${date}T${startTime || '00:00'}:00`)
     const endDateTime = new Date(`${date}T${endTime || '23:59'}:00`)
 
+    // Set appropriate default icon based on event type
+    const getDefaultIcon = (eventType: string) => {
+      switch (eventType.toUpperCase()) {
+        case 'TRAINING': return 'dumbbell-realistic'
+        case 'MATCH': return 'football-ball-realistic'
+        case 'MEETING': return 'meeting-new'
+        case 'MEDICAL': return 'blood-sample-final'
+        case 'RECOVERY': return 'recovery-new'
+        case 'MEAL': return 'meal-plate'
+        case 'REST': return 'bed-time'
+        case 'LB_GYM': return 'dumbbell-realistic'
+        case 'UB_GYM': return 'dumbbell-realistic'
+        case 'PRE_ACTIVATION': return 'dumbbell-realistic'
+        case 'REHAB': return 'blood-sample-final'
+        case 'STAFF_MEETING': return 'meeting-new'
+        case 'VIDEO_ANALYSIS': return 'stopwatch-whistle'
+        case 'DAY_OFF': return 'bed-time'
+        case 'TRAVEL': return 'bus-new'
+        case 'OTHER': return 'stopwatch-whistle'
+        default: return 'dumbbell-realistic'
+      }
+    }
+
+    // Use a more reliable validation method - check if type exists in EventType enum
+    const upperTypePut = type?.toUpperCase()
+    const finalEventType = (upperTypePut && EventType[upperTypePut as keyof typeof EventType]) 
+      ? upperTypePut as EventType 
+      : EventType.TRAINING
+
     // Update event with participants in a transaction
-    const result = await prisma.$transaction(async (tx) => {
+    // Increase timeout to 30 seconds for large participant lists
+    // Optimize: only do critical operations in transaction, fetch complete event outside
+    await prisma.$transaction(async (tx) => {
       // First, delete existing participants
       await tx.event_participants.deleteMany({
         where: { eventId: eventId }
       })
       console.log('✅ Deleted existing participants')
 
-      // Set appropriate default icon based on event type
-      const getDefaultIcon = (eventType: string) => {
-        switch (eventType.toUpperCase()) {
-          case 'TRAINING': return 'dumbbell-realistic'
-          case 'MATCH': return 'football-ball-realistic'
-          case 'MEETING': return 'meeting-new'
-          case 'MEDICAL': return 'blood-sample-final'
-          case 'RECOVERY': return 'recovery-new'
-          case 'MEAL': return 'meal-plate'
-          case 'REST': return 'bed-time'
-          case 'LB_GYM': return 'dumbbell-realistic'
-          case 'UB_GYM': return 'dumbbell-realistic'
-          case 'PRE_ACTIVATION': return 'dumbbell-realistic'
-          case 'REHAB': return 'blood-sample-final'
-          case 'STAFF_MEETING': return 'meeting-new'
-          case 'VIDEO_ANALYSIS': return 'stopwatch-whistle'
-          case 'DAY_OFF': return 'bed-time'
-          case 'TRAVEL': return 'bus-new'
-          case 'OTHER': return 'stopwatch-whistle'
-          default: return 'dumbbell-realistic'
-        }
-      }
-
-      // Use a more reliable validation method - check if type exists in EventType enum
-      const upperTypePut = type?.toUpperCase()
-      const finalEventType = (upperTypePut && EventType[upperTypePut as keyof typeof EventType]) 
-        ? upperTypePut as EventType 
-        : EventType.TRAINING
-
       // Update the event
-      const event = await tx.events.update({
+      await tx.events.update({
         where: { id: eventId },
         data: {
           title,
@@ -267,7 +269,7 @@ export async function PUT(
           icon: icon || getDefaultIcon(finalEventType), // Use icon instead of iconName
         }
       })
-      console.log('✅ Updated event:', event.id)
+      console.log('✅ Updated event:', eventId)
 
       // Add new participants with IDs
       const participantData = [
@@ -291,48 +293,56 @@ export async function PUT(
         })
         console.log('✅ Added participants:', participantData.length)
       }
+    }, {
+      timeout: 30000, // 30 seconds timeout
+      maxWait: 10000, // 10 seconds max wait to start transaction
+    })
 
-      // Fetch the complete event with participants
-      const completeEvent = await tx.events.findUnique({
-        where: { id: eventId },
-        include: {
-          event_participants: {
-            include: {
-              players: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true
-                }
-              },
-              staff: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true
-                }
+    // Fetch the complete event with participants OUTSIDE transaction (faster)
+    const completeEvent = await prisma.events.findUnique({
+      where: { id: eventId },
+      include: {
+        event_participants: {
+          include: {
+            players: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            },
+            staff: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
               }
             }
           }
         }
-      })
-
-      return completeEvent
+      }
     })
+
+    if (!completeEvent) {
+      return NextResponse.json(
+        { message: 'Event not found after update' },
+        { status: 404 }
+      )
+    }
 
     // Transform event for frontend compatibility
     const transformedEvent = {
-      id: result!.id,
-      title: result!.title,
-      description: result!.description,
-      type: result!.type,
-      startTime: result!.startTime.toISOString(),
-      endTime: result!.endTime.toISOString(),
-      date: result!.startTime.toISOString().split('T')[0],
-      icon: result!.icon || 'Calendar',
-      participants: result!.event_participants?.map(p => ({
+      id: completeEvent.id,
+      title: completeEvent.title,
+      description: completeEvent.description,
+      type: completeEvent.type,
+      startTime: completeEvent.startTime.toISOString(),
+      endTime: completeEvent.endTime.toISOString(),
+      date: completeEvent.startTime.toISOString().split('T')[0],
+      icon: completeEvent.icon || 'Calendar',
+      participants: completeEvent.event_participants?.map(p => ({
         id: p.id,
         playerId: p.playerId,
         staffId: p.staffId,
