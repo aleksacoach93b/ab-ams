@@ -545,7 +545,7 @@ export async function DELETE(
       
       // Delete the associated user record (this prevents login)
       if (player.userId) {
-        await tx.users.delete({
+        await tx.user.delete({
           where: { id: player.userId }
         }).catch((error: any) => {
           // If user was already deleted or doesn't exist, log but don't fail

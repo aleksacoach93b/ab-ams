@@ -313,7 +313,7 @@ export async function POST(request: NextRequest) {
       const normalizedEmail = email.toLowerCase().trim()
       console.log('🔍 [LOGIN] Looking for user with email:', normalizedEmail)
       
-      user = await prisma.users.findUnique({
+      user = await prisma.user.findUnique({
         where: { email: normalizedEmail }
       })
       
@@ -521,7 +521,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Password valid for user:', user.id)
 
     // Update last login
-    await prisma.users.update({
+    await prisma.user.update({
       where: { id: user.id },
       data: { 
         lastLoginAt: new Date()
@@ -562,7 +562,7 @@ export async function POST(request: NextRequest) {
     Promise.resolve().then(async () => {
       try {
         // Get all admin users
-        const admins = await prisma.users.findMany({
+        const admins = await prisma.user.findMany({
           where: { role: 'ADMIN', isActive: true },
           select: { id: true }
         })

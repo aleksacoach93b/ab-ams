@@ -232,7 +232,7 @@ export async function PUT(
       userUpdateData.password = await hashPassword(password)
     }
 
-    await prisma.users.update({
+    await prisma.user.update({
       where: { id: existingStaff.userId },
       data: userUpdateData
     })
@@ -396,13 +396,13 @@ export async function DELETE(
 
     // VERIFY: Double-check that user is actually deleted
     if (staff.userId) {
-      const verifyUser = await prisma.users.findUnique({
+      const verifyUser = await prisma.user.findUnique({
         where: { id: staff.userId }
       })
       if (verifyUser) {
         console.error('🚨 CRITICAL: User still exists after deletion!', { userId: staff.userId, email: verifyUser.email })
         // Force delete again
-        await prisma.users.delete({
+        await prisma.user.delete({
           where: { id: staff.userId }
         })
         console.log('✅ Force deleted user:', staff.userId)
