@@ -316,9 +316,6 @@ export async function GET(request: NextRequest) {
     console.log(`📊 Total days to generate: ${Math.ceil((today.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1}`)
     console.log(`📊 Found ${savedAnalytics.length} saved analytics and ${playerAvailability.length} player availability records`)
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
     // Create a map of analytics by date and player (PRIMARY DATA SOURCE - from daily_player_analytics)
     const analyticsMap = new Map<string, { status: string; date: Date }>()
     savedAnalytics.forEach(analytics => {
