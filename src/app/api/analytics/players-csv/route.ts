@@ -428,30 +428,33 @@ export async function GET(request: NextRequest) {
       const playerId = player.id
       const playerData = playersMap.get(playerId)
       
-      // Start from earliest date or player's first analytics/availability date
-      let startDate = earliestDate
+      // ALWAYS start from earliestDate to ensure ALL days are generated for ALL players
+      const startDate = earliestDate
       const playerAnalytics = savedAnalytics.filter(a => a.playerId === playerId)
       const playerAvailabilityData = playerAvailability.filter(a => a.playerId === playerId)
       
-      // Find earliest date from both sources
+      // Find earliest date from both sources (for reference only, not for startDate)
       const allPlayerDates = [
         ...playerAnalytics.map(a => a.date.getTime()),
         ...playerAvailabilityData.map(a => a.date.getTime())
       ]
-      
-      if (allPlayerDates.length > 0) {
-        const firstPlayerDate = new Date(Math.min(...allPlayerDates))
-        firstPlayerDate.setHours(0, 0, 0, 0)
-        startDate = firstPlayerDate < earliestDate ? firstPlayerDate : earliestDate
-      }
 
       // Generate data for each day
       // CRITICAL: We MUST iterate through days chronologically and use ONLY saved data for each day
       // Forward fill means: if no data for a day, use the LAST KNOWN status from PREVIOUS days
       // We NEVER use current status to fill historical days - only historical data can fill forward
+      // BUT: If player has NO historical data at all, we initialize with current status for forward fill
+      // This ensures ALL players and ALL days are always shown
       let lastKnownStatus: string | null = null // Will be set from first historical data we encounter
       let lastKnownReason = '' // Track last known reason for forward fill
       let lastKnownNotes: string | null = null // Track last known notes for forward fill
+      
+      // If player has NO historical data at all, initialize with current status for forward fill
+      // This is ONLY used for forward fill, NOT for changing historical data (since there is none)
+      if (allPlayerDates.length === 0) {
+        const currentStatus = statusMap[playerData?.availabilityStatus || player.status] || playerData?.availabilityStatus || player.status || 'Fully Available'
+        lastKnownStatus = currentStatus
+      }
       
       for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
         const dateStr = d.toISOString().split('T')[0]
@@ -498,7 +501,7 @@ export async function GET(request: NextRequest) {
           }
         } else {
           // No saved data for this day - forward fill from previous days
-          // ONLY use forward fill if we have historical data (lastKnownStatus is not null)
+          // Use forward fill if we have lastKnownStatus (either from historical data or initialized)
           if (lastKnownStatus !== null) {
             statusForThisDay = lastKnownStatus
             
@@ -524,24 +527,23 @@ export async function GET(request: NextRequest) {
               }
             }
           } else {
-            // No historical data at all - skip this day (don't use current status)
-            // This ensures we never use current status to fill historical days
-            continue
+            // This should never happen now, but fallback to Fully Available
+            statusForThisDay = 'Fully Available'
+            reasonForThisDay = ''
+            notesForThisDay = null
           }
         }
         
-        // Only add data if we have a status for this day
-        if (statusForThisDay !== null) {
-          allData.push({
-            date: new Date(d),
-            playerId,
-            playerName: playerData?.name || `${player.firstName} ${player.lastName}`.trim(),
-            activity: statusForThisDay,
-            availabilityStatus: statusForThisDay,
-            reason: reasonForThisDay,
-            notes: notesForThisDay
-          })
-        }
+        // ALWAYS add data for this day - we never skip days
+        allData.push({
+          date: new Date(d),
+          playerId,
+          playerName: playerData?.name || `${player.firstName} ${player.lastName}`.trim(),
+          activity: statusForThisDay || 'Fully Available',
+          availabilityStatus: statusForThisDay || 'Fully Available',
+          reason: reasonForThisDay,
+          notes: notesForThisDay
+        })
       }
     })
 
