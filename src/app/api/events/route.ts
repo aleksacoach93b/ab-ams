@@ -942,7 +942,9 @@ export async function POST(request: NextRequest) {
       type: finalEventType,
       startTime: startDateTime,
       endTime: endDateTime,
-      icon: eventData.icon
+      icon: eventData.icon,
+      providedIcon: icon,
+      finalIcon: eventData.icon
     })
 
     const event = await prisma.events.create({
@@ -1011,6 +1013,14 @@ export async function POST(request: NextRequest) {
     })
 
     // Transform event for frontend compatibility
+    // CRITICAL: Log icon information to debug
+    console.log('🎨 [CREATE EVENT] Icon from database:', {
+      eventId: completeEvent!.id,
+      eventTitle: completeEvent!.title,
+      icon: completeEvent!.icon,
+      iconName: (completeEvent! as any).iconName,
+      finalIcon: completeEvent!.icon || (completeEvent! as any).iconName || 'Calendar'
+    })
     const transformedEvent = {
       id: completeEvent!.id,
       title: completeEvent!.title,
@@ -1019,7 +1029,7 @@ export async function POST(request: NextRequest) {
       startTime: completeEvent!.startTime.toISOString(),
       endTime: completeEvent!.endTime.toISOString(),
       date: completeEvent!.startTime.toISOString().split('T')[0], // Extract date for frontend
-      icon: completeEvent!.icon || 'Calendar',
+      icon: completeEvent!.icon || (completeEvent! as any).iconName || 'Calendar',
       isRecurring: completeEvent!.isRecurring,
       isAllDay: completeEvent!.isAllDay,
       allowPlayerCreation: completeEvent!.allowPlayerCreation,

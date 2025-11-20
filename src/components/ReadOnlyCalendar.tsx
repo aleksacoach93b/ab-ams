@@ -160,13 +160,20 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
 
   const getEventIcon = (event: Event) => {
     // Use the event icon if available, otherwise use Calendar as fallback
-    const iconName = event.icon || 'Calendar'
+    // CRITICAL: Check both icon and iconName fields, and ensure we use the actual value
+    const iconName = (event.icon && event.icon.trim() !== '') 
+      ? event.icon.trim() 
+      : ((event as any).iconName && (event as any).iconName.trim() !== '') 
+        ? (event as any).iconName.trim() 
+        : 'Calendar'
     console.log('🎨 [ReadOnlyCalendar] Rendering event icon:', { 
       eventTitle: event.title, 
       eventType: event.type,
       iconName, 
       hasIcon: !!event.icon,
-      iconField: event.icon
+      iconField: event.icon,
+      iconNameField: (event as any).iconName,
+      finalIconName: iconName
     })
     return <CustomIcon name={iconName} className="h-6 w-6" style={{ color: event.color }} />
   }

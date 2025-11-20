@@ -149,6 +149,13 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
             description: event.description || '',
             color: getEventColor(event.type),
             icon: event.icon || event.iconName || 'Calendar', // Use icon or iconName, fallback to Calendar
+            // Debug: Log icon information
+            _debugIcon: {
+              hasIcon: !!event.icon,
+              iconValue: event.icon,
+              iconNameValue: event.iconName,
+              finalIcon: event.icon || event.iconName || 'Calendar'
+            }
             media: event.media || [],
             selectedPlayers,
             selectedStaff
