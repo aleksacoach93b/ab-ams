@@ -225,6 +225,14 @@ export async function GET(request: NextRequest) {
       ]
     })
 
+    // Get ALL player availability records (no date limit) - SECONDARY DATA SOURCE for historical data
+    const playerAvailability = await prisma.player_availability.findMany({
+      orderBy: [
+        { date: 'asc' },
+        { playerId: 'asc' }
+      ]
+    })
+
     // Get ALL daily player notes (no date limit) - for reason and notes only
     const dailyNotes = await prisma.daily_player_notes.findMany({
       orderBy: [
@@ -276,17 +284,22 @@ export async function GET(request: NextRequest) {
       })
     })
 
-    // Find the earliest date from analytics (PRIMARY SOURCE)
-    const allDates = savedAnalytics.map(analytics => analytics.date)
-    const earliestDate = allDates.length > 0 
-      ? new Date(Math.min(...allDates.map(d => d.getTime())))
+    // Find the earliest date from analytics OR player_availability (use whichever is earlier)
+    const analyticsDates = savedAnalytics.map(analytics => analytics.date)
+    const availabilityDates = playerAvailability.map(av => av.date)
+    const allHistoricalDates = [...analyticsDates, ...availabilityDates]
+    
+    const earliestDate = allHistoricalDates.length > 0 
+      ? new Date(Math.min(...allHistoricalDates.map(d => d.getTime())))
       : new Date() // If no data, start from today
     earliestDate.setHours(0, 0, 0, 0)
+    
+    console.log(`📊 Earliest date found: ${earliestDate.toISOString().split('T')[0]}, Today: ${new Date().toISOString().split('T')[0]}`)
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    // Create a map of analytics by date and player (PRIMARY DATA SOURCE)
+    // Create a map of analytics by date and player (PRIMARY DATA SOURCE - from daily_player_analytics)
     const analyticsMap = new Map<string, { status: string; date: Date }>()
     savedAnalytics.forEach(analytics => {
       const key = `${analytics.date.toISOString().split('T')[0]}_${analytics.playerId}`
@@ -294,6 +307,19 @@ export async function GET(request: NextRequest) {
         status: analytics.status || 'Unknown',
         date: analytics.date
       })
+    })
+
+    // Also add player_availability data to analyticsMap (if not already present in daily_player_analytics)
+    playerAvailability.forEach(av => {
+      const key = `${av.date.toISOString().split('T')[0]}_${av.playerId}`
+      // Only add if not already in analyticsMap (daily_player_analytics takes priority)
+      if (!analyticsMap.has(key)) {
+        const statusLabel = statusMap[av.status] || av.status || 'Unknown'
+        analyticsMap.set(key, {
+          status: statusLabel,
+          date: av.date
+        })
+      }
     })
 
     // Create a map of notes by date and player (for reason and notes only)
@@ -311,12 +337,12 @@ export async function GET(request: NextRequest) {
     const allData: any[] = []
     const playerLastStatus = new Map<string, { status: string; date: Date }>()
 
-    // First, process all analytics to build player status history
+    // First, process all analytics to build player status history (from both sources)
     savedAnalytics.forEach(analytics => {
       const analyticsDate = analytics.date
       analyticsDate.setHours(0, 0, 0, 0)
       const playerId = analytics.playerId
-      const statusLabel = analytics.status || 'Unknown'
+      const statusLabel = statusMap[analytics.status] || analytics.status || 'Unknown'
       
       // Update last known status for this player
       const lastStatus = playerLastStatus.get(playerId)
@@ -328,33 +354,63 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Also process player_availability data
+    playerAvailability.forEach(av => {
+      const avDate = av.date
+      avDate.setHours(0, 0, 0, 0)
+      const playerId = av.playerId
+      const statusLabel = statusMap[av.status] || av.status || 'Unknown'
+      
+      // Update last known status for this player (only if this date is later or equal)
+      const lastStatus = playerLastStatus.get(playerId)
+      if (!lastStatus || avDate >= lastStatus.date) {
+        playerLastStatus.set(playerId, {
+          status: statusLabel,
+          date: avDate
+        })
+      }
+    })
+
     // For each player, generate data for all days from earliest date to today
     allPlayers.forEach(player => {
       const playerId = player.id
       const playerData = playersMap.get(playerId)
       const currentStatus = statusMap[playerData?.availabilityStatus || player.status] || playerData?.availabilityStatus || player.status || 'Fully Available'
       
-      // Start from earliest date or player's first analytics date
+      // Start from earliest date or player's first analytics/availability date
       let startDate = earliestDate
       const playerAnalytics = savedAnalytics.filter(a => a.playerId === playerId)
-      if (playerAnalytics.length > 0) {
-        const firstAnalyticsDate = new Date(Math.min(...playerAnalytics.map(a => a.date.getTime())))
-        firstAnalyticsDate.setHours(0, 0, 0, 0)
-        startDate = firstAnalyticsDate < earliestDate ? firstAnalyticsDate : earliestDate
+      const playerAvailabilityData = playerAvailability.filter(a => a.playerId === playerId)
+      
+      // Find earliest date from both sources
+      const allPlayerDates = [
+        ...playerAnalytics.map(a => a.date.getTime()),
+        ...playerAvailabilityData.map(a => a.date.getTime())
+      ]
+      
+      if (allPlayerDates.length > 0) {
+        const firstPlayerDate = new Date(Math.min(...allPlayerDates))
+        firstPlayerDate.setHours(0, 0, 0, 0)
+        startDate = firstPlayerDate < earliestDate ? firstPlayerDate : earliestDate
       }
 
       // Generate data for each day
       // Start with current status, but update it as we encounter analytics
       let lastKnownStatus = currentStatus // Default to current status
       
-      // If player has no analytics, use current status for all days
-      // If player has analytics, start from the first analytics status
-      if (playerAnalytics.length > 0) {
-        const sortedPlayerAnalytics = playerAnalytics.sort((a, b) => {
+      // If player has no analytics/availability, use current status for all days
+      // If player has analytics/availability, start from the first status
+      if (allPlayerDates.length > 0) {
+        // Find first status from either source
+        const allPlayerData = [
+          ...playerAnalytics.map(a => ({ date: a.date, status: a.status })),
+          ...playerAvailabilityData.map(a => ({ date: a.date, status: a.status }))
+        ]
+        const sortedPlayerData = allPlayerData.sort((a, b) => {
           return a.date.getTime() - b.date.getTime()
         })
-        const firstAnalytics = sortedPlayerAnalytics[0]
-        lastKnownStatus = statusMap[firstAnalytics.status] || firstAnalytics.status || 'Fully Available'
+        const firstData = sortedPlayerData[0]
+        lastKnownStatus = statusMap[firstData.status] || firstData.status || 'Fully Available'
       }
       
       for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
