@@ -263,6 +263,17 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
     // Monday = 0, Tuesday = 1, ..., Sunday = 6
     const mondayFirstDay = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1
 
+    // Debug log
+    console.log('📅 [MobileCalendar] getDaysInMonth:', {
+      month: month + 1,
+      year,
+      firstDayOfMonth: firstDay.toLocaleDateString(),
+      startingDayOfWeek,
+      dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][startingDayOfWeek],
+      mondayFirstDay,
+      expectedEmptyCells: mondayFirstDay
+    })
+
     const days: (Date | null)[] = []
     
     // Add empty cells for days before the first day of the month (Monday-first)
@@ -283,6 +294,19 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
       for (let i = 0; i < cellsToAdd; i++) {
         days.push(null)
       }
+    }
+    
+    // Debug: Verify first non-null day
+    const firstActualDay = days.find(d => d !== null)
+    if (firstActualDay) {
+      const firstDayOfWeek = firstActualDay.getDay()
+      console.log('📅 [MobileCalendar] First actual day in grid:', {
+        date: firstActualDay.toLocaleDateString(),
+        dayOfWeek: firstDayOfWeek,
+        dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][firstDayOfWeek],
+        shouldBeMonday: firstDayOfWeek === 1,
+        emptyCellsBefore: mondayFirstDay
+      })
     }
     
     return days
