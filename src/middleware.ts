@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
-
-// Create Prisma client for middleware (Edge Runtime compatible)
-const prisma = new PrismaClient()
 
 // Simple JWT verification for Edge Runtime
 async function verifyJWT(token: string, secret: string) {
@@ -31,20 +27,27 @@ async function verifyJWT(token: string, secret: string) {
   }
 }
 
-// Verify user exists in database (CRITICAL for security)
-async function verifyUserExists(userId: string): Promise<boolean> {
+// Verify user exists in database via API call (Edge Runtime compatible)
+async function verifyUserExists(userId: string, requestUrl: string): Promise<boolean> {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, isActive: true }
+    // Call internal API to verify user exists
+    // This works in Edge Runtime unlike direct Prisma calls
+    const baseUrl = new URL(requestUrl).origin
+    const response = await fetch(`${baseUrl}/api/auth/verify-user?id=${userId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store'
     })
     
-    if (!user || !user.isActive) {
-      console.log('🚫 [MIDDLEWARE] User not found or inactive:', userId)
+    if (!response.ok) {
+      console.log('🚫 [MIDDLEWARE] User verification failed:', userId)
       return false
     }
     
-    return true
+    const data = await response.json()
+    return data.exists === true && data.isActive === true
   } catch (error) {
     console.error('🚫 [MIDDLEWARE] Error checking user existence:', error)
     return false
@@ -113,7 +116,7 @@ export async function middleware(request: NextRequest) {
     const userRole = decoded.role
 
     // CRITICAL SECURITY CHECK: Verify user still exists in database
-    const userExists = await verifyUserExists(userId)
+    const userExists = await verifyUserExists(userId, request.url)
     if (!userExists) {
       console.log('🚫 [MIDDLEWARE] User deleted or inactive, redirecting to login')
       // Clear token cookie
