@@ -369,10 +369,26 @@ export async function DELETE(
       )
     }
 
-    // Delete staff record (this will cascade to user due to onDelete: Cascade)
-    await prisma.staff.delete({
-      where: { id }
+    // CRITICAL SECURITY: Delete both staff AND user to prevent login
+    // Use transaction to ensure both are deleted atomically
+    await prisma.$transaction(async (tx) => {
+      // First delete staff record
+      await tx.staff.delete({
+        where: { id }
+      })
+      
+      // Then delete user record (this prevents login)
+      if (staff.userId) {
+        await tx.users.delete({
+          where: { id: staff.userId }
+        }).catch((error: any) => {
+          // If user was already deleted or doesn't exist, log but don't fail
+          console.log('⚠️ User already deleted or not found:', staff.userId, error.message)
+        })
+      }
     })
+
+    console.log('✅ Staff member and user deleted successfully:', { staffId: id, userId: staff.userId })
 
     return NextResponse.json({ message: 'Staff member deleted successfully' })
   } catch (error) {
