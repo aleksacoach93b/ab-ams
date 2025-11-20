@@ -129,6 +129,8 @@ export async function GET(request: NextRequest) {
         // Generate data for each day
         // Start with current status, but update it as we encounter analytics
         let lastKnownStatus = currentStatus // Default to current status
+        let lastKnownReason = '' // Track last known reason for forward fill
+        let lastKnownNotes: string | null = null // Track last known notes for forward fill
         
         // If player has no analytics, use current status for all days
         // If player has analytics, start from the first analytics status
@@ -146,34 +148,48 @@ export async function GET(request: NextRequest) {
           
           // Check if we have analytics for this day (PRIMARY SOURCE)
           const analytics = analyticsMap.get(key)
+          const note = notesMap.get(key)
+          const isFullyAvailable = lastKnownStatus === 'Fully Available'
+          
           if (analytics) {
             // Use status from analytics and update lastKnownStatus
             lastKnownStatus = analytics.activity || 'Unknown'
-            // Get reason and notes from notes if available
-            const note = notesMap.get(key)
-            const isFullyAvailable = lastKnownStatus === 'Fully Available'
+            
+            // Get reason and notes from notes if available, otherwise use last known
+            if (note) {
+              // If note exists for this day, use it and update lastKnownReason/Notes
+              lastKnownReason = isFullyAvailable ? '' : (note.reason || '')
+              lastKnownNotes = isFullyAvailable ? null : (note.notes || null)
+            }
+            // Otherwise keep lastKnownReason and lastKnownNotes (forward fill)
+            
             allData.push({
               date: new Date(d),
               playerId,
               playerName: player.name,
               activity: lastKnownStatus,
               availabilityStatus: lastKnownStatus,
-              reason: note ? (isFullyAvailable ? '' : (note.reason || '')) : '',
-              notes: note ? (isFullyAvailable ? null : (note.notes || null)) : null
+              reason: lastKnownReason,
+              notes: lastKnownNotes
             })
           } else {
-            // No analytics for this day - use last known status (forward fill)
-            // Still check for notes for reason/notes
-            const note = notesMap.get(key)
-            const isFullyAvailable = lastKnownStatus === 'Fully Available'
+            // No analytics for this day - use last known status, reason, and notes (forward fill)
+            // Check if there's a note for this day, if yes use it, otherwise forward fill
+            if (note) {
+              // If note exists for this day, use it and update lastKnownReason/Notes
+              lastKnownReason = isFullyAvailable ? '' : (note.reason || '')
+              lastKnownNotes = isFullyAvailable ? null : (note.notes || null)
+            }
+            // Otherwise use lastKnownReason and lastKnownNotes (forward fill)
+            
             allData.push({
               date: new Date(d),
               playerId,
               playerName: player.name,
               activity: lastKnownStatus,
               availabilityStatus: lastKnownStatus,
-              reason: note ? (isFullyAvailable ? '' : (note.reason || '')) : '',
-              notes: note ? (isFullyAvailable ? null : (note.notes || null)) : null
+              reason: lastKnownReason,
+              notes: lastKnownNotes
             })
           }
         }
@@ -414,6 +430,8 @@ export async function GET(request: NextRequest) {
       // Generate data for each day
       // Start with current status, but update it as we encounter analytics
       let lastKnownStatus = currentStatus // Default to current status
+      let lastKnownReason = '' // Track last known reason for forward fill
+      let lastKnownNotes: string | null = null // Track last known notes for forward fill
       
       // If player has no analytics/availability, use current status for all days
       // If player has analytics/availability, start from the first status
@@ -436,35 +454,56 @@ export async function GET(request: NextRequest) {
         
         // Check if we have analytics for this day (PRIMARY SOURCE)
         const analytics = analyticsMap.get(key)
+        const note = notesMap.get(key)
+        const isFullyAvailable = lastKnownStatus === 'Fully Available'
+        
         if (analytics) {
           // Use status from analytics and update lastKnownStatus
           const statusLabel = statusMap[analytics.status] || analytics.status || 'Unknown'
           lastKnownStatus = statusLabel
-          // Get reason and notes from notes if available
-          const note = notesMap.get(key)
-          const isFullyAvailable = lastKnownStatus === 'Fully Available'
+          
+          // Get reason and notes from notes if available, otherwise use last known
+          if (note) {
+            // If note exists for this day, use it and update lastKnownReason/Notes
+            lastKnownReason = isFullyAvailable ? '' : (note.reason || '')
+            lastKnownNotes = isFullyAvailable ? null : (note.notes || null)
+          } else {
+            // If no note for this day but status changed, clear reason/notes
+            // Otherwise keep last known (forward fill)
+            if (statusLabel !== lastKnownStatus) {
+              lastKnownReason = ''
+              lastKnownNotes = null
+            }
+            // Otherwise keep lastKnownReason and lastKnownNotes (forward fill)
+          }
+          
           allData.push({
             date: new Date(d),
             playerId,
             playerName: playerData?.name || `${player.firstName} ${player.lastName}`.trim(),
             activity: lastKnownStatus,
             availabilityStatus: lastKnownStatus,
-            reason: note ? (isFullyAvailable ? '' : (note.reason || '')) : '',
-            notes: note ? (isFullyAvailable ? null : (note.notes || null)) : null
+            reason: lastKnownReason,
+            notes: lastKnownNotes
           })
         } else {
-          // No analytics for this day - use last known status (forward fill)
-          // Still check for notes for reason/notes
-          const note = notesMap.get(key)
-          const isFullyAvailable = lastKnownStatus === 'Fully Available'
+          // No analytics for this day - use last known status, reason, and notes (forward fill)
+          // Check if there's a note for this day, if yes use it, otherwise forward fill
+          if (note) {
+            // If note exists for this day, use it and update lastKnownReason/Notes
+            lastKnownReason = isFullyAvailable ? '' : (note.reason || '')
+            lastKnownNotes = isFullyAvailable ? null : (note.notes || null)
+          }
+          // Otherwise use lastKnownReason and lastKnownNotes (forward fill)
+          
           allData.push({
             date: new Date(d),
             playerId,
             playerName: playerData?.name || `${player.firstName} ${player.lastName}`.trim(),
             activity: lastKnownStatus,
             availabilityStatus: lastKnownStatus,
-            reason: note ? (isFullyAvailable ? '' : (note.reason || '')) : '',
-            notes: note ? (isFullyAvailable ? null : (note.notes || null)) : null
+            reason: lastKnownReason,
+            notes: lastKnownNotes
           })
         }
       }
