@@ -370,48 +370,80 @@ export async function DELETE(
     }
 
     // CRITICAL SECURITY: Delete both staff AND user to prevent login
+    // MUST delete user FIRST to prevent any login attempts
+    const userIdToDelete = staff.userId
+    
+    if (!userIdToDelete) {
+      console.error('🚨 CRITICAL: Staff has no userId!', { staffId: id })
+      return NextResponse.json(
+        { message: 'Staff member has no associated user account' },
+        { status: 400 }
+      )
+    }
+
+    // Get user email before deletion for logging
+    const userToDelete = await prisma.user.findUnique({
+      where: { id: userIdToDelete },
+      select: { id: true, email: true }
+    })
+
+    if (!userToDelete) {
+      console.warn('⚠️ User not found for staff:', { staffId: id, userId: userIdToDelete })
+    }
+
     // Use transaction to ensure both are deleted atomically
     await prisma.$transaction(async (tx) => {
-      // First delete staff record
+      // CRITICAL: Delete user FIRST to prevent login
+      try {
+        await tx.user.delete({
+          where: { id: userIdToDelete }
+        })
+        console.log('✅ User record deleted:', { userId: userIdToDelete, email: userToDelete?.email })
+      } catch (error: any) {
+        console.error('🚨 CRITICAL ERROR deleting user:', { userId: userIdToDelete, error: error.message })
+        throw error // Fail transaction if user deletion fails
+      }
+      
+      // Then delete staff record
       await tx.staff.delete({
         where: { id }
       })
       console.log('✅ Staff record deleted:', id)
-      
-      // Then delete user record (this prevents login)
-      if (staff.userId) {
-        try {
-          const deletedUser = await tx.users.delete({
-            where: { id: staff.userId }
-          })
-          console.log('✅ User record deleted:', { userId: staff.userId, email: deletedUser.email })
-        } catch (error: any) {
-          // If user was already deleted or doesn't exist, log but don't fail
-          console.log('⚠️ User already deleted or not found:', staff.userId, error.message)
-        }
-      } else {
-        console.warn('⚠️ Staff has no userId:', id)
-      }
     })
 
-    // VERIFY: Double-check that user is actually deleted
-    if (staff.userId) {
-      const verifyUser = await prisma.user.findUnique({
-        where: { id: staff.userId }
+    // VERIFY: Triple-check that user is actually deleted
+    const verifyUser = await prisma.user.findUnique({
+      where: { id: userIdToDelete }
+    })
+    
+    if (verifyUser) {
+      console.error('🚨🚨🚨 CRITICAL SECURITY BREACH: User still exists after deletion!', { 
+        userId: userIdToDelete, 
+        email: verifyUser.email,
+        staffId: id 
       })
-      if (verifyUser) {
-        console.error('🚨 CRITICAL: User still exists after deletion!', { userId: staff.userId, email: verifyUser.email })
-        // Force delete again
+      // Force delete again - this should never happen but we must try
+      try {
         await prisma.user.delete({
-          where: { id: staff.userId }
+          where: { id: userIdToDelete }
         })
-        console.log('✅ Force deleted user:', staff.userId)
-      } else {
-        console.log('✅ Verified: User successfully deleted from database')
+        console.log('✅ Force deleted user (second attempt):', userIdToDelete)
+      } catch (forceError: any) {
+        console.error('🚨🚨🚨 CANNOT DELETE USER - SECURITY BREACH!', { 
+          userId: userIdToDelete, 
+          error: forceError.message 
+        })
+        // Return error - this is critical
+        return NextResponse.json(
+          { message: 'Failed to delete user account - security risk' },
+          { status: 500 }
+        )
       }
+    } else {
+      console.log('✅ Verified: User successfully deleted from database:', { userId: userIdToDelete, email: userToDelete?.email })
     }
 
-    console.log('✅ Staff member and user deleted successfully:', { staffId: id, userId: staff.userId })
+    console.log('✅ Staff member and user deleted successfully:', { staffId: id, userId: userIdToDelete, email: userToDelete?.email })
 
     return NextResponse.json({ message: 'Staff member deleted successfully' })
   } catch (error) {

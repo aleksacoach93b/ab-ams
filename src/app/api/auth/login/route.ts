@@ -317,17 +317,32 @@ export async function POST(request: NextRequest) {
         where: { email: normalizedEmail }
       })
       
-      if (user) {
-        console.log('🔍 [LOGIN] User found:', {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          isActive: user.isActive,
-          hasPassword: !!user.password
-        })
-      } else {
-        console.log('❌ [LOGIN] User NOT FOUND in database for email:', normalizedEmail)
+      if (!user) {
+        console.log('🚫 [LOGIN] SECURITY: User NOT FOUND in database for email:', normalizedEmail)
         // CRITICAL: Return error immediately if user doesn't exist
+        // DO NOT allow login for non-existent users
+        return NextResponse.json(
+          { message: 'Invalid email or password' },
+          { status: 401 }
+        )
+      }
+
+      console.log('🔍 [LOGIN] User found:', {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        hasPassword: !!user.password
+      })
+
+      // CRITICAL SECURITY CHECK: Verify user still exists (double check)
+      const doubleCheckUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { id: true, isActive: true }
+      })
+
+      if (!doubleCheckUser) {
+        console.log('🚫 [LOGIN] SECURITY: User deleted between checks for email:', normalizedEmail)
         return NextResponse.json(
           { message: 'Invalid email or password' },
           { status: 401 }
