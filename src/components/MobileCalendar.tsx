@@ -359,7 +359,16 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
     setCurrentDate(newDate)
   }
 
-  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] // Monday first
+  // Monday-first week days array - EXPLICIT ORDER
+  const days = [
+    { label: 'M', dayOfWeek: 1 }, // Monday
+    { label: 'T', dayOfWeek: 2 }, // Tuesday
+    { label: 'W', dayOfWeek: 3 }, // Wednesday
+    { label: 'T', dayOfWeek: 4 }, // Thursday
+    { label: 'F', dayOfWeek: 5 }, // Friday
+    { label: 'S', dayOfWeek: 6 }, // Saturday
+    { label: 'S', dayOfWeek: 0 }  // Sunday
+  ]
   const monthDays = getDaysInMonth(currentDate)
   const todayEvents = getEventsForSelectedDate()
 
@@ -557,31 +566,29 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
       {/* Enhanced Calendar Grid */}
       <div className="px-0 sm:px-4 pb-4 w-full" style={{ backgroundColor: colorScheme.surface }}>
         <div className="rounded-2xl shadow-lg mx-0 sm:mx-4" style={{ backgroundColor: colorScheme.surface }}>
-          {/* Day headers - Monday first */}
+          {/* Day headers - Monday first - EXPLICIT ORDER */}
           <div 
-            className="grid grid-cols-7 text-center text-xs font-semibold py-3"
+            className="grid text-center text-xs font-semibold py-3"
             style={{ 
               color: colorScheme.textSecondary,
-              gridTemplateColumns: 'repeat(7, 1fr)' // Explicitly set 7 columns
+              gridTemplateColumns: 'repeat(7, 1fr)', // Explicitly set 7 columns
+              display: 'grid'
             }}
           >
-            {days.map((day, index) => {
-              // Debug: Log to ensure Monday is first
-              if (index === 0) {
-                console.log('📅 [MobileCalendar] First day in header:', day, 'Expected: M (Monday)')
-              }
-              return (
-                <div 
-                  key={index} 
-                  className="py-2"
-                  style={{ 
-                    order: index // Explicit order to ensure Monday is first
-                  }}
-                >
-                  {day}
-                </div>
-              )
-            })}
+            {/* Monday - EXPLICIT FIRST */}
+            <div className="py-2" style={{ gridColumn: '1' }}>M</div>
+            {/* Tuesday */}
+            <div className="py-2" style={{ gridColumn: '2' }}>T</div>
+            {/* Wednesday */}
+            <div className="py-2" style={{ gridColumn: '3' }}>W</div>
+            {/* Thursday */}
+            <div className="py-2" style={{ gridColumn: '4' }}>T</div>
+            {/* Friday */}
+            <div className="py-2" style={{ gridColumn: '5' }}>F</div>
+            {/* Saturday */}
+            <div className="py-2" style={{ gridColumn: '6' }}>S</div>
+            {/* Sunday - EXPLICIT LAST */}
+            <div className="py-2" style={{ gridColumn: '7' }}>S</div>
           </div>
 
           {/* Calendar days */}
