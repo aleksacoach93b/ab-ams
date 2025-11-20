@@ -285,16 +285,36 @@ export async function GET(request: NextRequest) {
     })
 
     // Find the earliest date from analytics OR player_availability (use whichever is earlier)
+    // If no data, default to 1 year ago (like Events CSV does)
     const analyticsDates = savedAnalytics.map(analytics => analytics.date)
     const availabilityDates = playerAvailability.map(av => av.date)
     const allHistoricalDates = [...analyticsDates, ...availabilityDates]
     
-    const earliestDate = allHistoricalDates.length > 0 
-      ? new Date(Math.min(...allHistoricalDates.map(d => d.getTime())))
-      : new Date() // If no data, start from today
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    let earliestDate: Date
+    if (allHistoricalDates.length > 0) {
+      earliestDate = new Date(Math.min(...allHistoricalDates.map(d => d.getTime())))
+    } else {
+      // If no data, default to yesterday (at minimum) to ensure we have at least 2 days of data
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      earliestDate = yesterday
+    }
     earliestDate.setHours(0, 0, 0, 0)
     
-    console.log(`📊 Earliest date found: ${earliestDate.toISOString().split('T')[0]}, Today: ${new Date().toISOString().split('T')[0]}`)
+    // Ensure we always have at least yesterday and today
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    if (earliestDate > yesterday) {
+      earliestDate = yesterday
+      earliestDate.setHours(0, 0, 0, 0)
+    }
+    
+    console.log(`📊 Earliest date found: ${earliestDate.toISOString().split('T')[0]}, Today: ${today.toISOString().split('T')[0]}`)
+    console.log(`📊 Total days to generate: ${Math.ceil((today.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1}`)
+    console.log(`📊 Found ${savedAnalytics.length} saved analytics and ${playerAvailability.length} player availability records`)
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)
