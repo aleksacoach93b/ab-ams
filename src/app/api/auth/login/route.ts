@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { readState, initializePlayerUsers } from '@/lib/localDevStore'
 import { NotificationService } from '@/lib/notificationService'
+import { UAParser } from 'ua-parser-js'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 const LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE === 'true' || !process.env.DATABASE_URL
@@ -93,6 +94,58 @@ export async function POST(request: NextRequest) {
     // Extract first IP if multiple (x-forwarded-for can contain multiple IPs)
     const ipAddress = ipAddressRaw.split(',')[0].trim()
     const userAgent = request.headers.get('user-agent') || 'unknown'
+    
+    // Parse device information from user-agent
+    const parser = new UAParser(userAgent)
+    const deviceInfo = parser.getDevice()
+    const osInfo = parser.getOS()
+    const browserInfo = parser.getBrowser()
+    
+    // Build device string: "Device Brand Model - OS - Browser"
+    let deviceString = ''
+    const deviceParts = []
+    
+    // Add device type and model
+    if (deviceInfo.type) {
+      // Mobile, tablet, etc.
+      if (deviceInfo.vendor && deviceInfo.model) {
+        deviceParts.push(`${deviceInfo.vendor} ${deviceInfo.model}`)
+      } else if (deviceInfo.model) {
+        deviceParts.push(deviceInfo.model)
+      } else {
+        deviceParts.push(deviceInfo.type)
+      }
+    } else {
+      // Desktop - use OS as device indicator
+      if (osInfo.name) {
+        deviceParts.push(osInfo.name)
+        if (osInfo.version) {
+          deviceParts.push(osInfo.version)
+        }
+      } else {
+        deviceParts.push('Desktop')
+      }
+    }
+    
+    // Add OS info if available and different from device
+    if (osInfo.name && !deviceParts.some(p => p.includes(osInfo.name))) {
+      if (osInfo.version) {
+        deviceParts.push(`${osInfo.name} ${osInfo.version}`)
+      } else {
+        deviceParts.push(osInfo.name)
+      }
+    }
+    
+    // Add browser info
+    if (browserInfo.name) {
+      if (browserInfo.version) {
+        deviceParts.push(`${browserInfo.name} ${browserInfo.version}`)
+      } else {
+        deviceParts.push(browserInfo.name)
+      }
+    }
+    
+    deviceString = deviceParts.join(' - ') || 'Unknown Device'
 
     if (!email || !password) {
       return NextResponse.json(
@@ -517,9 +570,10 @@ export async function POST(request: NextRequest) {
             }
           }
           const locationText = locationForNotification ? `, ${locationForNotification}` : ''
+          const deviceText = deviceString ? ` using ${deviceString}` : ''
           await NotificationService.createNotification({
             title: 'User Login Detected',
-            message: `${userName} (${user.email}) logged in from ${ipAddress}${locationText}`,
+            message: `${userName} (${user.email}) logged in from ${ipAddress}${locationText}${deviceText}`,
             type: 'GENERAL',
             category: 'SYSTEM',
             userIds: admins.map(a => a.id)
