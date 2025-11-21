@@ -624,6 +624,7 @@ export async function PUT(request: NextRequest) {
       endTime: event.endTime.toISOString(),
       date: event.startTime.toISOString().split('T')[0], // Extract date for frontend
       icon: event.icon || 'Calendar',
+      matchDayTag: (event as any).matchDayTag || null,
       isRecurring: event.isRecurring,
       isAllDay: event.isAllDay,
       allowPlayerCreation: event.allowPlayerCreation,
@@ -1032,6 +1033,7 @@ export async function POST(request: NextRequest) {
       endTime: completeEvent!.endTime.toISOString(),
       date: completeEvent!.startTime.toISOString().split('T')[0], // Extract date for frontend
       icon: completeEvent!.icon || (completeEvent! as any).iconName || 'Calendar',
+      matchDayTag: (completeEvent! as any).matchDayTag || null,
       isRecurring: completeEvent!.isRecurring,
       isAllDay: completeEvent!.isAllDay,
       allowPlayerCreation: completeEvent!.allowPlayerCreation,
