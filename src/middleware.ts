@@ -115,14 +115,23 @@ export async function middleware(request: NextRequest) {
     const userId = decoded.userId || decoded.user_id // Support both formats
     const userRole = decoded.role
 
+    console.log('🔍 [MIDDLEWARE] Token decoded:', { userId, userRole, hasUserId: !!userId })
+
     // CRITICAL SECURITY CHECK: Verify user still exists in database
-    const userExists = await verifyUserExists(userId, request.url)
-    if (!userExists) {
-      console.log('🚫 [MIDDLEWARE] User deleted or inactive, redirecting to login')
-      // Clear token cookie
-      const response = NextResponse.redirect(new URL('/login', request.url))
-      response.cookies.delete('token')
-      return response
+    // BUT: Skip check for special fallback users (local-admin, coach_user_001)
+    // These are fallback accounts that don't exist in the database
+    if (userId && userId !== 'local-admin' && userId !== 'coach_user_001') {
+      const userExists = await verifyUserExists(userId, request.url)
+      if (!userExists) {
+        console.log('🚫 [MIDDLEWARE] User deleted or inactive, redirecting to login:', userId)
+        // Clear token cookie
+        const response = NextResponse.redirect(new URL('/login', request.url))
+        response.cookies.delete('token')
+        return response
+      }
+      console.log('✅ [MIDDLEWARE] User verified in database:', userId)
+    } else {
+      console.log('⚠️ [MIDDLEWARE] Skipping DB check for fallback user:', userId)
     }
 
     // Check admin-only routes

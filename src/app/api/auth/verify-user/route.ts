@@ -10,10 +10,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('id')
 
+    console.log('🔍 [VERIFY-USER] Checking user:', userId)
+
     if (!userId) {
+      console.log('🚫 [VERIFY-USER] No userId provided')
       return NextResponse.json(
         { exists: false, isActive: false },
         { status: 400 }
+      )
+    }
+
+    // Skip check for fallback users
+    if (userId === 'local-admin' || userId === 'coach_user_001') {
+      console.log('⚠️ [VERIFY-USER] Fallback user, returning true:', userId)
+      return NextResponse.json(
+        { exists: true, isActive: true },
+        { status: 200 }
       )
     }
 
@@ -38,6 +50,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    console.log('✅ [VERIFY-USER] User verified:', userId)
     return NextResponse.json(
       { exists: true, isActive: true },
       { status: 200 }
