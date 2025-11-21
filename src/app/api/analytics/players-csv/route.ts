@@ -612,50 +612,36 @@ export async function GET(request: NextRequest) {
               matchDayTagForThisDay = lastKnownMatchDayTag || null
             }
           }
+          
+          // Check if there's a note for this day (even without analytics)
+          if (note) {
+            const isFullyAvailable = statusForThisDay === 'Fully Available'
+            reasonForThisDay = isFullyAvailable ? '' : (note.reason || '')
+            notesForThisDay = isFullyAvailable ? null : (note.notes || null)
             
-            // Check if there's a note for this day (even without analytics)
-            if (note) {
-              const isFullyAvailable = statusForThisDay === 'Fully Available'
-              reasonForThisDay = isFullyAvailable ? '' : (note.reason || '')
-              notesForThisDay = isFullyAvailable ? null : (note.notes || null)
-              
-              // Update lastKnownReason/Notes for forward fill (only for historical days)
-              if (!isToday) {
-                lastKnownReason = reasonForThisDay
-                lastKnownNotes = notesForThisDay
-              }
-            } else {
-              // No note for this day
-              if (isToday) {
-                // For today, if no note exists, use empty reason/notes (will be updated when note is added)
-                reasonForThisDay = statusForThisDay === 'Fully Available' ? '' : lastKnownReason
-                notesForThisDay = statusForThisDay === 'Fully Available' ? null : lastKnownNotes
-              } else {
-                // Historical day: Forward fill from previous days
-                if (statusForThisDay === 'Fully Available') {
-                  reasonForThisDay = ''
-                  notesForThisDay = null
-                  lastKnownReason = ''
-                  lastKnownNotes = null
-                } else {
-                  reasonForThisDay = lastKnownReason
-                  notesForThisDay = lastKnownNotes
-                }
-              }
+            // Update lastKnownReason/Notes for forward fill (only for historical days)
+            if (!isToday) {
+              lastKnownReason = reasonForThisDay
+              lastKnownNotes = notesForThisDay
             }
           } else {
-            // This should never happen now, but fallback to Fully Available
+            // No note for this day
             if (isToday) {
-              // Today: Use LIVE data
-              statusForThisDay = statusMap[playerData?.availabilityStatus || player.status] || playerData?.availabilityStatus || player.status || 'Fully Available'
-              matchDayTagForThisDay = playerData?.matchDayTag || player.matchDayTag || null
+              // For today, if no note exists, use empty reason/notes (will be updated when note is added)
+              reasonForThisDay = statusForThisDay === 'Fully Available' ? '' : lastKnownReason
+              notesForThisDay = statusForThisDay === 'Fully Available' ? null : lastKnownNotes
             } else {
-              // Historical day: Fallback
-              statusForThisDay = 'Fully Available'
-              matchDayTagForThisDay = lastKnownMatchDayTag || null
+              // Historical day: Forward fill from previous days
+              if (statusForThisDay === 'Fully Available') {
+                reasonForThisDay = ''
+                notesForThisDay = null
+                lastKnownReason = ''
+                lastKnownNotes = null
+              } else {
+                reasonForThisDay = lastKnownReason
+                notesForThisDay = lastKnownNotes
+              }
             }
-            reasonForThisDay = ''
-            notesForThisDay = null
           }
         }
         
