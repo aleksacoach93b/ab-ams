@@ -368,9 +368,11 @@ export async function GET(request: NextRequest) {
       const dateStr = analytics.date.toISOString().split('T')[0]
       const key = `${dateStr}_${analytics.playerId}`
       // Store the raw status and matchDayTag from database (will be mapped later when used)
+      // matchDayTag might not exist in old records, so use optional chaining
+      const matchDayTag = (analytics as any).matchDayTag || null
       analyticsMap.set(key, {
         status: analytics.status || 'Unknown',
-        matchDayTag: analytics.matchDayTag || null,
+        matchDayTag: matchDayTag,
         date: analytics.date
       })
     })
