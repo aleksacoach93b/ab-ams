@@ -232,7 +232,7 @@ export async function PUT(
       userUpdateData.password = await hashPassword(password)
     }
 
-    await prisma.user.update({
+    await prisma.users.update({
       where: { id: existingStaff.userId },
       data: userUpdateData
     })
@@ -382,7 +382,7 @@ export async function DELETE(
     }
 
     // Get user email before deletion for logging
-    const userToDelete = await prisma.user.findUnique({
+    const userToDelete = await prisma.users.findUnique({
       where: { id: userIdToDelete },
       select: { id: true, email: true }
     })
@@ -397,7 +397,7 @@ export async function DELETE(
       console.log('🔍 [DELETE] Attempting to delete user:', { userId: userIdToDelete, email: userToDelete?.email })
       
       try {
-        const deletedUser = await tx.user.delete({
+        const deletedUser = await tx.users.delete({
           where: { id: userIdToDelete }
         })
         console.log('✅ [DELETE] User record deleted successfully:', { 
@@ -426,7 +426,7 @@ export async function DELETE(
     })
 
     // VERIFY: Triple-check that user is actually deleted
-    const verifyUser = await prisma.user.findUnique({
+    const verifyUser = await prisma.users.findUnique({
       where: { id: userIdToDelete }
     })
     
@@ -438,7 +438,7 @@ export async function DELETE(
       })
       // Force delete again - this should never happen but we must try
       try {
-        await prisma.user.delete({
+        await prisma.users.delete({
           where: { id: userIdToDelete }
         })
         console.log('✅ Force deleted user (second attempt):', userIdToDelete)

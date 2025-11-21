@@ -313,7 +313,7 @@ export async function POST(request: NextRequest) {
       const normalizedEmail = email.toLowerCase().trim()
       console.log('🔍 [LOGIN] Looking for user with email:', normalizedEmail)
       
-      user = await prisma.user.findUnique({
+      user = await prisma.users.findUnique({
         where: { email: normalizedEmail }
       })
       
@@ -337,9 +337,9 @@ export async function POST(request: NextRequest) {
 
       // CRITICAL SECURITY CHECK: Verify user still exists (double check by ID)
       // This prevents login if user was deleted between the initial check and now
-      const doubleCheckUser = await prisma.user.findUnique({
+      const doubleCheckUser = await prisma.users.findUnique({
         where: { id: user.id },
-        select: { id: true, email: true, isActive: true, role: true, password: true, firstName: true, lastName: true, name: true }
+        select: { id: true, email: true, isActive: true, role: true, password: true, firstName: true, lastName: true }
       })
 
       if (!doubleCheckUser) {
@@ -540,7 +540,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Password valid for user:', user.id)
 
     // Update last login
-    await prisma.user.update({
+    await prisma.users.update({
       where: { id: user.id },
       data: { 
         lastLoginAt: new Date()
@@ -581,13 +581,13 @@ export async function POST(request: NextRequest) {
     Promise.resolve().then(async () => {
       try {
         // Get all admin users
-        const admins = await prisma.user.findMany({
+        const admins = await prisma.users.findMany({
           where: { role: 'ADMIN', isActive: true },
           select: { id: true }
         })
         
         if (admins.length > 0) {
-          const userName = user.name || `${user.firstName} ${user.lastName}`.trim() || user.email
+          const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
           // Get location for notification (try again if not already fetched)
           let locationForNotification = location
           if (!locationForNotification) {
@@ -635,7 +635,7 @@ export async function POST(request: NextRequest) {
         ...userWithoutPassword,
         firstName: user.firstName,
         lastName: user.lastName,
-        name: user.name || `${user.firstName} ${user.lastName}`
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim()
       },
       token
     })

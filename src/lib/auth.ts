@@ -20,7 +20,7 @@ export async function verifyToken(token: string): Promise<{ userId: string; emai
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as { userId: string; email: string; role: string }
     
     // CRITICAL: Check if user still exists in database
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: decoded.userId },
       select: { id: true, email: true, role: true, isActive: true }
     })

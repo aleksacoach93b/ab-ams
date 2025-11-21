@@ -299,7 +299,7 @@ export async function PUT(
         )
       }
 
-      await prisma.user.update({
+      await prisma.users.update({
         where: { id: existingPlayer.userId },
         data: {
           password: await hashPassword(password),
