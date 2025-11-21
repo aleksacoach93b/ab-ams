@@ -19,6 +19,17 @@ export async function verifyToken(token: string): Promise<{ userId: string; emai
     // First verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as { userId: string; email: string; role: string }
     
+    // Skip database check for fallback users (local-admin, coach_user_001)
+    // These are special accounts that don't exist in the database
+    if (decoded.userId === 'local-admin' || decoded.userId === 'coach_user_001') {
+      console.log('✅ [AUTH] Fallback user verified:', { userId: decoded.userId, email: decoded.email, role: decoded.role })
+      return {
+        userId: decoded.userId,
+        email: decoded.email,
+        role: decoded.role
+      }
+    }
+    
     // CRITICAL: Check if user still exists in database
     const user = await prisma.users.findUnique({
       where: { id: decoded.userId },
