@@ -61,18 +61,38 @@ export async function PUT(request: NextRequest) {
 
         if (existingAnalytics) {
           // Update matchDayTag if analytics already exists (today's data can still be updated)
-          await prisma.daily_player_analytics.update({
-            where: {
-              date_playerId: {
-                date: today,
-                playerId: player.id
+          // CRITICAL: Only update if it's today - historical data is immutable
+          const analyticsDate = new Date(existingAnalytics.date)
+          analyticsDate.setHours(0, 0, 0, 0)
+          const todayDate = new Date(today)
+          todayDate.setHours(0, 0, 0, 0)
+          
+          if (analyticsDate.getTime() === todayDate.getTime()) {
+            // Only update if it's today's data
+            try {
+              await prisma.daily_player_analytics.update({
+                where: {
+                  date_playerId: {
+                    date: today,
+                    playerId: player.id
+                  }
+                },
+                data: {
+                  matchDayTag: player.matchDayTag || null
+                }
+              })
+              console.log(`✅ Updated matchDayTag in analytics for player ${player.id} for today: ${player.matchDayTag || 'N/A'}`)
+            } catch (updateError: any) {
+              // If matchDayTag column doesn't exist, try to create analytics entry with it
+              if (updateError.message?.includes('matchDayTag') || updateError.code === 'P2021') {
+                console.warn('⚠️ matchDayTag column may not exist, skipping update')
+              } else {
+                throw updateError
               }
-            },
-            data: {
-              matchDayTag: player.matchDayTag || null
             }
-          })
-          console.log(`✅ Updated matchDayTag in analytics for player ${player.id} for today`)
+          } else {
+            console.log(`⚠️ Cannot update matchDayTag for ${analyticsDate.toISOString().split('T')[0]} - historical data is immutable`)
+          }
         } else {
           // Create new analytics entry for today with matchDayTag
           // Get player's current status for the analytics entry
@@ -180,18 +200,38 @@ export async function POST(request: NextRequest) {
 
       if (existingAnalytics) {
         // Update matchDayTag if analytics already exists (today's data can still be updated)
-        await prisma.daily_player_analytics.update({
-          where: {
-            date_playerId: {
-              date: today,
-              playerId: playerId
+        // CRITICAL: Only update if it's today - historical data is immutable
+        const analyticsDate = new Date(existingAnalytics.date)
+        analyticsDate.setHours(0, 0, 0, 0)
+        const todayDate = new Date(today)
+        todayDate.setHours(0, 0, 0, 0)
+        
+        if (analyticsDate.getTime() === todayDate.getTime()) {
+          // Only update if it's today's data
+          try {
+            await prisma.daily_player_analytics.update({
+              where: {
+                date_playerId: {
+                  date: today,
+                  playerId: playerId
+                }
+              },
+              data: {
+                matchDayTag: updatedPlayer.matchDayTag || null
+              }
+            })
+            console.log(`✅ Updated matchDayTag in analytics for player ${playerId} for today: ${updatedPlayer.matchDayTag || 'N/A'}`)
+          } catch (updateError: any) {
+            // If matchDayTag column doesn't exist, try to create analytics entry with it
+            if (updateError.message?.includes('matchDayTag') || updateError.code === 'P2021') {
+              console.warn('⚠️ matchDayTag column may not exist, skipping update')
+            } else {
+              throw updateError
             }
-          },
-          data: {
-            matchDayTag: updatedPlayer.matchDayTag || null
           }
-        })
-        console.log(`✅ Updated matchDayTag in analytics for player ${playerId} for today`)
+        } else {
+          console.log(`⚠️ Cannot update matchDayTag for ${analyticsDate.toISOString().split('T')[0]} - historical data is immutable`)
+        }
       } else {
         // Create new analytics entry for today with matchDayTag
         // Get player's current status for the analytics entry

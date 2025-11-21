@@ -278,13 +278,14 @@ export async function GET(request: NextRequest) {
     let matchDayTagMap = new Map<string, string | null>()
     try {
       // Try to get matchDayTag using raw query
+      // Use COALESCE to handle NULL values properly
       const analyticsWithMatchDayTag = await prisma.$queryRaw<Array<{ playerId: string; date: Date; matchDayTag: string | null }>>`
-        SELECT "playerId", "date", "matchDayTag" 
+        SELECT "playerId", "date", COALESCE("matchDayTag", NULL) as "matchDayTag"
         FROM "daily_player_analytics"
         ORDER BY "date" ASC, "playerId" ASC
       `
       analyticsWithMatchDayTag.forEach(item => {
-        const dateStr = item.date.toISOString().split('T')[0]
+        const dateStr = new Date(item.date).toISOString().split('T')[0]
         const key = `${dateStr}_${item.playerId}`
         matchDayTagMap.set(key, item.matchDayTag || null)
       })
@@ -292,6 +293,7 @@ export async function GET(request: NextRequest) {
     } catch (matchDayTagError: any) {
       // Column doesn't exist, that's OK - we'll use null for all
       console.log('⚠️ matchDayTag column does not exist, using null for all records')
+      console.log('⚠️ Error details:', matchDayTagError.message)
     }
 
     // Get ALL player availability records (no date limit) - SECONDARY DATA SOURCE for historical data
