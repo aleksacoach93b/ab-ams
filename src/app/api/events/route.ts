@@ -580,6 +580,7 @@ export async function PUT(request: NextRequest) {
         endTime: endDateTime, // DateTime object
         locationId: location || null, // Use locationId instead of location
         icon: icon || 'Dumbbell', // Use icon instead of iconName
+        matchDayTag: matchDayTag !== undefined ? (matchDayTag || null) : undefined,
         isRecurring: body.isRecurring !== undefined ? body.isRecurring : undefined,
         isAllDay: body.isAllDay !== undefined ? body.isAllDay : undefined,
         allowPlayerCreation: body.allowPlayerCreation !== undefined ? body.allowPlayerCreation : undefined,
@@ -929,6 +930,7 @@ export async function POST(request: NextRequest) {
       // CRITICAL: Use provided icon if it exists and is not empty, otherwise use default
       // Don't override user's icon selection with default
       icon: (icon && icon.trim() !== '') ? icon.trim() : getDefaultIcon(finalEventType),
+      matchDayTag: matchDayTag && matchDayTag.trim() !== '' ? matchDayTag.trim() : null,
       isRecurring: body.isRecurring || false,
       isAllDay: body.isAllDay || false,
       allowPlayerCreation: body.allowPlayerCreation || false,
