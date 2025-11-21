@@ -19,7 +19,7 @@ export async function PUT(
     const { tags } = body
 
     // Verify the media file belongs to this player
-    const mediaFile = await prisma.playerMedia.findFirst({
+    const mediaFile = await prisma.player_media.findFirst({
       where: { 
         id: mediaId,
         playerId: playerId
@@ -34,7 +34,7 @@ export async function PUT(
     }
 
     // Update the media file tags
-    const updatedMediaFile = await prisma.playerMedia.update({
+    const updatedMediaFile = await prisma.player_media.update({
       where: { id: mediaId },
       data: { 
         tags: tags && tags.length > 0 ? tags.join(',') : null 
