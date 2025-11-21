@@ -336,9 +336,10 @@ export async function POST(request: NextRequest) {
       })
 
       // CRITICAL SECURITY CHECK: Verify user still exists (double check by ID)
+      // This prevents login if user was deleted between the initial check and now
       const doubleCheckUser = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { id: true, email: true, isActive: true }
+        select: { id: true, email: true, isActive: true, role: true, password: true, firstName: true, lastName: true, name: true }
       })
 
       if (!doubleCheckUser) {
@@ -349,22 +350,8 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // TRIPLE CHECK: Verify by email as well
-      const tripleCheckUser = await prisma.user.findUnique({
-        where: { email: normalizedEmail },
-        select: { id: true, email: true, isActive: true }
-      })
-
-      if (!tripleCheckUser) {
-        console.log('🚫 [LOGIN] SECURITY: User not found by email check for:', normalizedEmail)
-        return NextResponse.json(
-          { message: 'Invalid email or password' },
-          { status: 401 }
-        )
-      }
-
-      // Use the verified user from database
-      user = tripleCheckUser
+      // Use the verified user from database (ensures we have latest data)
+      user = doubleCheckUser
     } catch (dbError) {
       console.error('❌ Database error during login:', dbError)
       // Fallback path if Prisma is not configured locally
