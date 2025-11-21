@@ -257,12 +257,42 @@ export async function GET(request: NextRequest) {
 
     // Database mode: use Prisma
     // Get ALL daily player analytics (no date limit) - PRIMARY DATA SOURCE
+    // Use select to explicitly get only fields that exist
     const savedAnalytics = await prisma.daily_player_analytics.findMany({
       orderBy: [
         { date: 'asc' },
         { playerId: 'asc' }
-      ]
+      ],
+      select: {
+        id: true,
+        playerId: true,
+        date: true,
+        status: true,
+        notes: true,
+        createdAt: true
+        // matchDayTag will be added via raw query if column exists, or we'll use null
+      }
     })
+    
+    // Try to get matchDayTag separately if column exists
+    let matchDayTagMap = new Map<string, string | null>()
+    try {
+      // Try to get matchDayTag using raw query
+      const analyticsWithMatchDayTag = await prisma.$queryRaw<Array<{ playerId: string; date: Date; matchDayTag: string | null }>>`
+        SELECT "playerId", "date", "matchDayTag" 
+        FROM "daily_player_analytics"
+        ORDER BY "date" ASC, "playerId" ASC
+      `
+      analyticsWithMatchDayTag.forEach(item => {
+        const dateStr = item.date.toISOString().split('T')[0]
+        const key = `${dateStr}_${item.playerId}`
+        matchDayTagMap.set(key, item.matchDayTag || null)
+      })
+      console.log(`📊 Found matchDayTag for ${matchDayTagMap.size} analytics records`)
+    } catch (matchDayTagError: any) {
+      // Column doesn't exist, that's OK - we'll use null for all
+      console.log('⚠️ matchDayTag column does not exist, using null for all records')
+    }
 
     // Get ALL player availability records (no date limit) - SECONDARY DATA SOURCE for historical data
     const playerAvailability = await prisma.player_availability.findMany({
@@ -370,9 +400,8 @@ export async function GET(request: NextRequest) {
     savedAnalytics.forEach(analytics => {
       const dateStr = analytics.date.toISOString().split('T')[0]
       const key = `${dateStr}_${analytics.playerId}`
-      // Store the raw status and matchDayTag from database (will be mapped later when used)
-      // matchDayTag might not exist in old records, so use safe access
-      const matchDayTag = 'matchDayTag' in analytics ? (analytics.matchDayTag || null) : null
+      // Get matchDayTag from separate map if available
+      const matchDayTag = matchDayTagMap.get(key) || null
       analyticsMap.set(key, {
         status: analytics.status || 'Unknown',
         matchDayTag: matchDayTag,
@@ -626,9 +655,17 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error generating player analytics CSV:', error)
+    console.error('❌ Error generating player analytics CSV:', error)
+    console.error('❌ Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      name: error instanceof Error ? error.name : 'Unknown'
+    })
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { 
+        message: 'Internal server error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
