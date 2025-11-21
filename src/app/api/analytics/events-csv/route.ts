@@ -236,9 +236,25 @@ export async function GET(request: NextRequest) {
       console.log(`📊 Fetching live events for ${missingDates.length} missing dates...`)
       
       // Get ALL events at once (single query - much faster)
-      // Use raw query to safely get matchDayTag if column exists
+      // Try to get matchDayTag, but fallback if column doesn't exist
       let allEvents: any[] = []
       try {
+        // First try with matchDayTag
+        allEvents = await prisma.$queryRaw<Array<{
+          id: string;
+          title: string;
+          type: string;
+          startTime: Date;
+          endTime: Date;
+          matchDayTag: string | null;
+        }>>`
+          SELECT id, title, type, "startTime", "endTime", COALESCE("matchDayTag", NULL) as "matchDayTag"
+          FROM events
+          ORDER BY "startTime" ASC
+        `
+      } catch (error: any) {
+        // If matchDayTag column doesn't exist, get events without it
+        console.warn('⚠️ matchDayTag column does not exist in events table, using N/A')
         allEvents = await prisma.events.findMany({
           orderBy: {
             startTime: 'asc'
@@ -248,31 +264,11 @@ export async function GET(request: NextRequest) {
             title: true,
             type: true,
             startTime: true,
-            endTime: true,
-            matchDayTag: true
+            endTime: true
           }
         })
-      } catch (error: any) {
-        // If matchDayTag column doesn't exist, get events without it
-        if (error.message?.includes('matchDayTag') || error.code === 'P2021') {
-          console.warn('⚠️ matchDayTag column does not exist in events table, using N/A')
-          allEvents = await prisma.events.findMany({
-            orderBy: {
-              startTime: 'asc'
-            },
-            select: {
-              id: true,
-              title: true,
-              type: true,
-              startTime: true,
-              endTime: true
-            }
-          })
-          // Add matchDayTag as null to all events
-          allEvents = allEvents.map(event => ({ ...event, matchDayTag: null }))
-        } else {
-          throw error
-        }
+        // Add matchDayTag as null to all events
+        allEvents = allEvents.map(event => ({ ...event, matchDayTag: null }))
       }
 
       console.log(`📊 Found ${allEvents.length} total events in database`)
