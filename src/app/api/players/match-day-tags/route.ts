@@ -31,6 +31,95 @@ export async function PUT(request: NextRequest) {
 
     console.log(`✅ Updated match day tags for ${updatedPlayers.count} players`);
 
+    // Automatically save matchDayTag to daily analytics for today when it changes
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    try {
+      // Get all players that were updated to get their current matchDayTag
+      const players = await prisma.players.findMany({
+        where: {
+          id: { in: playerIds }
+        },
+        select: {
+          id: true,
+          matchDayTag: true
+        }
+      })
+
+      // Save matchDayTag to daily analytics for today for each player
+      for (const player of players) {
+        // Check if analytics already exists for today
+        const existingAnalytics = await prisma.daily_player_analytics.findUnique({
+          where: {
+            date_playerId: {
+              date: today,
+              playerId: player.id
+            }
+          }
+        })
+
+        if (existingAnalytics) {
+          // Update matchDayTag if analytics already exists (today's data can still be updated)
+          await prisma.daily_player_analytics.update({
+            where: {
+              date_playerId: {
+                date: today,
+                playerId: player.id
+              }
+            },
+            data: {
+              matchDayTag: player.matchDayTag || null
+            }
+          })
+          console.log(`✅ Updated matchDayTag in analytics for player ${player.id} for today`)
+        } else {
+          // Create new analytics entry for today with matchDayTag
+          // Get player's current status for the analytics entry
+          const playerFull = await prisma.players.findUnique({
+            where: { id: player.id },
+            select: { status: true, availabilityStatus: true }
+          })
+          
+          const statusMap: { [key: string]: string } = {
+            'FULLY_AVAILABLE': 'Fully Available',
+            'PARTIAL_TRAINING': 'Partially Available - Training',
+            'PARTIAL_TEAM_INDIVIDUAL': 'Partially Available - Team + Individual',
+            'REHAB_INDIVIDUAL': 'Rehabilitation - Individual',
+            'NOT_AVAILABLE_INJURY': 'Unavailable - Injury',
+            'PARTIAL_ILLNESS': 'Partially Available - Illness',
+            'NOT_AVAILABLE_ILLNESS': 'Unavailable - Illness',
+            'INDIVIDUAL_WORK': 'Individual Work',
+            'RECOVERY': 'Recovery',
+            'NOT_AVAILABLE_OTHER': 'Unavailable - Other',
+            'DAY_OFF': 'Day Off',
+            'NATIONAL_TEAM': 'National Team',
+            'PHYSIO_THERAPY': 'Physio Therapy',
+            'ACTIVE': 'Active',
+            'INJURED': 'Injured',
+            'SUSPENDED': 'Suspended',
+            'INACTIVE': 'Inactive',
+            'RETIRED': 'Retired'
+          }
+          const statusLabel = statusMap[playerFull?.status || playerFull?.availabilityStatus || ''] || 'Fully Available'
+          
+          await prisma.daily_player_analytics.create({
+            data: {
+              date: today,
+              playerId: player.id,
+              status: statusLabel,
+              matchDayTag: player.matchDayTag || null,
+              notes: null
+            }
+          })
+          console.log(`✅ Created analytics with matchDayTag for player ${player.id} for today`)
+        }
+      }
+    } catch (analyticsError) {
+      console.error('Error saving matchDayTag to analytics:', analyticsError)
+      // Don't fail the matchDayTag update if analytics save fails
+    }
+
     return NextResponse.json({ 
       message: 'Match day tags updated successfully', 
       updatedCount: updatedPlayers.count 
@@ -73,6 +162,81 @@ export async function POST(request: NextRequest) {
     });
 
     console.log(`✅ Updated match day tag for player ${updatedPlayer.name}`);
+
+    // Automatically save matchDayTag to daily analytics for today when it changes
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    try {
+      // Check if analytics already exists for today
+      const existingAnalytics = await prisma.daily_player_analytics.findUnique({
+        where: {
+          date_playerId: {
+            date: today,
+            playerId: playerId
+          }
+        }
+      })
+
+      if (existingAnalytics) {
+        // Update matchDayTag if analytics already exists (today's data can still be updated)
+        await prisma.daily_player_analytics.update({
+          where: {
+            date_playerId: {
+              date: today,
+              playerId: playerId
+            }
+          },
+          data: {
+            matchDayTag: updatedPlayer.matchDayTag || null
+          }
+        })
+        console.log(`✅ Updated matchDayTag in analytics for player ${playerId} for today`)
+      } else {
+        // Create new analytics entry for today with matchDayTag
+        // Get player's current status for the analytics entry
+        const playerFull = await prisma.players.findUnique({
+          where: { id: playerId },
+          select: { status: true, availabilityStatus: true }
+        })
+        
+        const statusMap: { [key: string]: string } = {
+          'FULLY_AVAILABLE': 'Fully Available',
+          'PARTIAL_TRAINING': 'Partially Available - Training',
+          'PARTIAL_TEAM_INDIVIDUAL': 'Partially Available - Team + Individual',
+          'REHAB_INDIVIDUAL': 'Rehabilitation - Individual',
+          'NOT_AVAILABLE_INJURY': 'Unavailable - Injury',
+          'PARTIAL_ILLNESS': 'Partially Available - Illness',
+          'NOT_AVAILABLE_ILLNESS': 'Unavailable - Illness',
+          'INDIVIDUAL_WORK': 'Individual Work',
+          'RECOVERY': 'Recovery',
+          'NOT_AVAILABLE_OTHER': 'Unavailable - Other',
+          'DAY_OFF': 'Day Off',
+          'NATIONAL_TEAM': 'National Team',
+          'PHYSIO_THERAPY': 'Physio Therapy',
+          'ACTIVE': 'Active',
+          'INJURED': 'Injured',
+          'SUSPENDED': 'Suspended',
+          'INACTIVE': 'Inactive',
+          'RETIRED': 'Retired'
+        }
+        const statusLabel = statusMap[playerFull?.status || playerFull?.availabilityStatus || ''] || 'Fully Available'
+        
+        await prisma.daily_player_analytics.create({
+          data: {
+            date: today,
+            playerId: playerId,
+            status: statusLabel,
+            matchDayTag: updatedPlayer.matchDayTag || null,
+            notes: null
+          }
+        })
+        console.log(`✅ Created analytics with matchDayTag for player ${playerId} for today`)
+      }
+    } catch (analyticsError) {
+      console.error('Error saving matchDayTag to analytics:', analyticsError)
+      // Don't fail the matchDayTag update if analytics save fails
+    }
 
     return NextResponse.json({ 
       message: 'Match day tag updated successfully', 

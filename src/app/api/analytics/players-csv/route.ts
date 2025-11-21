@@ -71,11 +71,12 @@ export async function GET(request: NextRequest) {
       today.setHours(0, 0, 0, 0)
 
       // Create a map of analytics by date and player (PRIMARY DATA SOURCE)
-      const analyticsMap = new Map<string, { activity: string; date: Date }>()
+      const analyticsMap = new Map<string, { activity: string; matchDayTag: string | null; date: Date }>()
       savedAnalytics.forEach((analytics: any) => {
         const key = `${new Date(analytics.date).toISOString().split('T')[0]}_${analytics.playerId}`
         analyticsMap.set(key, {
           activity: analytics.activity || 'Unknown',
+          matchDayTag: analytics.matchDayTag || null,
           date: new Date(analytics.date)
         })
       })
@@ -129,6 +130,7 @@ export async function GET(request: NextRequest) {
         // Generate data for each day
         // Start with current status, but update it as we encounter analytics
         let lastKnownStatus = currentStatus // Default to current status
+        let lastKnownMatchDayTag: string | null = player.matchDayTag || state.playerTags?.[playerId] || null // Track last known matchDayTag for forward fill
         let lastKnownReason = '' // Track last known reason for forward fill
         let lastKnownNotes: string | null = null // Track last known notes for forward fill
         
@@ -140,6 +142,10 @@ export async function GET(request: NextRequest) {
           })
           const firstAnalytics = sortedPlayerAnalytics[0]
           lastKnownStatus = firstAnalytics.activity || 'Fully Available'
+          // Initialize matchDayTag from first analytics if available
+          if (firstAnalytics.matchDayTag !== null && firstAnalytics.matchDayTag !== undefined) {
+            lastKnownMatchDayTag = firstAnalytics.matchDayTag
+          }
         }
         
         for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
@@ -151,9 +157,19 @@ export async function GET(request: NextRequest) {
           const note = notesMap.get(key)
           const isFullyAvailable = lastKnownStatus === 'Fully Available'
           
+          let matchDayTagForThisDay: string | null = null
+          
           if (analytics) {
             // Use status from analytics and update lastKnownStatus
             lastKnownStatus = analytics.activity || 'Unknown'
+            
+            // Use matchDayTag from analytics if available, otherwise forward fill
+            if (analytics.matchDayTag !== null && analytics.matchDayTag !== undefined) {
+              matchDayTagForThisDay = analytics.matchDayTag
+              lastKnownMatchDayTag = analytics.matchDayTag // Update for forward fill
+            } else {
+              matchDayTagForThisDay = lastKnownMatchDayTag // Forward fill
+            }
             
             // Get reason and notes from notes if available, otherwise use last known
             if (note) {
@@ -169,11 +185,14 @@ export async function GET(request: NextRequest) {
               playerName: player.name,
               activity: lastKnownStatus,
               availabilityStatus: lastKnownStatus,
+              matchDayTag: matchDayTagForThisDay,
               reason: lastKnownReason,
               notes: lastKnownNotes
             })
           } else {
             // No analytics for this day - use last known status, reason, and notes (forward fill)
+            matchDayTagForThisDay = lastKnownMatchDayTag // Forward fill matchDayTag
+            
             // Check if there's a note for this day, if yes use it, otherwise forward fill
             if (note) {
               // If note exists for this day, use it and update lastKnownReason/Notes
@@ -188,6 +207,7 @@ export async function GET(request: NextRequest) {
               playerName: player.name,
               activity: lastKnownStatus,
               availabilityStatus: lastKnownStatus,
+              matchDayTag: matchDayTagForThisDay,
               reason: lastKnownReason,
               notes: lastKnownNotes
             })
@@ -216,8 +236,8 @@ export async function GET(request: NextRequest) {
         const reason = isFullyAvailable ? '' : (item.reason || '')
         const notes = isFullyAvailable ? '' : (item.notes || '')
         
-        const player = playersMap.get(item.playerId)
-        const matchDayTag = player?.matchDayTag || state.playerTags?.[item.playerId] || 'N/A'
+        // Use historical matchDayTag from analytics data (with forward fill), not current player.matchDayTag
+        const matchDayTag = item.matchDayTag || 'N/A'
         
         csvContent += `${dateStr},"${item.playerName}",${availabilityStatus},"${matchDayTag}","${reason}","${notes}"\n`
       })
@@ -343,13 +363,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Create a map of analytics by date and player (PRIMARY DATA SOURCE - from daily_player_analytics)
-    const analyticsMap = new Map<string, { status: string; date: Date }>()
+    const analyticsMap = new Map<string, { status: string; matchDayTag: string | null; date: Date }>()
     savedAnalytics.forEach(analytics => {
       const dateStr = analytics.date.toISOString().split('T')[0]
       const key = `${dateStr}_${analytics.playerId}`
-      // Store the raw status from database (will be mapped later when used)
+      // Store the raw status and matchDayTag from database (will be mapped later when used)
       analyticsMap.set(key, {
         status: analytics.status || 'Unknown',
+        matchDayTag: analytics.matchDayTag || null,
         date: analytics.date
       })
     })
@@ -364,9 +385,10 @@ export async function GET(request: NextRequest) {
       if (!analyticsMap.has(key)) {
         // player_availability uses PlayerStatus enum, convert to string
         const statusValue = typeof av.status === 'string' ? av.status : String(av.status)
-        // Store the raw status from database (will be mapped later when used)
+        // Store the raw status from database (matchDayTag will be null for player_availability entries)
         analyticsMap.set(key, {
           status: statusValue || 'Unknown',
+          matchDayTag: null, // player_availability doesn't have matchDayTag
           date: av.date
         })
         addedFromAvailability++
@@ -446,14 +468,16 @@ export async function GET(request: NextRequest) {
       // BUT: If player has NO historical data at all, we initialize with current status for forward fill
       // This ensures ALL players and ALL days are always shown
       let lastKnownStatus: string | null = null // Will be set from first historical data we encounter
+      let lastKnownMatchDayTag: string | null = null // Track last known matchDayTag for forward fill
       let lastKnownReason = '' // Track last known reason for forward fill
       let lastKnownNotes: string | null = null // Track last known notes for forward fill
       
-      // If player has NO historical data at all, initialize with current status for forward fill
+      // If player has NO historical data at all, initialize with current status and matchDayTag for forward fill
       // This is ONLY used for forward fill, NOT for changing historical data (since there is none)
       if (allPlayerDates.length === 0) {
         const currentStatus = statusMap[playerData?.availabilityStatus || player.status] || playerData?.availabilityStatus || player.status || 'Fully Available'
         lastKnownStatus = currentStatus
+        lastKnownMatchDayTag = playerData?.matchDayTag || player.matchDayTag || null
       }
       
       for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
@@ -465,12 +489,22 @@ export async function GET(request: NextRequest) {
         const note = notesMap.get(key)
         
         let statusForThisDay: string | null = null
+        let matchDayTagForThisDay: string | null = null
         let reasonForThisDay = ''
         let notesForThisDay: string | null = null
         
         if (analytics) {
           // We have saved data for this day - use it (this is immutable historical data)
           statusForThisDay = statusMap[analytics.status] || analytics.status || 'Unknown'
+          
+          // Use matchDayTag from analytics if available, otherwise forward fill
+          if (analytics.matchDayTag !== null && analytics.matchDayTag !== undefined) {
+            matchDayTagForThisDay = analytics.matchDayTag
+            lastKnownMatchDayTag = analytics.matchDayTag // Update for forward fill
+          } else {
+            // No matchDayTag in analytics for this day - forward fill from previous days
+            matchDayTagForThisDay = lastKnownMatchDayTag
+          }
           
           // Update lastKnownStatus for forward fill (for future days)
           lastKnownStatus = statusForThisDay
@@ -504,6 +538,7 @@ export async function GET(request: NextRequest) {
           // Use forward fill if we have lastKnownStatus (either from historical data or initialized)
           if (lastKnownStatus !== null) {
             statusForThisDay = lastKnownStatus
+            matchDayTagForThisDay = lastKnownMatchDayTag // Forward fill matchDayTag
             
             // Check if there's a note for this day (even without analytics)
             if (note) {
@@ -529,6 +564,7 @@ export async function GET(request: NextRequest) {
           } else {
             // This should never happen now, but fallback to Fully Available
             statusForThisDay = 'Fully Available'
+            matchDayTagForThisDay = lastKnownMatchDayTag || null
             reasonForThisDay = ''
             notesForThisDay = null
           }
@@ -541,6 +577,7 @@ export async function GET(request: NextRequest) {
           playerName: playerData?.name || `${player.firstName} ${player.lastName}`.trim(),
           activity: statusForThisDay || 'Fully Available',
           availabilityStatus: statusForThisDay || 'Fully Available',
+          matchDayTag: matchDayTagForThisDay,
           reason: reasonForThisDay,
           notes: notesForThisDay
         })
@@ -568,8 +605,8 @@ export async function GET(request: NextRequest) {
       const reason = isFullyAvailable ? '' : (item.reason || '')
       const notes = isFullyAvailable ? '' : (item.notes || '')
       
-      const player = playersMap.get(item.playerId)
-      const matchDayTag = player?.matchDayTag || 'N/A'
+      // Use historical matchDayTag from analytics data (with forward fill), not current player.matchDayTag
+      const matchDayTag = item.matchDayTag || 'N/A'
       
       csvContent += `${dateStr},"${item.playerName}",${availabilityStatus},"${matchDayTag}","${reason}","${notes}"\n`
     })

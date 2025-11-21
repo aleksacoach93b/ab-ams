@@ -206,6 +206,7 @@ export class DailyAnalyticsScheduler {
       
       for (const player of players) {
         const statusLabel = statusMap[player.availabilityStatus] || player.availabilityStatus || 'Unknown'
+        const matchDayTag = player.matchDayTag || null
         
         // Upsert daily player analytics - use dateStart (00:00:00) to ensure consistency
         // Once saved at 00:00, this data cannot be changed (no update, only create if doesn't exist)
@@ -225,10 +226,11 @@ export class DailyAnalyticsScheduler {
               date: dateStart,
               playerId: player.id,
               status: statusLabel,
+              matchDayTag: matchDayTag,
               notes: null
             }
           })
-          console.log(`✅ Created player analytics for ${player.name || player.id} on ${dateStart.toISOString().split('T')[0]}`)
+          console.log(`✅ Created player analytics for ${player.name || player.id} on ${dateStart.toISOString().split('T')[0]} with matchDayTag: ${matchDayTag || 'N/A'}`)
         } else {
           console.log(`⚠️ Player analytics already exists for ${player.name || player.id} on ${dateStart.toISOString().split('T')[0]} - skipping (data locked at 00:00)`)
         }

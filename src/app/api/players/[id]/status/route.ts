@@ -245,6 +245,13 @@ export async function PUT(
       }
       const statusLabel = statusMap[body.status] || body.status || 'Unknown'
       
+      // Get player's current matchDayTag
+      const player = await prisma.players.findUnique({
+        where: { id },
+        select: { matchDayTag: true }
+      })
+      const matchDayTag = player?.matchDayTag || null
+      
       // Check if analytics already exists for today
       const existingAnalytics = await prisma.daily_player_analytics.findUnique({
         where: {
@@ -267,10 +274,11 @@ export async function PUT(
           await prisma.daily_player_analytics.update({
             where: { id: existingAnalytics.id },
             data: {
-              status: statusLabel
+              status: statusLabel,
+              matchDayTag: matchDayTag // Also update matchDayTag if it changed
             }
           })
-          console.log(`✅ [STATUS UPDATE] Updated analytics for today: ${id} -> ${statusLabel}`)
+          console.log(`✅ [STATUS UPDATE] Updated analytics for today: ${id} -> ${statusLabel}, matchDayTag: ${matchDayTag || 'N/A'}`)
         } else {
           console.log(`⚠️ [STATUS UPDATE] Analytics exists for ${analyticsDate.toISOString().split('T')[0]}, but it's locked (not today)`)
         }
@@ -281,10 +289,11 @@ export async function PUT(
             date: today,
             playerId: id,
             status: statusLabel,
+            matchDayTag: matchDayTag,
             notes: null
           }
         })
-        console.log(`✅ [STATUS UPDATE] Created analytics for today: ${id} -> ${statusLabel}`)
+        console.log(`✅ [STATUS UPDATE] Created analytics for today: ${id} -> ${statusLabel}, matchDayTag: ${matchDayTag || 'N/A'}`)
       }
     } catch (analyticsError) {
       console.error('Error saving analytics for status update:', analyticsError)
