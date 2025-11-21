@@ -257,48 +257,12 @@ export async function GET(request: NextRequest) {
 
     // Database mode: use Prisma
     // Get ALL daily player analytics (no date limit) - PRIMARY DATA SOURCE
-    // Fallback to empty array if table doesn't exist or column doesn't exist
-    let savedAnalytics: any[] = []
-    try {
-      savedAnalytics = await prisma.daily_player_analytics.findMany({
-        orderBy: [
-          { date: 'asc' },
-          { playerId: 'asc' }
-        ]
-      })
-      console.log(`📊 Found ${savedAnalytics.length} saved daily player analytics records`)
-    } catch (error: any) {
-      if (error.code === 'P2021' || error.message?.includes('does not exist') || error.message?.includes('matchDayTag')) {
-        console.warn('⚠️ daily_player_analytics table or matchDayTag column does not exist, continuing without matchDayTag')
-        // Try again without matchDayTag field
-        try {
-          savedAnalytics = await prisma.daily_player_analytics.findMany({
-            orderBy: [
-              { date: 'asc' },
-              { playerId: 'asc' }
-            ],
-            select: {
-              id: true,
-              playerId: true,
-              date: true,
-              status: true,
-              notes: true,
-              createdAt: true
-            }
-          })
-          console.log(`📊 Found ${savedAnalytics.length} saved daily player analytics records (without matchDayTag)`)
-        } catch (retryError: any) {
-          if (retryError.code === 'P2021' || retryError.message?.includes('does not exist')) {
-            console.warn('⚠️ daily_player_analytics table does not exist, using empty array')
-            savedAnalytics = []
-          } else {
-            throw retryError
-          }
-        }
-      } else {
-        throw error
-      }
-    }
+    const savedAnalytics = await prisma.daily_player_analytics.findMany({
+      orderBy: [
+        { date: 'asc' },
+        { playerId: 'asc' }
+      ]
+    })
 
     // Get ALL player availability records (no date limit) - SECONDARY DATA SOURCE for historical data
     const playerAvailability = await prisma.player_availability.findMany({
@@ -407,8 +371,8 @@ export async function GET(request: NextRequest) {
       const dateStr = analytics.date.toISOString().split('T')[0]
       const key = `${dateStr}_${analytics.playerId}`
       // Store the raw status and matchDayTag from database (will be mapped later when used)
-      // matchDayTag might not exist in old records or if column doesn't exist, so use optional chaining
-      const matchDayTag = (analytics as any).matchDayTag !== undefined ? ((analytics as any).matchDayTag || null) : null
+      // matchDayTag might not exist in old records, so use safe access
+      const matchDayTag = 'matchDayTag' in analytics ? (analytics.matchDayTag || null) : null
       analyticsMap.set(key, {
         status: analytics.status || 'Unknown',
         matchDayTag: matchDayTag,
