@@ -621,7 +621,10 @@ export async function GET(request: NextRequest) {
           } else {
             // This should never happen now, but fallback to Fully Available
             statusForThisDay = 'Fully Available'
-            matchDayTagForThisDay = lastKnownMatchDayTag || null
+            // For today, always use live data; for historical, use null
+            matchDayTagForThisDay = isToday 
+              ? (playerData?.matchDayTag || player.matchDayTag || null)
+              : (lastKnownMatchDayTag || null)
             reasonForThisDay = ''
             notesForThisDay = null
           }
