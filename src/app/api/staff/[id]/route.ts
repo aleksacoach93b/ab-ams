@@ -394,21 +394,35 @@ export async function DELETE(
     // Use transaction to ensure both are deleted atomically
     await prisma.$transaction(async (tx) => {
       // CRITICAL: Delete user FIRST to prevent login
+      console.log('🔍 [DELETE] Attempting to delete user:', { userId: userIdToDelete, email: userToDelete?.email })
+      
       try {
-        await tx.user.delete({
+        const deletedUser = await tx.user.delete({
           where: { id: userIdToDelete }
         })
-        console.log('✅ User record deleted:', { userId: userIdToDelete, email: userToDelete?.email })
+        console.log('✅ [DELETE] User record deleted successfully:', { 
+          userId: userIdToDelete, 
+          email: deletedUser.email,
+          deletedAt: new Date().toISOString()
+        })
       } catch (error: any) {
-        console.error('🚨 CRITICAL ERROR deleting user:', { userId: userIdToDelete, error: error.message })
-        throw error // Fail transaction if user deletion fails
+        console.error('🚨 [DELETE] CRITICAL ERROR deleting user:', { 
+          userId: userIdToDelete, 
+          email: userToDelete?.email,
+          error: error.message,
+          errorCode: error.code,
+          errorMeta: error.meta
+        })
+        // Don't catch - let it fail the transaction
+        throw error
       }
       
       // Then delete staff record
+      console.log('🔍 [DELETE] Attempting to delete staff:', { staffId: id })
       await tx.staff.delete({
         where: { id }
       })
-      console.log('✅ Staff record deleted:', id)
+      console.log('✅ [DELETE] Staff record deleted successfully:', { staffId: id })
     })
 
     // VERIFY: Triple-check that user is actually deleted
