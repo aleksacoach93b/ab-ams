@@ -236,19 +236,44 @@ export async function GET(request: NextRequest) {
       console.log(`📊 Fetching live events for ${missingDates.length} missing dates...`)
       
       // Get ALL events at once (single query - much faster)
-      const allEvents = await prisma.events.findMany({
-        orderBy: {
-          startTime: 'asc'
-        },
-        select: {
-          id: true,
-          title: true,
-          type: true,
-          startTime: true,
-          endTime: true,
-          matchDayTag: true
+      // Use raw query to safely get matchDayTag if column exists
+      let allEvents: any[] = []
+      try {
+        allEvents = await prisma.events.findMany({
+          orderBy: {
+            startTime: 'asc'
+          },
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            startTime: true,
+            endTime: true,
+            matchDayTag: true
+          }
+        })
+      } catch (error: any) {
+        // If matchDayTag column doesn't exist, get events without it
+        if (error.message?.includes('matchDayTag') || error.code === 'P2021') {
+          console.warn('⚠️ matchDayTag column does not exist in events table, using N/A')
+          allEvents = await prisma.events.findMany({
+            orderBy: {
+              startTime: 'asc'
+            },
+            select: {
+              id: true,
+              title: true,
+              type: true,
+              startTime: true,
+              endTime: true
+            }
+          })
+          // Add matchDayTag as null to all events
+          allEvents = allEvents.map(event => ({ ...event, matchDayTag: null }))
+        } else {
+          throw error
         }
-      })
+      }
 
       console.log(`📊 Found ${allEvents.length} total events in database`)
 
@@ -285,7 +310,7 @@ export async function GET(request: NextRequest) {
             startTime: startTimeStr,
             endTime: endTimeStr,
             duration: duration,
-            matchDayTag: event.matchDayTag || 'N/A'
+            matchDayTag: (event as any).matchDayTag || 'N/A'
           })
         })
       })
