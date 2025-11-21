@@ -25,7 +25,7 @@ model User {
   userAgent     String?
   name          String?
 
-  @@map("User")
+  @@map("users")
 }
 
 model LoginLog {
