@@ -258,19 +258,34 @@ export async function PUT(
       })
       console.log('✅ Deleted existing participants')
 
+      // Prepare update data
+      const updateData: any = {
+        title,
+        description: description || null,
+        type: finalEventType,
+        startTime: startDateTime, // DateTime object
+        endTime: endDateTime, // DateTime object
+        locationId: location || null, // Use locationId instead of location
+        icon: icon || getDefaultIcon(finalEventType), // Use icon instead of iconName
+      }
+
+      // Try to add matchDayTag if provided, but handle if column doesn't exist
+      if (matchDayTag !== undefined) {
+        try {
+          // Try to update with matchDayTag using raw SQL to check if column exists
+          await tx.$executeRaw`SELECT "matchDayTag" FROM "events" WHERE "id" = ${eventId} LIMIT 1`
+          // If query succeeds, column exists, so we can use it
+          updateData.matchDayTag = matchDayTag || null
+        } catch (error: any) {
+          // Column doesn't exist, skip matchDayTag
+          console.warn('⚠️ matchDayTag column does not exist in events table, skipping matchDayTag update')
+        }
+      }
+
       // Update the event
       await tx.events.update({
         where: { id: eventId },
-        data: {
-          title,
-          description: description || null,
-          type: finalEventType,
-          startTime: startDateTime, // DateTime object
-          endTime: endDateTime, // DateTime object
-          locationId: location || null, // Use locationId instead of location
-          icon: icon || getDefaultIcon(finalEventType), // Use icon instead of iconName
-          matchDayTag: matchDayTag !== undefined ? (matchDayTag || null) : undefined,
-        }
+        data: updateData
       })
       console.log('✅ Updated event:', eventId)
 

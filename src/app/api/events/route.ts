@@ -573,23 +573,38 @@ export async function PUT(request: NextRequest) {
     const startDateTime = new Date(`${date}T${startTime || '00:00'}:00`)
     const endDateTime = new Date(`${date}T${endTime || '23:59'}:00`)
     
+    // Prepare update data
+    const updateData: any = {
+      title,
+      description: description || null,
+      type: finalEventType,
+      startTime: startDateTime, // DateTime object
+      endTime: endDateTime, // DateTime object
+      locationId: location || null, // Use locationId instead of location
+      icon: icon || 'Dumbbell', // Use icon instead of iconName
+      isRecurring: body.isRecurring !== undefined ? body.isRecurring : undefined,
+      isAllDay: body.isAllDay !== undefined ? body.isAllDay : undefined,
+      allowPlayerCreation: body.allowPlayerCreation !== undefined ? body.allowPlayerCreation : undefined,
+      allowPlayerReschedule: body.allowPlayerReschedule !== undefined ? body.allowPlayerReschedule : undefined,
+      updatedAt: new Date(), // Update timestamp
+    }
+
+    // Try to add matchDayTag if provided, but handle if column doesn't exist
+    if (matchDayTag !== undefined) {
+      try {
+        // Try to check if column exists using raw SQL
+        await prisma.$executeRaw`SELECT "matchDayTag" FROM "events" WHERE "id" = ${id} LIMIT 1`
+        // If query succeeds, column exists, so we can use it
+        updateData.matchDayTag = matchDayTag || null
+      } catch (error: any) {
+        // Column doesn't exist, skip matchDayTag
+        console.warn('⚠️ matchDayTag column does not exist in events table, skipping matchDayTag update')
+      }
+    }
+
     const event = await prisma.events.update({
       where: { id },
-      data: {
-        title,
-        description: description || null,
-        type: finalEventType,
-        startTime: startDateTime, // DateTime object
-        endTime: endDateTime, // DateTime object
-        locationId: location || null, // Use locationId instead of location
-        icon: icon || 'Dumbbell', // Use icon instead of iconName
-        matchDayTag: matchDayTag !== undefined ? (matchDayTag || null) : undefined,
-        isRecurring: body.isRecurring !== undefined ? body.isRecurring : undefined,
-        isAllDay: body.isAllDay !== undefined ? body.isAllDay : undefined,
-        allowPlayerCreation: body.allowPlayerCreation !== undefined ? body.allowPlayerCreation : undefined,
-        allowPlayerReschedule: body.allowPlayerReschedule !== undefined ? body.allowPlayerReschedule : undefined,
-        updatedAt: new Date(), // Update timestamp
-      },
+      data: updateData,
       include: {
         event_participants: {
           include: {
@@ -923,7 +938,7 @@ export async function POST(request: NextRequest) {
     const endDateTime = new Date(`${date}T${endTime || '23:59'}:00`)
     
     // Create event first without participants
-    const eventData = {
+    const eventData: any = {
       id: eventId,
       title,
       description: description || null,
@@ -934,12 +949,24 @@ export async function POST(request: NextRequest) {
       // CRITICAL: Use provided icon if it exists and is not empty, otherwise use default
       // Don't override user's icon selection with default
       icon: (icon && icon.trim() !== '') ? icon.trim() : getDefaultIcon(finalEventType),
-      matchDayTag: matchDayTag && matchDayTag.trim() !== '' ? matchDayTag.trim() : null,
       isRecurring: body.isRecurring || false,
       isAllDay: body.isAllDay || false,
       allowPlayerCreation: body.allowPlayerCreation || false,
       allowPlayerReschedule: body.allowPlayerReschedule || false,
       updatedAt: new Date(), // Add updatedAt field for Prisma
+    }
+
+    // Try to add matchDayTag if provided, but handle if column doesn't exist
+    if (matchDayTag && matchDayTag.trim() !== '') {
+      try {
+        // Try to check if column exists using raw SQL (check any existing event)
+        await prisma.$executeRaw`SELECT "matchDayTag" FROM "events" LIMIT 1`
+        // If query succeeds, column exists, so we can use it
+        eventData.matchDayTag = matchDayTag.trim()
+      } catch (error: any) {
+        // Column doesn't exist, skip matchDayTag
+        console.warn('⚠️ matchDayTag column does not exist in events table, skipping matchDayTag in create')
+      }
     }
 
     console.log('📅 Creating event with data:', {
