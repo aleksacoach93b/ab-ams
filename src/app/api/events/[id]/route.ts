@@ -109,6 +109,7 @@ export async function PUT(
       endTime,
       location,
       icon,
+      matchDayTag,
       selectedPlayers = [],
       selectedStaff = [],
     } = body
@@ -183,6 +184,7 @@ export async function PUT(
         icon: finalIcon,
         iconName: finalIcon, // Keep both fields in sync
         color: type ? getEventColor(type.toUpperCase()) : existingEvent.color,
+        matchDayTag: matchDayTag !== undefined ? (matchDayTag || null) : existingEvent.matchDayTag,
         participants,
         updatedAt: new Date().toISOString()
       }
@@ -267,6 +269,7 @@ export async function PUT(
           endTime: endDateTime, // DateTime object
           locationId: location || null, // Use locationId instead of location
           icon: icon || getDefaultIcon(finalEventType), // Use icon instead of iconName
+          matchDayTag: matchDayTag !== undefined ? (matchDayTag || null) : undefined,
         }
       })
       console.log('✅ Updated event:', eventId)
@@ -342,6 +345,7 @@ export async function PUT(
       endTime: completeEvent.endTime.toISOString(),
       date: completeEvent.startTime.toISOString().split('T')[0],
       icon: completeEvent.icon || 'Calendar',
+      matchDayTag: (completeEvent as any).matchDayTag || null,
       participants: completeEvent.event_participants?.map(p => ({
         id: p.id,
         playerId: p.playerId,

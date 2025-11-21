@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
             endTime: true,
             locationId: true,
             icon: true,
+            matchDayTag: true,
             createdAt: true,
             updatedAt: true,
             event_participants: {
@@ -171,6 +172,7 @@ export async function GET(request: NextRequest) {
             endTime: true,
             locationId: true,
             icon: true,
+            matchDayTag: true,
             createdAt: true,
             updatedAt: true,
             event_participants: {
@@ -223,6 +225,7 @@ export async function GET(request: NextRequest) {
             endTime: true,
             locationId: true,
             icon: true,
+            matchDayTag: true,
             createdAt: true,
             updatedAt: true,
             event_participants: {
