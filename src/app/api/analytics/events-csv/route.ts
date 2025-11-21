@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
             startTime: event.startTime || 'N/A',
             endTime: event.endTime || 'N/A',
             duration: duration,
-            matchDayTag: 'N/A' // matchDayTag is not in events model
+            matchDayTag: event.matchDayTag || 'N/A'
           })
         })
       }
@@ -245,7 +245,8 @@ export async function GET(request: NextRequest) {
           title: true,
           type: true,
           startTime: true,
-          endTime: true
+          endTime: true,
+          matchDayTag: true
         }
       })
 
@@ -284,7 +285,7 @@ export async function GET(request: NextRequest) {
             startTime: startTimeStr,
             endTime: endTimeStr,
             duration: duration,
-            matchDayTag: 'N/A'
+            matchDayTag: event.matchDayTag || 'N/A'
           })
         })
       })

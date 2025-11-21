@@ -194,6 +194,7 @@ model events {
   locationId            String?
   teamId                String?
   coachId               String?
+  matchDayTag           String?
   isRecurring           Boolean              @default(false)
   recurrenceRule        String?
   isAllDay              Boolean              @default(false)
