@@ -520,6 +520,9 @@ export async function GET(request: NextRequest) {
         const dateStr = d.toISOString().split('T')[0]
         const key = `${dateStr}_${playerId}`
         
+        // Check if this is today (use live data for today)
+        const isToday = d.getTime() === today.getTime()
+        
         // Check if we have analytics for this SPECIFIC day (PRIMARY SOURCE)
         const analytics = analyticsMap.get(key)
         const note = notesMap.get(key)
@@ -533,13 +536,21 @@ export async function GET(request: NextRequest) {
           // We have saved data for this day - use it (this is immutable historical data)
           statusForThisDay = statusMap[analytics.status] || analytics.status || 'Unknown'
           
-          // Use matchDayTag from analytics if available, otherwise forward fill
-          if (analytics.matchDayTag !== null && analytics.matchDayTag !== undefined) {
-            matchDayTagForThisDay = analytics.matchDayTag
-            lastKnownMatchDayTag = analytics.matchDayTag // Update for forward fill
+          // CRITICAL: For today, use LIVE matchDayTag from players table, not saved analytics
+          // For historical days, use saved matchDayTag from analytics
+          if (isToday) {
+            // Today: Use LIVE data from players table
+            matchDayTagForThisDay = playerData?.matchDayTag || player.matchDayTag || null
+            console.log(`📊 [TODAY] Using LIVE matchDayTag for player ${playerId}: ${matchDayTagForThisDay || 'N/A'}`)
           } else {
-            // No matchDayTag in analytics for this day - forward fill from previous days
-            matchDayTagForThisDay = lastKnownMatchDayTag
+            // Historical day: Use saved matchDayTag from analytics (immutable)
+            if (analytics.matchDayTag !== null && analytics.matchDayTag !== undefined) {
+              matchDayTagForThisDay = analytics.matchDayTag
+              lastKnownMatchDayTag = analytics.matchDayTag // Update for forward fill
+            } else {
+              // No matchDayTag in analytics for this day - forward fill from previous days
+              matchDayTagForThisDay = lastKnownMatchDayTag
+            }
           }
           
           // Update lastKnownStatus for forward fill (for future days)
@@ -574,7 +585,17 @@ export async function GET(request: NextRequest) {
           // Use forward fill if we have lastKnownStatus (either from historical data or initialized)
           if (lastKnownStatus !== null) {
             statusForThisDay = lastKnownStatus
-            matchDayTagForThisDay = lastKnownMatchDayTag // Forward fill matchDayTag
+            
+            // CRITICAL: For today, use LIVE matchDayTag from players table
+            // For historical days, forward fill from previous days
+            if (isToday) {
+              // Today: Use LIVE data from players table
+              matchDayTagForThisDay = playerData?.matchDayTag || player.matchDayTag || null
+              console.log(`📊 [TODAY] Using LIVE matchDayTag for player ${playerId} (no analytics): ${matchDayTagForThisDay || 'N/A'}`)
+            } else {
+              // Historical day: Forward fill from previous days
+              matchDayTagForThisDay = lastKnownMatchDayTag
+            }
             
             // Check if there's a note for this day (even without analytics)
             if (note) {
