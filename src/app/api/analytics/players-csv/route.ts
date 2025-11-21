@@ -533,16 +533,17 @@ export async function GET(request: NextRequest) {
         let notesForThisDay: string | null = null
         
         if (analytics) {
-          // We have saved data for this day - use it (this is immutable historical data)
-          statusForThisDay = statusMap[analytics.status] || analytics.status || 'Unknown'
-          
-          // CRITICAL: For today, use LIVE matchDayTag from players table, not saved analytics
-          // For historical days, use saved matchDayTag from analytics
+          // CRITICAL: For today, ALWAYS use LIVE data from players table (flexible, can change)
+          // For historical days, use saved data from analytics (immutable)
           if (isToday) {
-            // Today: Use LIVE data from players table
+            // Today: Use LIVE status and matchDayTag from players table
+            statusForThisDay = statusMap[playerData?.availabilityStatus || player.status] || playerData?.availabilityStatus || player.status || 'Fully Available'
             matchDayTagForThisDay = playerData?.matchDayTag || player.matchDayTag || null
-            console.log(`📊 [TODAY] Using LIVE matchDayTag for player ${playerId}: ${matchDayTagForThisDay || 'N/A'}`)
+            console.log(`📊 [TODAY] Using LIVE status and matchDayTag for player ${playerId}: ${statusForThisDay}, ${matchDayTagForThisDay || 'N/A'}`)
           } else {
+            // Historical day: Use saved data from analytics (immutable)
+            statusForThisDay = statusMap[analytics.status] || analytics.status || 'Unknown'
+            
             // Historical day: Use saved matchDayTag from analytics (immutable)
             if (analytics.matchDayTag !== null && analytics.matchDayTag !== undefined) {
               matchDayTagForThisDay = analytics.matchDayTag
@@ -551,10 +552,10 @@ export async function GET(request: NextRequest) {
               // No matchDayTag in analytics for this day - forward fill from previous days
               matchDayTagForThisDay = lastKnownMatchDayTag
             }
+            
+            // Update lastKnownStatus for forward fill (for future days)
+            lastKnownStatus = statusForThisDay
           }
-          
-          // Update lastKnownStatus for forward fill (for future days)
-          lastKnownStatus = statusForThisDay
           
           // Get reason and notes for this day
           if (note) {
@@ -564,38 +565,53 @@ export async function GET(request: NextRequest) {
             notesForThisDay = isFullyAvailable ? null : (note.notes || null)
             
             // Update lastKnownReason/Notes for forward fill (for future days)
-            lastKnownReason = reasonForThisDay
-            lastKnownNotes = notesForThisDay
+            // BUT: For today, don't update lastKnownReason/Notes from historical data
+            if (!isToday) {
+              lastKnownReason = reasonForThisDay
+              lastKnownNotes = notesForThisDay
+            }
           } else {
-            // No note for this day - forward fill from previous days
-            if (statusForThisDay === 'Fully Available') {
-              // If status is Fully Available, clear reason and notes
-              reasonForThisDay = ''
-              notesForThisDay = null
-              lastKnownReason = ''
-              lastKnownNotes = null
+            // No note for this day
+            if (isToday) {
+              // For today, if no note exists, use empty reason/notes (will be updated when note is added)
+              reasonForThisDay = statusForThisDay === 'Fully Available' ? '' : lastKnownReason
+              notesForThisDay = statusForThisDay === 'Fully Available' ? null : lastKnownNotes
             } else {
-              // Forward fill reason and notes from previous days
-              reasonForThisDay = lastKnownReason
-              notesForThisDay = lastKnownNotes
+              // Historical day: Forward fill from previous days
+              if (statusForThisDay === 'Fully Available') {
+                // If status is Fully Available, clear reason and notes
+                reasonForThisDay = ''
+                notesForThisDay = null
+                lastKnownReason = ''
+                lastKnownNotes = null
+              } else {
+                // Forward fill reason and notes from previous days
+                reasonForThisDay = lastKnownReason
+                notesForThisDay = lastKnownNotes
+              }
             }
           }
         } else {
-          // No saved data for this day - forward fill from previous days
-          // Use forward fill if we have lastKnownStatus (either from historical data or initialized)
-          if (lastKnownStatus !== null) {
-            statusForThisDay = lastKnownStatus
-            
-            // CRITICAL: For today, use LIVE matchDayTag from players table
-            // For historical days, forward fill from previous days
-            if (isToday) {
-              // Today: Use LIVE data from players table
-              matchDayTagForThisDay = playerData?.matchDayTag || player.matchDayTag || null
-              console.log(`📊 [TODAY] Using LIVE matchDayTag for player ${playerId} (no analytics): ${matchDayTagForThisDay || 'N/A'}`)
-            } else {
-              // Historical day: Forward fill from previous days
+          // No saved data for this day
+          // CRITICAL: For today, ALWAYS use LIVE data from players table (flexible, can change)
+          // For historical days, forward fill from previous days
+          if (isToday) {
+            // Today: Use LIVE status and matchDayTag from players table
+            statusForThisDay = statusMap[playerData?.availabilityStatus || player.status] || playerData?.availabilityStatus || player.status || 'Fully Available'
+            matchDayTagForThisDay = playerData?.matchDayTag || player.matchDayTag || null
+            console.log(`📊 [TODAY] Using LIVE status and matchDayTag for player ${playerId} (no analytics): ${statusForThisDay}, ${matchDayTagForThisDay || 'N/A'}`)
+          } else {
+            // Historical day: Forward fill from previous days
+            // Use forward fill if we have lastKnownStatus (either from historical data or initialized)
+            if (lastKnownStatus !== null) {
+              statusForThisDay = lastKnownStatus
               matchDayTagForThisDay = lastKnownMatchDayTag
+            } else {
+              // This should never happen now, but fallback to Fully Available
+              statusForThisDay = 'Fully Available'
+              matchDayTagForThisDay = lastKnownMatchDayTag || null
             }
+          }
             
             // Check if there's a note for this day (even without analytics)
             if (note) {
@@ -603,28 +619,41 @@ export async function GET(request: NextRequest) {
               reasonForThisDay = isFullyAvailable ? '' : (note.reason || '')
               notesForThisDay = isFullyAvailable ? null : (note.notes || null)
               
-              // Update lastKnownReason/Notes for forward fill
-              lastKnownReason = reasonForThisDay
-              lastKnownNotes = notesForThisDay
+              // Update lastKnownReason/Notes for forward fill (only for historical days)
+              if (!isToday) {
+                lastKnownReason = reasonForThisDay
+                lastKnownNotes = notesForThisDay
+              }
             } else {
-              // Forward fill reason and notes from previous days
-              if (statusForThisDay === 'Fully Available') {
-                reasonForThisDay = ''
-                notesForThisDay = null
-                lastKnownReason = ''
-                lastKnownNotes = null
+              // No note for this day
+              if (isToday) {
+                // For today, if no note exists, use empty reason/notes (will be updated when note is added)
+                reasonForThisDay = statusForThisDay === 'Fully Available' ? '' : lastKnownReason
+                notesForThisDay = statusForThisDay === 'Fully Available' ? null : lastKnownNotes
               } else {
-                reasonForThisDay = lastKnownReason
-                notesForThisDay = lastKnownNotes
+                // Historical day: Forward fill from previous days
+                if (statusForThisDay === 'Fully Available') {
+                  reasonForThisDay = ''
+                  notesForThisDay = null
+                  lastKnownReason = ''
+                  lastKnownNotes = null
+                } else {
+                  reasonForThisDay = lastKnownReason
+                  notesForThisDay = lastKnownNotes
+                }
               }
             }
           } else {
             // This should never happen now, but fallback to Fully Available
-            statusForThisDay = 'Fully Available'
-            // For today, always use live data; for historical, use null
-            matchDayTagForThisDay = isToday 
-              ? (playerData?.matchDayTag || player.matchDayTag || null)
-              : (lastKnownMatchDayTag || null)
+            if (isToday) {
+              // Today: Use LIVE data
+              statusForThisDay = statusMap[playerData?.availabilityStatus || player.status] || playerData?.availabilityStatus || player.status || 'Fully Available'
+              matchDayTagForThisDay = playerData?.matchDayTag || player.matchDayTag || null
+            } else {
+              // Historical day: Fallback
+              statusForThisDay = 'Fully Available'
+              matchDayTagForThisDay = lastKnownMatchDayTag || null
+            }
             reasonForThisDay = ''
             notesForThisDay = null
           }
