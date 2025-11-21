@@ -236,19 +236,29 @@ export async function GET(request: NextRequest) {
       console.log(`📊 Fetching live events for ${missingDates.length} missing dates...`)
       
       // Get ALL events at once (single query - much faster)
-      const allEvents = await prisma.events.findMany({
-        orderBy: {
-          startTime: 'asc'
-        },
-        select: {
-          id: true,
-          title: true,
-          type: true,
-          startTime: true,
-          endTime: true,
-          matchDayTag: true
-        }
-      })
+      // Use raw query to safely get matchDayTag if column exists
+      const allEventsRaw = await prisma.$queryRaw<Array<{
+        id: string;
+        title: string;
+        type: string;
+        startTime: Date;
+        endTime: Date;
+        matchDayTag: string | null;
+      }>>`
+        SELECT id, title, type, "startTime", "endTime", 
+               COALESCE("matchDayTag", NULL) as "matchDayTag"
+        FROM events
+        ORDER BY "startTime" ASC
+      `
+      
+      const allEvents = allEventsRaw.map(event => ({
+        id: event.id,
+        title: event.title,
+        type: event.type,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        matchDayTag: event.matchDayTag
+      }))
 
       console.log(`📊 Found ${allEvents.length} total events in database`)
 
@@ -352,9 +362,17 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error generating event analytics CSV:', error)
+    console.error('❌ Error generating event analytics CSV:', error)
+    console.error('❌ Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      name: error instanceof Error ? error.name : 'Unknown'
+    })
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { 
+        message: 'Internal server error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
