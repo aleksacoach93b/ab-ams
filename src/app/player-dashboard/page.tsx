@@ -1142,7 +1142,7 @@ export default function PlayerDashboard() {
         {(wellnessCompletedToday === true || wellnessCompletedToday === null) && (
           <div className="px-0 sm:px-6 mb-6">
             <div className="w-full rounded-3xl shadow-xl p-0 sm:p-4 border-2 transition-all duration-300 hover:shadow-2xl overflow-hidden" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
-              <h2 className="text-xl font-semibold mb-4 px-4 sm:px-0" style={{ color: colorScheme.text }}>
+              <h2 className="text-xl font-semibold mb-4 px-4 sm:px-0 text-center" style={{ color: colorScheme.text }}>
                 Calendar
               </h2>
               <div className="w-full">

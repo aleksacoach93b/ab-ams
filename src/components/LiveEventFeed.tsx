@@ -87,8 +87,15 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
       if (response.ok) {
         const allEvents = await response.json()
         
-        // Filter events where player is a participant
+        // CRITICAL: Filter events by selected date AND player participation
         const playerEvents = allEvents.filter((event: any) => {
+          // First, check if event is for the selected date
+          const eventDate = event.date ? new Date(event.date).toISOString().split('T')[0] : null
+          if (eventDate !== date) {
+            return false // Skip events not for selected date
+          }
+          
+          // Then check if player is a participant
           // Check if event has selectedPlayers array
           if (event.selectedPlayers && Array.isArray(event.selectedPlayers)) {
             return event.selectedPlayers.includes(playerId)
@@ -108,8 +115,15 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
           return false
         })
 
+        // Map events to include color and icon (same as calendar)
+        const mappedEvents = playerEvents.map((event: any) => ({
+          ...event,
+          color: event.color || getEventColor(event.type),
+          icon: event.icon || event.iconName || 'Calendar'
+        }))
+
         // Sort by startTime
-        const sortedEvents = playerEvents.sort((a: any, b: any) => {
+        const sortedEvents = mappedEvents.sort((a: any, b: any) => {
           const timeA = a.startTime || '00:00'
           const timeB = b.startTime || '00:00'
           return timeA.localeCompare(timeB)
@@ -189,10 +203,32 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
     }
   }, [events, loading])
 
-  // Get event icon component
+  // Get event color (same as calendar)
+  const getEventColor = (type: string) => {
+    switch (type) {
+      case 'TRAINING': return '#F59E0B' // Orange
+      case 'MATCH': return '#EF4444' // Red
+      case 'MEETING': return '#3B82F6' // Blue
+      case 'MEDICAL': return '#10B981' // Green
+      case 'RECOVERY': return '#8B5CF6' // Purple
+      case 'MEAL': return '#F97316' // Orange-red
+      case 'REST': return '#6366F1' // Indigo
+      case 'LB_GYM': return '#DC2626' // Dark Red
+      case 'UB_GYM': return '#B91C1C' // Red
+      case 'PRE_ACTIVATION': return '#EA580C' // Orange
+      case 'REHAB': return '#059669' // Green
+      case 'STAFF_MEETING': return '#1D4ED8' // Blue
+      case 'VIDEO_ANALYSIS': return '#7C3AED' // Purple
+      case 'DAY_OFF': return '#F59E0B' // Orange
+      case 'TRAVEL': return '#06B6D4' // Cyan
+      default: return '#6B7280' // Gray
+    }
+  }
+
+  // Get event icon component (same as calendar)
   const getEventIcon = (event: Event) => {
     const iconName = event.icon || event.iconName || 'Calendar'
-    const iconColor = event.color || colorScheme.primary
+    const iconColor = event.color || getEventColor(event.type || '')
     return <CustomIcon name={iconName} className="h-5 w-5" style={{ color: iconColor }} />
   }
 
@@ -235,7 +271,7 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
 
   return (
     <div 
-      className="mx-4 mb-4 rounded-xl overflow-hidden shadow-lg"
+      className="mx-0 mb-4 rounded-xl overflow-hidden shadow-lg w-full"
       style={{ 
         backgroundColor: colorScheme.surface,
         border: `1px solid ${colorScheme.border}`,
@@ -386,12 +422,14 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
                 minWidth: '280px'
               }}
             >
-              {/* Event Icon - Using CustomIcon */}
+              {/* Event Icon - Using CustomIcon (same as calendar) */}
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: (event.color || colorScheme.primary) + '20' }}
+                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md"
+                style={{ backgroundColor: `${event.color}20` }}
               >
-                {getEventIcon(event)}
+                <div style={{ color: event.color }}>
+                  {getEventIcon(event)}
+                </div>
               </div>
 
               {/* Event Info */}
