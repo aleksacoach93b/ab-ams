@@ -268,10 +268,42 @@ export default function LiveEventFeed({ playerId, userId, userRole }: LiveEventF
     handleDateChange(today)
   }
 
+  // Show loading state with minimal UI
   if (loading) {
-    return null // Don't show anything while loading
+    return (
+      <div 
+        className="mx-0 mb-4 rounded-xl overflow-hidden shadow-lg w-full"
+        style={{ 
+          backgroundColor: colorScheme.surface,
+          border: `1px solid ${colorScheme.border}`,
+          boxShadow: `0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)`
+        }}
+      >
+        <div 
+          className="px-4 py-3 flex items-center justify-between border-b"
+          style={{ 
+            borderColor: colorScheme.border,
+            backgroundColor: colorScheme.primary + '15'
+          }}
+        >
+          <div className="flex items-center space-x-2 flex-1">
+            <div 
+              className="w-2 h-2 rounded-full animate-pulse"
+              style={{ backgroundColor: colorScheme.primary }}
+            />
+            <span 
+              className="text-sm font-semibold"
+              style={{ color: colorScheme.text }}
+            >
+              Loading events...
+            </span>
+          </div>
+        </div>
+      </div>
+    )
   }
 
+  // Show empty state if no events
   if (events.length === 0) {
     return null // Don't show if no events
   }
