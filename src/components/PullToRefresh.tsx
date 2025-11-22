@@ -92,7 +92,11 @@ export default function PullToRefresh({
       className="pull-to-refresh-container relative w-full h-full"
       style={{
         transform: showIndicator ? `translateY(${Math.min(pullDistance, threshold)}px)` : 'translateY(0)',
-        transition: isRefreshing ? 'transform 0.3s ease' : 'none'
+        transition: isRefreshing ? 'transform 0.3s ease' : 'none',
+        overflowX: 'hidden',
+        overscrollBehaviorX: 'none',
+        touchAction: 'pan-y',
+        WebkitOverflowScrolling: 'touch'
       }}
     >
       {showIndicator && (
