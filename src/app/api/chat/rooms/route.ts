@@ -192,7 +192,9 @@ export async function GET(request: NextRequest) {
       },
       orderBy: {
         updatedAt: 'desc'
-      }
+      },
+      // Optimize: limit chat rooms to most recent 50 for better performance
+      take: 50
     })
 
     // Transform the data to match the frontend format

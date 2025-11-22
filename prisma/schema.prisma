@@ -266,6 +266,10 @@ model notifications {
   isRead     Boolean          @default(false)
   createdAt  DateTime         @default(now())
   users      users            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([createdAt])
 }
 
 model player_availability {

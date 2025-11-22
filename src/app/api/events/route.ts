@@ -139,7 +139,9 @@ export async function GET(request: NextRequest) {
           },
           orderBy: {
             startTime: 'asc'
-          }
+          },
+          // Optimize: limit results if needed (but keep all for now to maintain functionality)
+          // take: 1000 // Uncomment if you want to limit events
         })
       } else if (userRole === 'STAFF') {
         // Find events where the staff is a participant
@@ -211,7 +213,9 @@ export async function GET(request: NextRequest) {
           },
           orderBy: {
             startTime: 'asc'
-          }
+          },
+          // Optimize: limit results if needed (but keep all for now to maintain functionality)
+          // take: 1000 // Uncomment if you want to limit events
         })
       } else {
         // For coaches and admins, show all events
@@ -264,7 +268,9 @@ export async function GET(request: NextRequest) {
           },
           orderBy: {
             startTime: 'asc'
-          }
+          },
+          // Optimize: limit results if needed (but keep all for now to maintain functionality)
+          // take: 1000 // Uncomment if you want to limit events
         })
       }
     } else {

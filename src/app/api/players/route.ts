@@ -65,9 +65,39 @@ export async function GET(request: NextRequest) {
     }
     
     // Prisma handles connection pooling automatically
+    // Optimized: use select instead of include for better performance
     const players = await prisma.players.findMany({
-      include: {
-        users: true,
+      select: {
+        id: true,
+        userId: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        position: true,
+        status: true,
+        matchDayTag: true,
+        teamId: true,
+        avatar: true,
+        phone: true,
+        dateOfBirth: true,
+        nationality: true,
+        height: true,
+        weight: true,
+        preferredFoot: true,
+        jerseyNumber: true,
+        medicalNotes: true,
+        emergencyContact: true,
+        createdAt: true,
+        updatedAt: true,
+        users: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            firstName: true,
+            lastName: true
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc'
