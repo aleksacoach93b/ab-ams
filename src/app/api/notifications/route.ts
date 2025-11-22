@@ -147,11 +147,14 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({
+    // Add caching headers for better performance (30 seconds cache for notifications)
+    const response = NextResponse.json({
       notifications: notificationsWithCategory,
       unreadCount,
       total: notificationsWithCategory.length
     })
+    response.headers.set('Cache-Control', 'private, max-age=30, stale-while-revalidate=10')
+    return response
   } catch (error) {
     console.error('Error fetching notifications:', error)
     return NextResponse.json(
