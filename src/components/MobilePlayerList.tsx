@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Plus, Edit, Trash2, Phone, Mail, User } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { PlayerSkeleton } from '@/components/skeletons'
+import PullToRefresh from '@/components/PullToRefresh'
 
 interface Player {
   id: string
@@ -178,7 +179,8 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: colorScheme.background }}>
+    <PullToRefresh onRefresh={fetchPlayers}>
+      <div className="min-h-screen" style={{ backgroundColor: colorScheme.background }}>
       {/* Header */}
       <div 
         className="sticky top-0 border-b px-2 sm:px-4 py-3"
@@ -425,5 +427,6 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
         )}
       </div>
     </div>
+    </PullToRefresh>
   )
 }

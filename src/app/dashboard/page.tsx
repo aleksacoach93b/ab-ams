@@ -2040,7 +2040,7 @@ export default function Dashboard() {
       {showStaffNotesModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+                 className="bg-white rounded-lg modal-depth max-w-2xl w-full max-h-[80vh] overflow-hidden"
             style={{ backgroundColor: colorScheme.surface }}
           >
             <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: colorScheme.border }}>
@@ -2066,7 +2066,7 @@ export default function Dashboard() {
       {showStaffReportsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+                 className="bg-white rounded-lg modal-depth max-w-2xl w-full max-h-[80vh] overflow-hidden"
             style={{ backgroundColor: colorScheme.surface }}
           >
             <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: colorScheme.border }}>
@@ -2106,7 +2106,7 @@ export default function Dashboard() {
       {showActivityFeedModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+                 className="bg-white rounded-lg modal-depth max-w-4xl w-full max-h-[80vh] overflow-hidden"
             style={{ backgroundColor: colorScheme.surface }}
           >
             <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: colorScheme.border }}>

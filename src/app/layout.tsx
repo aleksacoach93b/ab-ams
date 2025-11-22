@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
+import PageTransition from "@/components/PageTransition";
 // import PWAInstaller from "@/components/PWAInstaller";
 import AnalyticsScheduler from "@/components/AnalyticsScheduler";
 
@@ -72,11 +73,13 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <ToastProvider>
-              <div style={{ minHeight: '100vh', width: '100%', background: 'var(--color-background)' }}>
-                <AnalyticsScheduler />
-                {children}
-                {/* <PWAInstaller /> */}
-              </div>
+              <PageTransition>
+                <div style={{ minHeight: '100vh', width: '100%', background: 'var(--color-background)' }}>
+                  <AnalyticsScheduler />
+                  {children}
+                  {/* <PWAInstaller /> */}
+                </div>
+              </PageTransition>
             </ToastProvider>
           </AuthProvider>
         </ThemeProvider>

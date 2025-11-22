@@ -1138,7 +1138,7 @@ export default function PlayerProfilePage() {
               {notes.map((note) => (
                 <div
                   key={note.id}
-                  className="rounded-xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl overflow-hidden"
+                  className="rounded-xl card-depth-3 border-2 transition-all duration-300 hover:shadow-xl overflow-hidden"
                   style={{ 
                     backgroundColor: colorScheme.surface,
                     borderColor: colorScheme.border
@@ -1254,7 +1254,7 @@ export default function PlayerProfilePage() {
       {/* Upload Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className={`w-full max-w-md rounded-lg ${
+          <div className={`w-full max-w-md rounded-lg modal-depth ${
             theme === 'dark' ? 'bg-gray-800' : 'bg-white'
           }`}>
             <div className={`p-6 border-b ${
@@ -1364,7 +1364,7 @@ export default function PlayerProfilePage() {
       {/* Tag Management Modal */}
       {showTagModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className={`w-full max-w-md rounded-lg ${
+          <div className={`w-full max-w-md rounded-lg modal-depth ${
             theme === 'dark' ? 'bg-gray-800' : 'bg-white'
           }`}>
             <div className={`p-6 border-b ${
@@ -1454,7 +1454,7 @@ export default function PlayerProfilePage() {
       {/* Edit Media Tags Modal */}
       {editingMediaTags && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className={`w-full max-w-md rounded-lg ${
+          <div className={`w-full max-w-md rounded-lg modal-depth ${
             theme === 'dark' ? 'bg-gray-800' : 'bg-white'
           }`}>
             <div className={`p-6 border-b ${
@@ -1576,7 +1576,7 @@ export default function PlayerProfilePage() {
               {playerChatRooms.map((room: any) => (
                 <div
                   key={room.id}
-                  className="p-4 rounded-lg border cursor-pointer hover:shadow-md transition-shadow"
+                  className="p-4 rounded-lg border cursor-pointer card-depth-1 hover:shadow-md transition-shadow"
                   style={{
                     backgroundColor: colorScheme.surface,
                     borderColor: colorScheme.border

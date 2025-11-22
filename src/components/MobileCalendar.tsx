@@ -19,6 +19,7 @@ import CustomIcon from './CustomIcon'
 import EventModal from './EventModal'
 import { useTheme } from '@/contexts/ThemeContext'
 import { CalendarSkeleton } from '@/components/skeletons'
+import PullToRefresh from '@/components/PullToRefresh'
 
 interface EventMedia {
   id: string
@@ -513,9 +514,10 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
   }
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{ backgroundColor: colorScheme.background }}
+    <PullToRefresh onRefresh={fetchEvents}>
+      <div 
+        className="min-h-screen"
+        style={{ backgroundColor: colorScheme.background }}
     >
       {/* Enhanced Header with Gradient */}
       <div 
@@ -877,5 +879,6 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
         staffPermissions={staffPermissions}
       />
     </div>
+    </PullToRefresh>
   )
 }

@@ -51,6 +51,13 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const { colorScheme } = useTheme()
+  
+  // Swipe gesture state
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  
+  // Minimum swipe distance (in pixels)
+  const minSwipeDistance = 50
 
   // Fetch events from API
   useEffect(() => {
@@ -280,6 +287,31 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
     setCurrentDate(newDate)
   }
 
+  // Swipe gesture handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      navigateMonth('next')
+    }
+    if (isRightSwipe) {
+      navigateMonth('prev')
+    }
+  }
+
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] // Monday first: Mon, Tue, Wed, Thu, Fri, Sat, Sun
   const monthDays = getDaysInMonth(currentDate)
   const todayEvents = getEventsForSelectedDate()
@@ -293,6 +325,9 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
     <div 
       className="w-full"
       style={{ backgroundColor: colorScheme.surface }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
     >
       {/* Clean Month Navigation */}
       <div className="px-0 sm:px-4 py-4 w-full shadow-sm" style={{ backgroundColor: colorScheme.surface }}>
@@ -335,12 +370,12 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
         </div>
       </div>
 
-      {/* Enhanced Calendar Grid */}
-      <div className="px-0 sm:px-4 pb-4 w-full" style={{ backgroundColor: colorScheme.surface }}>
-        <div className="rounded-2xl shadow-lg mx-0 sm:mx-4 overflow-hidden" style={{ backgroundColor: colorScheme.surface }}>
-          {/* Day headers - Monday first */}
+      {/* Enhanced Calendar Grid - Compact Mobile View */}
+      <div className="px-0 sm:px-4 pb-2 sm:pb-4 w-full" style={{ backgroundColor: colorScheme.surface }}>
+        <div className="rounded-xl sm:rounded-2xl shadow-lg mx-0 sm:mx-4 overflow-hidden" style={{ backgroundColor: colorScheme.surface }}>
+          {/* Day headers - Monday first - Compact on mobile */}
           <div 
-            className="grid grid-cols-7 text-center text-xs font-semibold py-3"
+            className="grid grid-cols-7 text-center text-[10px] sm:text-xs font-semibold py-2 sm:py-3"
             style={{ color: colorScheme.textSecondary }}
           >
             {days.map((day, index) => {
@@ -352,11 +387,11 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
             })}
           </div>
 
-          {/* Calendar days */}
-          <div className="grid grid-cols-7 gap-1 px-1 sm:px-2 pb-2">
+          {/* Calendar days - Compact on mobile */}
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 px-0.5 sm:px-1 pb-1 sm:pb-2">
             {monthDays.map((day, index) => {
               if (!day) {
-                return <div key={`empty-${index}`} className="h-14"></div>
+                return <div key={`empty-${index}`} className="h-10 sm:h-14"></div>
               }
 
               const dayIsToday = isToday(day)
@@ -366,41 +401,54 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
               return (
                 <div
                   key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
-                  className="h-14 flex flex-col items-center justify-center cursor-pointer relative rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-md"
+                  className="h-10 sm:h-14 flex flex-col items-center justify-center cursor-pointer relative rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-md"
                   style={{
                     backgroundColor: dayIsSelected 
                       ? colorScheme.primary 
                       : dayIsToday 
-                        ? `${colorScheme.primary}20`
+                        ? `${colorScheme.primary}25`
                         : 'transparent',
                     border: dayIsSelected 
                       ? `2px solid ${colorScheme.primary}` 
                       : dayIsToday 
                         ? `2px solid ${colorScheme.primary}`
-                        : 'none'
+                        : 'none',
+                    boxShadow: dayIsToday && !dayIsSelected
+                      ? `0 0 0 1px ${colorScheme.primary}40, inset 0 0 0 1px ${colorScheme.primary}20`
+                      : 'none'
                   }}
                   onClick={() => setSelectedDate(day)}
                 >
+                  {/* Today indicator ring */}
+                  {dayIsToday && !dayIsSelected && (
+                    <div 
+                      className="absolute inset-0 rounded-lg sm:rounded-xl"
+                      style={{
+                        boxShadow: `0 0 0 2px ${colorScheme.primary}60, 0 0 8px ${colorScheme.primary}30`
+                      }}
+                    />
+                  )}
                   <div 
-                    className={`text-xs font-medium ${
-                      dayIsToday ? 'font-semibold' : ''
+                    className={`text-[10px] sm:text-xs font-semibold relative z-10 ${
+                      dayIsToday ? 'font-bold' : ''
                     }`}
                     style={{ 
                       color: dayIsSelected 
                         ? '#FFFFFF' 
                         : dayIsToday 
                           ? colorScheme.primary 
-                          : colorScheme.text 
+                          : colorScheme.text,
+                      fontSize: dayIsToday ? '0.75rem' : undefined
                     }}
                   >
                     {day.getDate()}
                   </div>
                   {dayEvents.length > 0 && (
-                    <div className="flex gap-0.5 mt-1">
+                    <div className="flex gap-0.5 mt-0.5 sm:mt-1">
                       {dayEvents.slice(0, 3).map((event) => (
                         <div
                           key={event.id}
-                          className="w-1.5 h-1.5 rounded-full"
+                          className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full"
                           style={{ backgroundColor: event.color }}
                         ></div>
                       ))}
@@ -484,25 +532,25 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
             </p>
           </div>
         ) : (
-          <div className="space-y-3 px-2 sm:px-4 mx-0 sm:mx-4 pb-2">
+          <div className="space-y-2 sm:space-y-3 px-1 sm:px-2 mx-0 sm:mx-4 pb-2">
             {todayEvents.map((event, index) => (
               <div
                 key={event.id}
-                className="p-3 rounded-xl cursor-pointer transition-all duration-300 hover:shadow-lg shadow-md"
+                className="p-2 sm:p-3 rounded-lg sm:rounded-xl cursor-pointer transition-all duration-300 hover:shadow-lg shadow-md card-depth-1"
                 style={{ 
                   background: `linear-gradient(135deg, ${colorScheme.surface}, ${colorScheme.background})`,
                   border: `1px solid ${colorScheme.border}`,
                 }}
                 onClick={() => handleEventClick(event)}
               >
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 sm:space-x-3">
                   <div 
-                    className="w-1 h-8 rounded-full flex-shrink-0"
+                    className="w-0.5 sm:w-1 h-6 sm:h-8 rounded-full flex-shrink-0"
                     style={{ backgroundColor: event.color }}
                   />
                   
                   <div
-                    className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: `${event.color}20` }}
                   >
                     <div style={{ color: event.color }}>
@@ -511,9 +559,9 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center mb-1">
+                    <div className="flex items-center mb-0.5 sm:mb-1">
                       <span 
-                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mr-2"
+                        className="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-medium mr-1 sm:mr-2"
                         style={{ 
                           backgroundColor: `${event.color}20`,
                           color: event.color
@@ -524,29 +572,29 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
                     </div>
                     
                     <h4 
-                      className="text-sm font-semibold mb-1"
+                      className="text-xs sm:text-sm font-semibold mb-0.5 sm:mb-1 truncate"
                       style={{ color: colorScheme.text }}
                     >
                       {event.title}
                     </h4>
                     
                     {event.description && (
-                      <div className="text-xs" style={{ color: colorScheme.textSecondary }}>
+                      <div className="text-[10px] sm:text-xs line-clamp-1" style={{ color: colorScheme.textSecondary }}>
                         {event.description}
                       </div>
                     )}
                   </div>
                   
-                  {/* Start and End Times on the right */}
-                  <div className="flex flex-col items-end text-right">
+                  {/* Start and End Times on the right - Compact on mobile */}
+                  <div className="flex flex-col items-end text-right flex-shrink-0">
                     <div 
-                      className="text-xs font-medium"
+                      className="text-[10px] sm:text-xs font-medium"
                       style={{ color: colorScheme.text }}
                     >
                       {event.startTime}
                     </div>
                     <div 
-                      className="text-xs"
+                      className="text-[9px] sm:text-xs"
                       style={{ color: colorScheme.textSecondary }}
                     >
                       {event.endTime}
@@ -559,13 +607,22 @@ export default function ReadOnlyCalendar({ userId, userRole }: ReadOnlyCalendarP
         )}
       </div>
 
-      {/* Read-Only Event Modal */}
+      {/* Read-Only Event Modal - Quick Preview with Bottom Sheet on Mobile */}
       {isModalOpen && selectedEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
+        <div 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
+          onClick={() => setIsModalOpen(false)}
+        >
           <div 
-            className="relative max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-2xl p-6"
+            className="relative max-w-2xl w-full max-h-[85vh] sm:max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl p-4 sm:p-6 modal-depth"
             style={{ backgroundColor: colorScheme.surface }}
+            onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile swipe indicator */}
+            <div className="sm:hidden flex justify-center mb-4">
+              <div className="w-12 h-1 rounded-full" style={{ backgroundColor: colorScheme.border }}></div>
+            </div>
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold" style={{ color: colorScheme.text }}>

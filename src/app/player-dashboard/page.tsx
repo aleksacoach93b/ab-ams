@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Calendar, User, LogOut, Clock, MapPin, ArrowLeft, Folder, FileText, Image, File, Eye, Palette, Heart, ExternalLink, Activity, MessageCircle, Bell, Check } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/contexts/ToastContext'
 import ReadOnlyCalendar from '@/components/ReadOnlyCalendar'
 import TeamChat from '@/components/TeamChat'
 import RealTimeNotifications from '@/components/RealTimeNotifications'
@@ -52,6 +53,7 @@ export default function PlayerDashboard() {
   const router = useRouter()
   const { colorScheme, theme, setTheme } = useTheme()
   const { user, logout, isAuthenticated, isLoading } = useAuth()
+  const { showWarning, showSuccess, showInfo } = useToast()
   const [events, setEvents] = useState<Event[]>([])
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [playerNotes, setPlayerNotes] = useState<PlayerNote[]>([])
@@ -62,6 +64,9 @@ export default function PlayerDashboard() {
   const [isCheckingWellness, setIsCheckingWellness] = useState(false)
   const [showTeamChat, setShowTeamChat] = useState(false)
   const [showThemeDropdown, setShowThemeDropdown] = useState(false)
+  const [wellnessReminderShown, setWellnessReminderShown] = useState(false)
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false)
+  const [previousWellnessStatus, setPreviousWellnessStatus] = useState<boolean | null>(null)
   const [wellnessSettings, setWellnessSettings] = useState<{
     csvUrl: string
     surveyId: string
@@ -783,17 +788,17 @@ export default function PlayerDashboard() {
               </h2>
             </div>
 
-            {/* Wellness Survey Required Alert - BLOCKS ACCESS */}
+            {/* Wellness Survey Required Alert - BLOCKS ACCESS with Progress Indicator */}
             {wellnessCompletedToday === false && (
               <div 
-                className="mb-6 p-6 rounded-2xl border-2"
+                className="mb-6 p-6 rounded-2xl border-2 card-depth-2"
                 style={{ 
                   backgroundColor: '#FEF2F2',
                   borderColor: '#FCA5A5'
                 }}
               >
                 <div className="flex items-center space-x-4">
-                  <div className="p-3 rounded-full bg-red-100">
+                  <div className="p-3 rounded-full bg-red-100 animate-pulse">
                     <Heart className="h-6 w-6 text-red-600" />
                   </div>
                   <div className="flex-1">
@@ -803,6 +808,13 @@ export default function PlayerDashboard() {
                     <p className="text-red-700 mb-3">
                       You must complete your daily wellness survey to access your dashboard and schedule.
                     </p>
+                    {/* Progress Indicator - 0% (not completed) */}
+                    <div className="mb-3 w-full h-2 rounded-full bg-red-200">
+                      <div 
+                        className="h-full rounded-full bg-red-600 transition-all duration-500"
+                        style={{ width: '0%' }}
+                      />
+                    </div>
                     <button
                       onClick={async () => {
                         console.log('Wellness card clicked!')
@@ -810,7 +822,7 @@ export default function PlayerDashboard() {
                         
                         if (!currentPlayer || !currentPlayer.id) {
                           console.log('No current player found')
-                          alert('Player information not found. Please try again.')
+                          showWarning('Player information not found. Please try again.')
                           return
                         }
                         
@@ -822,7 +834,7 @@ export default function PlayerDashboard() {
                         }
                         
                         if (!settings.baseUrl || !settings.surveyId) {
-                          alert('Wellness settings are incomplete. Please contact administrator.')
+                          showWarning('Wellness settings are incomplete. Please contact administrator.')
                           console.error('❌ Wellness settings incomplete:', settings)
                           return
                         }
@@ -834,7 +846,7 @@ export default function PlayerDashboard() {
                         const wellnessWindow = window.open(wellnessUrl, '_blank')
                         
                         if (!wellnessWindow) {
-                          alert('Popup blocked. Please allow popups for this site and try again.')
+                          showWarning('Popup blocked. Please allow popups for this site and try again.')
                           return
                         }
                         
@@ -860,17 +872,17 @@ export default function PlayerDashboard() {
               </div>
             )}
 
-            {/* Wellness Survey Completed Success - Compact */}
+            {/* Wellness Survey Completed Success - Compact with Progress Indicator */}
             {wellnessCompletedToday === true && (
               <div 
-                className="mb-4 p-3 rounded-lg border"
+                className="mb-4 p-3 rounded-lg border card-depth-1"
                 style={{ 
                   backgroundColor: '#F0FDF4',
                   borderColor: '#86EFAC'
                 }}
               >
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-full bg-green-100">
+                  <div className="p-2 rounded-full bg-green-100 animate-success-pulse">
                     <Heart className="h-4 w-4 text-green-600" />
                   </div>
                   <div className="flex-1">
@@ -880,6 +892,13 @@ export default function PlayerDashboard() {
                     <p className="text-xs text-green-700">
                       Full dashboard access unlocked
                     </p>
+                    {/* Progress Indicator - 100% */}
+                    <div className="mt-2 w-full h-1.5 rounded-full bg-green-200">
+                      <div 
+                        className="h-full rounded-full bg-green-600 transition-all duration-500"
+                        style={{ width: '100%' }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -952,7 +971,7 @@ export default function PlayerDashboard() {
                   
                   if (!currentPlayer || !currentPlayer.id) {
                     console.log('No current player found')
-                    alert('Player information not found. Please try again.')
+                    showWarning('Player information not found. Please try again.')
                     return
                   }
                   
@@ -964,7 +983,7 @@ export default function PlayerDashboard() {
                   }
                   
                   if (!settings.baseUrl || !settings.surveyId) {
-                    alert('Wellness settings are incomplete. Please contact administrator.')
+                    showWarning('Wellness settings are incomplete. Please contact administrator.')
                     console.error('❌ Wellness settings incomplete:', settings)
                     return
                   }
@@ -978,7 +997,7 @@ export default function PlayerDashboard() {
                   const wellnessWindow = window.open(wellnessUrl, '_blank')
                   
                   if (!wellnessWindow) {
-                    alert('Popup blocked. Please allow popups for this site and try again.')
+                    showWarning('Popup blocked. Please allow popups for this site and try again.')
                     return
                   }
                   
@@ -1037,7 +1056,7 @@ export default function PlayerDashboard() {
                   
                   if (!currentPlayer || !currentPlayer.id) {
                     console.log('No current player found')
-                    alert('Player information not found. Please try again.')
+                    showWarning('Player information not found. Please try again.')
                     return
                   }
                   
@@ -1135,6 +1154,79 @@ export default function PlayerDashboard() {
         isOpen={showTeamChat} 
         onClose={() => setShowTeamChat(false)} 
       />
+
+      {/* Sticky FAB for Wellness Survey - Only show if not completed */}
+      {wellnessCompletedToday === false && (
+        <button
+          onClick={async () => {
+            if (!currentPlayer || !currentPlayer.id) {
+              showWarning('Player information not found. Please try again.')
+              return
+            }
+            
+            const settings = wellnessSettings || {
+              csvUrl: 'https://wellness-monitor-tan.vercel.app/api/surveys/cmg6klyig0004l704u1kd78zb/export/csv',
+              surveyId: 'cmg6klyig0004l704u1kd78zb',
+              baseUrl: 'https://wellness-monitor-tan.vercel.app'
+            }
+            
+            if (!settings.baseUrl || !settings.surveyId) {
+              showWarning('Wellness settings are incomplete. Please contact administrator.')
+              return
+            }
+            
+            const wellnessUrl = `${settings.baseUrl}/kiosk/${settings.surveyId}`
+            const wellnessWindow = window.open(wellnessUrl, '_blank')
+            
+            if (!wellnessWindow) {
+              showWarning('Popup blocked. Please allow popups for this site and try again.')
+              return
+            }
+            
+            const checkCompletion = setInterval(async () => {
+              if (wellnessWindow?.closed) {
+                clearInterval(checkCompletion)
+                await checkWellnessSurveyCompletion()
+                showInfo('Checking wellness survey status...')
+              }
+            }, 2000)
+            
+            setTimeout(() => clearInterval(checkCompletion), 10 * 60 * 1000)
+          }}
+          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 animate-bounce-subtle"
+          style={{
+            backgroundColor: '#EF4444',
+            color: 'white',
+            boxShadow: '0 8px 24px rgba(239, 68, 68, 0.4)'
+          }}
+          title="Complete Wellness Survey"
+        >
+          <Heart className="h-6 w-6" />
+        </button>
+      )}
+
+      {/* Success Animation Overlay */}
+      {showSuccessAnimation && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div 
+            className="bg-white rounded-2xl p-8 shadow-2xl animate-success-popup"
+            style={{ maxWidth: '90%' }}
+          >
+            <div className="text-center">
+              <div className="mb-4 animate-success-checkmark">
+                <div className="w-20 h-20 mx-auto rounded-full bg-green-100 flex items-center justify-center">
+                  <Check className="h-12 w-12 text-green-600" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-green-600 mb-2">Wellness Completed!</h3>
+              <p className="text-gray-600">Great job! Your dashboard is now fully unlocked.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
