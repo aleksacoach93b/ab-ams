@@ -178,15 +178,15 @@ body[class*="theme-dark"] {
   }
 }
 
-/* Card fade-in classes */
+/* Card fade-in classes - cards are visible by default, animation adds smooth entrance */
 .card-fade-in {
-  animation: fadeIn 0.5s ease-out forwards;
-  opacity: 0;
+  opacity: 1 !important; /* Always visible */
+  animation: fadeIn 0.5s ease-out;
 }
 
 .card-fade-in-delayed {
   animation: fadeIn 0.5s ease-out forwards;
-  opacity: 0;
+  opacity: 1; /* Start visible, animation will handle the fade-in */
 }
 
 /* Staggered fade-in for multiple cards */
