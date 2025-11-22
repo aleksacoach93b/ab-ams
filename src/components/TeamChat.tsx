@@ -183,7 +183,22 @@ export default function TeamChat({ isOpen, onClose }: TeamChatProps) {
         const rooms = await response.json()
         console.log('Fetched chat rooms from database:', rooms)
         
-        setChatRooms(rooms)
+        // CRITICAL: For players, filter rooms to only show rooms where they are participants
+        // Double-check on frontend to ensure security
+        if (user && user.role === 'PLAYER') {
+          const userId = (user as any).id || (user as any).userId
+          const filteredRooms = rooms.filter((room: ChatRoom) => {
+            const isParticipant = room.participants.some(p => p.id === userId)
+            if (!isParticipant) {
+              console.warn('🚫 [TEAM CHAT] Player not a participant in room:', room.name, 'Filtering out.')
+            }
+            return isParticipant
+          })
+          console.log('🔒 [TEAM CHAT] Filtered rooms for player:', filteredRooms.length, 'out of', rooms.length)
+          setChatRooms(filteredRooms)
+        } else {
+          setChatRooms(rooms)
+        }
         
         // Set first room as active if available, otherwise clear activeRoom
         if (rooms.length > 0) {

@@ -146,11 +146,34 @@ export async function GET(request: NextRequest) {
 
     // Get chat rooms where user is a participant (DB path)
     // Note: chat_rooms model doesn't have isActive field, only participants do
+    // CRITICAL: For players, ensure we only return rooms where they are active participants
+    // Also check if user is associated with a player and use player's userId if needed
+    let userIdToSearch = user.userId
+    
+    // For players, check if they have a player record and use the correct userId
+    if (user.role === 'PLAYER') {
+      const player = await prisma.players.findFirst({
+        where: {
+          OR: [
+            { id: user.userId },
+            { userId: user.userId }
+          ]
+        },
+        select: { id: true, userId: true }
+      })
+      
+      if (player) {
+        // Use the player's userId (which is the users.id) for chat room participants
+        userIdToSearch = player.userId || user.userId
+        console.log('🔍 [CHAT ROOMS] Player found, using userId:', userIdToSearch, 'for player:', player.id)
+      }
+    }
+    
     const chatRooms = await prisma.chat_rooms.findMany({
       where: {
         chat_room_participants: {
           some: {
-            userId: user.userId,
+            userId: userIdToSearch,
             isActive: true
           }
         }

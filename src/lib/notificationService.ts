@@ -280,15 +280,31 @@ export class NotificationService {
     })
   }
 
-  // Report-related notifications
+  // Report-related notifications - Only send to ADMIN, COACH, and STAFF (NOT PLAYERS)
   static async notifyReportUploaded(reportId: string, reportName: string, uploadedBy: string) {
+    // Get only staff users (ADMIN, COACH, STAFF) - exclude PLAYERS
+    const staffUsers = await prisma.users.findMany({
+      where: {
+        isActive: true,
+        role: {
+          in: ['ADMIN', 'COACH', 'STAFF']
+        }
+      },
+      select: { id: true }
+    })
+    
+    const staffUserIds = staffUsers.map(u => u.id)
+    
+    console.log('📢 [NOTIFY REPORT UPLOADED] Sending to staff users only (excluding players):', staffUserIds.length)
+    
     return this.createNotification({
       title: 'New Report Uploaded',
       message: `${uploadedBy} uploaded "${reportName}"`,
       type: 'MEDIA_UPLOADED',
       category: 'REPORT',
       relatedId: reportId,
-      relatedType: 'report'
+      relatedType: 'report',
+      userIds: staffUserIds // Only send to staff, not players
     })
   }
 
