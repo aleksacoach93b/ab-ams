@@ -23,10 +23,11 @@ const createPrismaClient = () => {
   let runtimeUrl = directUrl || databaseUrl
   
   // If using pooler URL, add pgbouncer parameter to disable prepared statements
+  // Increase connection limit for high concurrency (50+ users)
   if (runtimeUrl && runtimeUrl.includes('pooler.supabase.com')) {
     runtimeUrl = runtimeUrl.includes('?') 
-      ? `${runtimeUrl}&pgbouncer=true&connection_limit=1`
-      : `${runtimeUrl}?pgbouncer=true&connection_limit=1`
+      ? `${runtimeUrl}&pgbouncer=true&connection_limit=10&pool_timeout=10`
+      : `${runtimeUrl}?pgbouncer=true&connection_limit=10&pool_timeout=10`
   }
   
   console.log('🔗 Database URL configured:', '✅ Set')
@@ -38,7 +39,15 @@ const createPrismaClient = () => {
         url: runtimeUrl
       }
     },
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error']
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    // Optimize for high concurrency (50+ users)
+    // Connection pool settings for better performance
+    __internal: {
+      engine: {
+        connectTimeout: 10000, // 10 seconds
+        queryTimeout: 30000, // 30 seconds
+      }
+    } as any
   })
 }
 

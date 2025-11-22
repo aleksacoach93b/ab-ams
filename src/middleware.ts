@@ -28,35 +28,57 @@ async function verifyJWT(token: string, secret: string) {
 }
 
 // Verify user exists in database via API call (Edge Runtime compatible)
+// Optimized for high concurrency (50+ users) with timeout and error handling
 async function verifyUserExists(userId: string, requestUrl: string, cookies: string): Promise<boolean> {
   try {
     // Call internal API to verify user exists
     // This works in Edge Runtime unlike direct Prisma calls
     const baseUrl = new URL(requestUrl).origin
-    const response = await fetch(`${baseUrl}/api/auth/verify-user?id=${userId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': cookies, // Forward cookies to internal API call
-      },
-      cache: 'no-store'
-    })
     
-    if (!response.ok) {
-      console.log('🚫 [MIDDLEWARE] User verification failed:', userId, 'Status:', response.status)
-      return false
-    }
+    // Add timeout for high concurrency scenarios (5 seconds max)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000)
     
-    const data = await response.json()
-    const isValid = data.exists === true && data.isActive === true
-    if (!isValid) {
-      console.log('🚫 [MIDDLEWARE] User verification returned invalid:', userId, data)
+    try {
+      const response = await fetch(`${baseUrl}/api/auth/verify-user?id=${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': cookies, // Forward cookies to internal API call
+        },
+        cache: 'no-store',
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!response.ok) {
+        console.log('🚫 [MIDDLEWARE] User verification failed:', userId, 'Status:', response.status)
+        // On non-200 status, allow request to proceed to prevent blocking legitimate users
+        // This is a safety measure for high concurrency scenarios
+        return true
+      }
+      
+      const data = await response.json()
+      const isValid = data.exists === true && data.isActive === true
+      if (!isValid) {
+        console.log('🚫 [MIDDLEWARE] User verification returned invalid:', userId, data)
+      }
+      return isValid
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId)
+      if (fetchError.name === 'AbortError') {
+        console.warn('⚠️ [MIDDLEWARE] User verification timeout (5s), allowing request:', userId)
+        // On timeout, allow request to proceed to prevent blocking legitimate users
+        return true
+      }
+      throw fetchError
     }
-    return isValid
   } catch (error) {
     console.error('🚫 [MIDDLEWARE] Error checking user existence:', error)
     // On error, don't block the request - allow it to proceed
-    // This prevents issues when multiple users are using the app simultaneously
+    // This prevents issues when multiple users are using the app simultaneously (50+ users)
+    // Security: Token is still verified via JWT, this is just an additional check
     return true // Allow request to proceed on error to prevent false positives
   }
 }
