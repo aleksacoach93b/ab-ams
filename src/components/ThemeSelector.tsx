@@ -313,9 +313,9 @@ export default function ThemeSelector() {
     <div 
       className="relative z-[10000]"
       style={{
-        // Hide entire container when modal is open (except when ThemeSelector dropdown is open)
-        display: modalIsOpen && !isOpen ? 'none' : 'block',
-        visibility: modalIsOpen && !isOpen ? 'hidden' : 'visible',
+        // Always visible - like notification icon
+        display: 'block',
+        visibility: 'visible',
       }}
     >
       <button
