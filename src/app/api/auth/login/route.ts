@@ -89,8 +89,8 @@ export async function POST(request: NextRequest) {
 
     // Get client information for tracking
     const ipAddressRaw = request.headers.get('x-forwarded-for') || 
-                         request.headers.get('x-real-ip') || 
-                         'unknown'
+                     request.headers.get('x-real-ip') || 
+                     'unknown'
     // Extract first IP if multiple (x-forwarded-for can contain multiple IPs)
     const ipAddress = ipAddressRaw.split(',')[0].trim()
     const userAgent = request.headers.get('user-agent') || 'unknown'
@@ -554,7 +554,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error('Error getting location:', error)
     }
-    
+
     // Create login log
     try {
       await prisma.login_logs.create({

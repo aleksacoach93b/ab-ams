@@ -584,18 +584,18 @@ export async function PUT(request: NextRequest) {
     
     // Prepare update data
     const updateData: any = {
-      title,
-      description: description || null,
-      type: finalEventType,
-      startTime: startDateTime, // DateTime object
-      endTime: endDateTime, // DateTime object
-      locationId: location || null, // Use locationId instead of location
-      icon: icon || 'Dumbbell', // Use icon instead of iconName
-      isRecurring: body.isRecurring !== undefined ? body.isRecurring : undefined,
-      isAllDay: body.isAllDay !== undefined ? body.isAllDay : undefined,
-      allowPlayerCreation: body.allowPlayerCreation !== undefined ? body.allowPlayerCreation : undefined,
-      allowPlayerReschedule: body.allowPlayerReschedule !== undefined ? body.allowPlayerReschedule : undefined,
-      updatedAt: new Date(), // Update timestamp
+        title,
+        description: description || null,
+        type: finalEventType,
+        startTime: startDateTime, // DateTime object
+        endTime: endDateTime, // DateTime object
+        locationId: location || null, // Use locationId instead of location
+        icon: icon || 'Dumbbell', // Use icon instead of iconName
+        isRecurring: body.isRecurring !== undefined ? body.isRecurring : undefined,
+        isAllDay: body.isAllDay !== undefined ? body.isAllDay : undefined,
+        allowPlayerCreation: body.allowPlayerCreation !== undefined ? body.allowPlayerCreation : undefined,
+        allowPlayerReschedule: body.allowPlayerReschedule !== undefined ? body.allowPlayerReschedule : undefined,
+        updatedAt: new Date(), // Update timestamp
     }
 
     // Try to add matchDayTag if provided, but handle if column doesn't exist

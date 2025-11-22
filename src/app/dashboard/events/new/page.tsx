@@ -320,12 +320,12 @@ export default function NewEventPage() {
                   Date *
                 </label>
                 <DatePicker
-                  value={formData.date}
+                    value={formData.date}
                   onChange={(date) => {
                     setFormData(prev => ({ ...prev, date }))
                   }}
                   placeholder="Select date"
-                  required
+                    required
                   name="date"
                   id="date"
                   className="w-full"

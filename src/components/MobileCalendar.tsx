@@ -546,7 +546,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
             {canManageEvents() && (
               <button
                 onClick={onAddEvent}
-                className="px-4 py-2 text-sm font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+                className="px-4 py-2 text-sm font-medium rounded-lg shadow-md transition-all duration-300"
                 style={{ 
                   backgroundColor: colorScheme.primary,
                   color: '#FFFFFF'
@@ -564,7 +564,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
         <div className="flex items-center justify-between">
           <button 
             onClick={() => navigateMonth('prev')} 
-            className="p-3 rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+            className="p-3 rounded-full shadow-md transition-all duration-300"
             style={{ 
               backgroundColor: colorScheme.background,
               color: colorScheme.textSecondary,
@@ -589,7 +589,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
           
           <button 
             onClick={() => navigateMonth('next')} 
-            className="p-3 rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+            className="p-3 rounded-full shadow-md transition-all duration-300"
             style={{ 
               backgroundColor: colorScheme.background,
               color: colorScheme.textSecondary,
@@ -668,7 +668,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
             return (
               <div
                 key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
-                className="h-14 flex flex-col items-center justify-center cursor-pointer relative rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-md"
+                className="h-14 flex flex-col items-center justify-center cursor-pointer relative rounded-xl transition-all duration-300"
                 style={{
                   backgroundColor: dayIsSelected 
                     ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)' 
@@ -787,7 +787,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
             {todayEvents.map((event, index) => (
               <div
                 key={event.id}
-                className="card-fade-in hover-scale p-3 rounded-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-md"
+                className="card-fade-in p-3 rounded-xl cursor-pointer transition-all duration-300 shadow-md"
                 style={{ 
                   background: `linear-gradient(135deg, ${colorScheme.surface}, ${colorScheme.background})`,
                   border: `2px solid ${colorScheme.border}`,

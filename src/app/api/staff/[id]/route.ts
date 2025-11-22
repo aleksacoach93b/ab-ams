@@ -420,8 +420,8 @@ export async function DELETE(
       // Then delete staff record
       console.log('🔍 [DELETE] Attempting to delete staff:', { staffId: id })
       await tx.staff.delete({
-        where: { id }
-      })
+      where: { id }
+    })
       console.log('✅ [DELETE] Staff record deleted successfully:', { staffId: id })
     })
 

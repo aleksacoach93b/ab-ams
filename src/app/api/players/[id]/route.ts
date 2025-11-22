@@ -537,22 +537,22 @@ export async function DELETE(
 
     // CRITICAL SECURITY: Delete both player AND user in transaction to prevent login
     await prisma.$transaction(async (tx) => {
-      // Delete the player record
+    // Delete the player record
       await tx.players.delete({
-        where: { id: playerId }
-      })
-      console.log('✅ Deleted player record')
-      
+      where: { id: playerId }
+    })
+    console.log('✅ Deleted player record')
+
       // Delete the associated user record (this prevents login)
-      if (player.userId) {
+    if (player.userId) {
         await tx.user.delete({
-          where: { id: player.userId }
+        where: { id: player.userId }
         }).catch((error: any) => {
           // If user was already deleted or doesn't exist, log but don't fail
           console.log('⚠️ User already deleted or not found:', player.userId, error.message)
-        })
-        console.log('✅ Deleted user record')
-      }
+      })
+      console.log('✅ Deleted user record')
+    }
     })
 
     console.log('🎉 Successfully deleted player:', playerId)

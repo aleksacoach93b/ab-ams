@@ -360,10 +360,10 @@ export async function GET(request: NextRequest) {
     const analyticsDates = savedAnalytics.map(analytics => analytics.date)
     const availabilityDates = playerAvailability.map(av => av.date)
     const allHistoricalDates = [...analyticsDates, ...availabilityDates]
-    
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    
+
     let earliestDate: Date
     if (allHistoricalDates.length > 0) {
       earliestDate = new Date(Math.min(...allHistoricalDates.map(d => d.getTime())))
@@ -644,16 +644,16 @@ export async function GET(request: NextRequest) {
         }
         
         // ALWAYS add data for this day - we never skip days
-        allData.push({
-          date: new Date(d),
-          playerId,
-          playerName: playerData?.name || `${player.firstName} ${player.lastName}`.trim(),
+          allData.push({
+            date: new Date(d),
+            playerId,
+            playerName: playerData?.name || `${player.firstName} ${player.lastName}`.trim(),
           activity: statusForThisDay || 'Fully Available',
           availabilityStatus: statusForThisDay || 'Fully Available',
           matchDayTag: matchDayTagForThisDay,
           reason: reasonForThisDay,
           notes: notesForThisDay
-        })
+          })
       }
     })
 

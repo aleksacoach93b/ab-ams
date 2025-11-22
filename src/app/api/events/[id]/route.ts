@@ -219,34 +219,34 @@ export async function PUT(
     const startDateTime = new Date(`${date}T${startTime || '00:00'}:00`)
     const endDateTime = new Date(`${date}T${endTime || '23:59'}:00`)
 
-    // Set appropriate default icon based on event type
-    const getDefaultIcon = (eventType: string) => {
-      switch (eventType.toUpperCase()) {
-        case 'TRAINING': return 'dumbbell-realistic'
-        case 'MATCH': return 'football-ball-realistic'
-        case 'MEETING': return 'meeting-new'
-        case 'MEDICAL': return 'blood-sample-final'
-        case 'RECOVERY': return 'recovery-new'
-        case 'MEAL': return 'meal-plate'
-        case 'REST': return 'bed-time'
-        case 'LB_GYM': return 'dumbbell-realistic'
-        case 'UB_GYM': return 'dumbbell-realistic'
-        case 'PRE_ACTIVATION': return 'dumbbell-realistic'
-        case 'REHAB': return 'blood-sample-final'
-        case 'STAFF_MEETING': return 'meeting-new'
-        case 'VIDEO_ANALYSIS': return 'stopwatch-whistle'
-        case 'DAY_OFF': return 'bed-time'
-        case 'TRAVEL': return 'bus-new'
-        case 'OTHER': return 'stopwatch-whistle'
-        default: return 'dumbbell-realistic'
+      // Set appropriate default icon based on event type
+      const getDefaultIcon = (eventType: string) => {
+        switch (eventType.toUpperCase()) {
+          case 'TRAINING': return 'dumbbell-realistic'
+          case 'MATCH': return 'football-ball-realistic'
+          case 'MEETING': return 'meeting-new'
+          case 'MEDICAL': return 'blood-sample-final'
+          case 'RECOVERY': return 'recovery-new'
+          case 'MEAL': return 'meal-plate'
+          case 'REST': return 'bed-time'
+          case 'LB_GYM': return 'dumbbell-realistic'
+          case 'UB_GYM': return 'dumbbell-realistic'
+          case 'PRE_ACTIVATION': return 'dumbbell-realistic'
+          case 'REHAB': return 'blood-sample-final'
+          case 'STAFF_MEETING': return 'meeting-new'
+          case 'VIDEO_ANALYSIS': return 'stopwatch-whistle'
+          case 'DAY_OFF': return 'bed-time'
+          case 'TRAVEL': return 'bus-new'
+          case 'OTHER': return 'stopwatch-whistle'
+          default: return 'dumbbell-realistic'
+        }
       }
-    }
 
-    // Use a more reliable validation method - check if type exists in EventType enum
-    const upperTypePut = type?.toUpperCase()
-    const finalEventType = (upperTypePut && EventType[upperTypePut as keyof typeof EventType]) 
-      ? upperTypePut as EventType 
-      : EventType.TRAINING
+      // Use a more reliable validation method - check if type exists in EventType enum
+      const upperTypePut = type?.toUpperCase()
+      const finalEventType = (upperTypePut && EventType[upperTypePut as keyof typeof EventType]) 
+        ? upperTypePut as EventType 
+        : EventType.TRAINING
 
     // Update event with participants in a transaction
     // Increase timeout to 30 seconds for large participant lists
@@ -260,14 +260,14 @@ export async function PUT(
 
       // Prepare update data
       const updateData: any = {
-        title,
-        description: description || null,
-        type: finalEventType,
-        startTime: startDateTime, // DateTime object
-        endTime: endDateTime, // DateTime object
-        locationId: location || null, // Use locationId instead of location
-        icon: icon || getDefaultIcon(finalEventType), // Use icon instead of iconName
-      }
+          title,
+          description: description || null,
+          type: finalEventType,
+          startTime: startDateTime, // DateTime object
+          endTime: endDateTime, // DateTime object
+          locationId: location || null, // Use locationId instead of location
+          icon: icon || getDefaultIcon(finalEventType), // Use icon instead of iconName
+        }
 
       // Try to add matchDayTag if provided, but handle if column doesn't exist
       if (matchDayTag !== undefined) {
@@ -318,30 +318,30 @@ export async function PUT(
 
     // Fetch the complete event with participants OUTSIDE transaction (faster)
     const completeEvent = await prisma.events.findUnique({
-      where: { id: eventId },
-      include: {
-        event_participants: {
-          include: {
-            players: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            },
-            staff: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true
+        where: { id: eventId },
+        include: {
+          event_participants: {
+            include: {
+              players: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              },
+              staff: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
               }
             }
           }
         }
-      }
-    })
+      })
 
     if (!completeEvent) {
       return NextResponse.json(
