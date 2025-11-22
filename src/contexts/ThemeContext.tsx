@@ -21,19 +21,19 @@ export type ColorScheme = {
 
 const colorSchemes: Record<Theme, ColorScheme> = {
   light: {
-    primary: '#3B82F6',
-    primaryHover: '#2563EB',
+    primary: '#2563EB', // Jača, življa plava
+    primaryHover: '#1D4ED8', // Tamnija za hover
     primaryLight: '#DBEAFE',
-    secondary: '#6B7280',
-    background: '#F9FAFB',
-    surface: '#FFFFFF',
-    text: '#111827',
-    textSecondary: '#6B7280',
-    border: '#E5E7EB',
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    info: '#3B82F6',
+    secondary: '#475569',
+    background: '#FFFFFF', // Čistija bela pozadina
+    surface: '#F8FAFC', // Suptilna siva za kartice
+    text: '#0F172A', // Tamniji tekst za bolji kontrast
+    textSecondary: '#475569',
+    border: '#CBD5E1', // Jača granica
+    success: '#059669',
+    warning: '#D97706',
+    error: '#DC2626',
+    info: '#0284C7',
   },
   dark: {
     primary: '#1E3A8A',
@@ -51,64 +51,64 @@ const colorSchemes: Record<Theme, ColorScheme> = {
     info: '#3B82F6',
   },
   blue: {
-    primary: '#1E40AF',
-    primaryHover: '#1E3A8A',
-    primaryLight: '#DBEAFE',
-    secondary: '#64748B',
-    background: '#F8FAFC',
+    primary: '#0066FF', // Življa, modernija plava
+    primaryHover: '#0052CC', // Tamnija za hover
+    primaryLight: '#E0F2FE', // Svetlija plava za akcente
+    secondary: '#475569',
+    background: '#EFF6FF', // Suptilna plava pozadina
     surface: '#FFFFFF',
-    text: '#0F172A',
+    text: '#0C1226', // Tamniji tekst za bolji kontrast
     textSecondary: '#475569',
-    border: '#E2E8F0',
+    border: '#BFDBFE', // Plava granica koja se uklapa
     success: '#059669',
     warning: '#D97706',
     error: '#DC2626',
     info: '#0284C7',
   },
   green: {
-    primary: '#059669',
-    primaryHover: '#047857',
-    primaryLight: '#DCFCE7',
-    secondary: '#6B7280',
-    background: '#F0FDF4',
+    primary: '#10B981', // Življa, modernija zelena
+    primaryHover: '#059669', // Tamnija za hover
+    primaryLight: '#D1FAE5', // Svjetlija zelena za akcente
+    secondary: '#475569',
+    background: '#ECFDF5', // Suptilna zelena pozadina
     surface: '#FFFFFF',
-    text: '#064E3B',
+    text: '#022C22', // Tamniji tekst za bolji kontrast
     textSecondary: '#374151',
-    border: '#D1FAE5',
-    success: '#059669',
+    border: '#A7F3D0', // Zelena granica koja se uklapa
+    success: '#10B981',
     warning: '#D97706',
     error: '#DC2626',
     info: '#0891B2',
   },
   purple: {
-    primary: '#7C3AED',
-    primaryHover: '#6D28D9',
-    primaryLight: '#EDE9FE',
-    secondary: '#8B5CF6',
-    background: '#FAF5FF',
+    primary: '#8B5CF6', // Življa, modernija ljubičasta
+    primaryHover: '#7C3AED', // Tamnija za hover
+    primaryLight: '#F3E8FF', // Svjetlija ljubičasta za akcente
+    secondary: '#A78BFA',
+    background: '#FAF5FF', // Suptilna ljubičasta pozadina
     surface: '#FFFFFF',
-    text: '#581C87',
+    text: '#4C1D95', // Tamniji tekst za bolji kontrast
     textSecondary: '#6B7280',
-    border: '#E9D5FF',
+    border: '#DDD6FE', // Ljubičasta granica koja se uklapa
     success: '#059669',
     warning: '#D97706',
     error: '#DC2626',
-    info: '#7C3AED',
+    info: '#8B5CF6',
   },
   orange: {
-    primary: '#C2410C',
-    primaryHover: '#9A3412',
-    primaryLight: '#FED7AA',
-    secondary: '#EA580C',
-    background: '#FFF7ED',
+    primary: '#F97316', // Življa, modernija narandžasta
+    primaryHover: '#EA580C', // Tamnija za hover
+    primaryLight: '#FFEDD5', // Svjetlija narandžasta za akcente
+    secondary: '#FB923C',
+    background: '#FFF7ED', // Suptilna narandžasta pozadina
     surface: '#FFFFFF',
-    text: '#9A3412',
+    text: '#7C2D12', // Tamniji tekst za bolji kontrast
     textSecondary: '#6B7280',
-    border: '#FED7AA',
+    border: '#FED7AA', // Narandžasta granica koja se uklapa
     success: '#059669',
-    warning: '#D97706',
+    warning: '#F97316',
     error: '#DC2626',
-    info: '#C2410C',
+    info: '#F97316',
   },
 }
 
