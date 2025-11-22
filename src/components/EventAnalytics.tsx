@@ -443,7 +443,7 @@ export default function EventAnalytics({ userId, userRole }: EventAnalyticsProps
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {eventStats.eventTypesDistribution.map((item, index) => (
-                <div key={item.type} className="flex items-center justify-between p-3 rounded-lg shadow-md border hover:shadow-lg transition-all duration-300 hover:scale-105" style={{ backgroundColor: colorScheme.background, borderColor: colorScheme.border }}>
+                <div key={item.type} className="flex items-center justify-between p-3 rounded-lg shadow-md border transition-all duration-300" style={{ backgroundColor: colorScheme.background, borderColor: colorScheme.border }}>
                   <div className="flex items-center space-x-3">
                     <CustomIcon 
                       name={item.icon} 
@@ -475,7 +475,7 @@ export default function EventAnalytics({ userId, userRole }: EventAnalyticsProps
               Event Statistics
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex items-center justify-between p-3 rounded-lg shadow-md border hover:shadow-lg transition-all duration-300 hover:scale-105" style={{ backgroundColor: colorScheme.background, borderColor: colorScheme.border }}>
+              <div className="flex items-center justify-between p-3 rounded-lg shadow-md border transition-all duration-300" style={{ backgroundColor: colorScheme.background, borderColor: colorScheme.border }}>
                 <div className="flex items-center space-x-3">
                   <Activity className="h-5 w-5" style={{ color: colorScheme.primary }} />
                   <span className="text-sm font-medium tracking-wide" style={{ color: colorScheme.text }}>
@@ -487,7 +487,7 @@ export default function EventAnalytics({ userId, userRole }: EventAnalyticsProps
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-lg shadow-md border hover:shadow-lg transition-all duration-300 hover:scale-105" style={{ backgroundColor: colorScheme.background, borderColor: colorScheme.border }}>
+              <div className="flex items-center justify-between p-3 rounded-lg shadow-md border transition-all duration-300" style={{ backgroundColor: colorScheme.background, borderColor: colorScheme.border }}>
                 <div className="flex items-center space-x-3">
                   <Clock className="h-5 w-5" style={{ color: colorScheme.primary }} />
                   <span className="text-sm font-medium tracking-wide" style={{ color: colorScheme.text }}>
@@ -499,7 +499,7 @@ export default function EventAnalytics({ userId, userRole }: EventAnalyticsProps
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-lg shadow-md border hover:shadow-lg transition-all duration-300 hover:scale-105" style={{ backgroundColor: colorScheme.background, borderColor: colorScheme.border }}>
+              <div className="flex items-center justify-between p-3 rounded-lg shadow-md border transition-all duration-300" style={{ backgroundColor: colorScheme.background, borderColor: colorScheme.border }}>
                 <div className="flex items-center space-x-3">
                   <Users className="h-5 w-5" style={{ color: colorScheme.primary }} />
                   <span className="text-sm font-medium tracking-wide" style={{ color: colorScheme.text }}>
@@ -511,7 +511,7 @@ export default function EventAnalytics({ userId, userRole }: EventAnalyticsProps
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-lg shadow-md border hover:shadow-lg transition-all duration-300 hover:scale-105" style={{ backgroundColor: colorScheme.background, borderColor: colorScheme.border }}>
+              <div className="flex items-center justify-between p-3 rounded-lg shadow-md border transition-all duration-300" style={{ backgroundColor: colorScheme.background, borderColor: colorScheme.border }}>
                 <div className="flex items-center space-x-3">
                   <TrendingUp className="h-5 w-5" style={{ color: colorScheme.primary }} />
                   <span className="text-sm font-medium tracking-wide" style={{ color: colorScheme.text }}>
