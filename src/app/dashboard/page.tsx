@@ -12,6 +12,7 @@ import ActivityFeed from '@/components/ActivityFeed'
 import DraggableStatsCards from '@/components/DraggableStatsCards'
 import DraggableActionCardsWrapper from '@/components/DraggableActionCardsWrapper'
 import DraggableSections from '@/components/DraggableSections'
+import { PlayerSkeleton, ReportsSkeleton } from '@/components/skeletons'
 
 interface Player {
   id: string
@@ -218,11 +219,60 @@ function StaffReportsList() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
+  // Cache key based on current folder
+  const getCacheKey = (folderId: string | null) => {
+    return `staff-reports-cache-${folderId || 'root'}`
+  }
+
+  // Load from cache if available
+  const loadFromCache = (folderId: string | null) => {
+    try {
+      const cacheKey = getCacheKey(folderId)
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached) {
+        const data = JSON.parse(cached)
+        const cacheTime = data.timestamp || 0
+        const now = Date.now()
+        // Cache valid for 30 seconds
+        if (now - cacheTime < 30000) {
+          return data
+        }
+      }
+    } catch (error) {
+      // Ignore cache errors
+    }
+    return null
+  }
+
+  // Save to cache
+  const saveToCache = (folderId: string | null, data: any) => {
+    try {
+      const cacheKey = getCacheKey(folderId)
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        ...data,
+        timestamp: Date.now()
+      }))
+    } catch (error) {
+      // Ignore cache errors
+    }
+  }
+
   useEffect(() => {
     fetchStaffReports()
   }, [])
 
   const fetchStaffReports = async (folderId: string | null = null) => {
+    // Try to load from cache first for instant display
+    const cached = loadFromCache(folderId)
+    if (cached) {
+      setFolders(cached.folders || [])
+      setReports(cached.reports || [])
+      setLoading(false)
+    } else {
+      // Show loading state
+      setLoading(true)
+    }
+
     try {
       const token = localStorage.getItem('token')
       const url = folderId 
@@ -239,6 +289,8 @@ function StaffReportsList() {
         const data = await response.json()
         setFolders(data.folders || [])
         setReports(data.reports || [])
+        // Save to cache
+        saveToCache(folderId, data)
       }
     } catch (error) {
       console.error('Error fetching staff reports:', error)
@@ -248,9 +300,11 @@ function StaffReportsList() {
   }
 
   const navigateToFolder = (folder: any) => {
+    // Optimistic update - show folder structure immediately
     const newPath = [...currentPath, folder]
     setCurrentPath(newPath)
     setSelectedFolder(folder)
+    // Fetch data (will use cache if available)
     fetchStaffReports(folder.id)
   }
 
@@ -340,7 +394,9 @@ function StaffReportsList() {
       )}
 
       {/* Folders */}
-      {folders.length > 0 && (
+      {loading && folders.length === 0 ? (
+        <ReportsSkeleton showFolders={true} showReports={false} />
+      ) : folders.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-medium" style={{ color: colorScheme.textSecondary }}>
             Folders
@@ -390,7 +446,9 @@ function StaffReportsList() {
       )}
 
       {/* Reports */}
-      {reports.length > 0 && (
+      {loading && reports.length === 0 ? (
+        <ReportsSkeleton showFolders={false} showReports={true} />
+      ) : reports.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-medium" style={{ color: colorScheme.textSecondary }}>
             Reports
@@ -1066,10 +1124,22 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: colorScheme.background }}>
-        <div className="text-center">
-          <Activity className="h-12 w-12 animate-spin mx-auto mb-4" style={{ color: colorScheme.primary }} />
-          <p style={{ color: colorScheme.text }}>Loading dashboard...</p>
+      <div className="min-h-screen p-0 sm:p-4 space-y-2 sm:space-y-6" style={{ backgroundColor: colorScheme.background }}>
+        <div className="px-0 sm:px-6 mb-3 sm:mb-4">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 rounded w-64" style={{ backgroundColor: colorScheme.border + '40' }}></div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-24 rounded-lg" style={{ backgroundColor: colorScheme.border + '40' }}></div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="px-0 sm:px-6">
+          <div className="rounded-lg border-2 p-6" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
+            <div className="h-6 rounded w-48 mb-6" style={{ backgroundColor: colorScheme.border + '40' }}></div>
+            <PlayerSkeleton count={6} />
+          </div>
         </div>
       </div>
     )

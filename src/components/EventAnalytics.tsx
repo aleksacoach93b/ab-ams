@@ -347,8 +347,13 @@ export default function EventAnalytics({ userId, userRole }: EventAnalyticsProps
   if (loading) {
     return (
       <div className="rounded-lg shadow-sm p-6 border" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: colorScheme.primary }}></div>
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 rounded w-1/3" style={{ backgroundColor: colorScheme.border + '40' }}></div>
+          <div className="h-32 rounded w-full" style={{ backgroundColor: colorScheme.border + '40' }}></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="h-24 rounded" style={{ backgroundColor: colorScheme.border + '40' }}></div>
+            <div className="h-24 rounded" style={{ backgroundColor: colorScheme.border + '40' }}></div>
+          </div>
         </div>
       </div>
     )

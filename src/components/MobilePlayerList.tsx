@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Plus, Edit, Trash2, Phone, Mail, User } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
+import { PlayerSkeleton } from '@/components/skeletons'
 
 interface Player {
   id: string
@@ -222,15 +223,7 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
       {/* Players List */}
       <div className="px-2 sm:px-4 py-4 pb-20">
         {loading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-400 mx-auto"></div>
-            <p 
-              className="mt-2"
-              style={{ color: colorScheme.textSecondary }}
-            >
-              Loading players...
-            </p>
-          </div>
+          <PlayerSkeleton count={6} />
         ) : players.length === 0 ? (
           <div className="text-center py-8">
             <User 

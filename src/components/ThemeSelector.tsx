@@ -310,7 +310,14 @@ export default function ThemeSelector() {
   const shouldHighlight = isOpen && !modalIsOpen
 
   return (
-    <div className="relative z-[10000]">
+    <div 
+      className="relative z-[10000]"
+      style={{
+        // Hide entire container when modal is open (except when ThemeSelector dropdown is open)
+        display: modalIsOpen && !isOpen ? 'none' : 'block',
+        visibility: modalIsOpen && !isOpen ? 'hidden' : 'visible',
+      }}
+    >
       <button
         ref={buttonRef}
         onClick={() => {

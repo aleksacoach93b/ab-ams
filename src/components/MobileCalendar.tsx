@@ -18,6 +18,7 @@ import {
 import CustomIcon from './CustomIcon'
 import EventModal from './EventModal'
 import { useTheme } from '@/contexts/ThemeContext'
+import { CalendarSkeleton } from '@/components/skeletons'
 
 interface EventMedia {
   id: string
@@ -747,32 +748,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
         </div>
         
         {loading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div 
-                key={i}
-                className="animate-pulse p-3 rounded-lg"
-                style={{ backgroundColor: colorScheme.surface }}
-              >
-                <div className="flex items-center space-x-3">
-                  <div 
-                    className="w-12 h-12 rounded-lg"
-                    style={{ backgroundColor: colorScheme.border }}
-                  ></div>
-                  <div className="flex-1 space-y-2">
-                    <div 
-                      className="h-3 rounded w-3/4"
-                      style={{ backgroundColor: colorScheme.border }}
-                    ></div>
-                    <div 
-                      className="h-2 rounded w-1/2"
-                      style={{ backgroundColor: colorScheme.border }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <CalendarSkeleton />
         ) : todayEvents.length === 0 ? (
           <div 
             className="text-center py-8 rounded-lg"

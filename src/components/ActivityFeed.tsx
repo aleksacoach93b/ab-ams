@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Users, Calendar, StickyNote, Clock, ArrowRight } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
+import { ActivitySkeleton } from '@/components/skeletons'
 
 interface Activity {
   id: string
@@ -158,14 +159,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ limit = 5, showHeader = tru
   }
 
   if (loading) {
-    return (
-      <div className={compact ? "p-2" : "p-3 sm:p-4 rounded-lg border-2"} style={compact ? {} : { backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
-        <div className="animate-pulse space-y-2">
-          <div className="h-4 bg-gray-200 rounded w-3/4" style={{ backgroundColor: colorScheme.border + '40' }}></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2" style={{ backgroundColor: colorScheme.border + '40' }}></div>
-        </div>
-      </div>
-    )
+    return <ActivitySkeleton count={limit} compact={compact} />
   }
 
   if (activities.length === 0) {
