@@ -517,7 +517,13 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
     <PullToRefresh onRefresh={fetchEvents}>
       <div 
         className="w-full"
-        style={{ backgroundColor: colorScheme.background }}
+        style={{ 
+          backgroundColor: colorScheme.background,
+          overflowX: 'hidden',
+          overscrollBehaviorX: 'none',
+          touchAction: 'pan-y',
+          WebkitOverflowScrolling: 'touch'
+        }}
     >
       {/* Enhanced Header with Gradient */}
       <div 

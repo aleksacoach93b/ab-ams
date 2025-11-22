@@ -1157,7 +1157,11 @@ export default function Dashboard() {
         minHeight: '100vh',
         width: '100%',
         margin: 0,
-        padding: 0
+        padding: 0,
+        overflowX: 'hidden',
+        overscrollBehaviorX: 'none',
+        touchAction: 'pan-y',
+        WebkitOverflowScrolling: 'touch'
       }}
     >
       {/* Header - Compact Design */}

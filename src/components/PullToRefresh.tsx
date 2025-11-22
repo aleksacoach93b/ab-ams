@@ -41,9 +41,15 @@ export default function PullToRefresh({
       currentY.current = e.touches[0].clientY
       const distance = currentY.current - startY.current
       
-      if (distance > 0 && container.scrollTop === 0) {
+      // Only prevent default if we're actually pulling down (not scrolling up)
+      // And only if we're at the top of the container
+      if (distance > 0 && container.scrollTop === 0 && distance < threshold * 2) {
         e.preventDefault()
         setPullDistance(Math.min(distance, threshold * 1.5))
+      } else if (container.scrollTop > 0) {
+        // If user is scrolling down, cancel pull-to-refresh
+        setIsPulling(false)
+        setPullDistance(0)
       } else {
         setIsPulling(false)
         setPullDistance(0)
