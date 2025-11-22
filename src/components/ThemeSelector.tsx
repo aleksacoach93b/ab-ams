@@ -7,10 +7,10 @@ import { Palette, Check } from 'lucide-react'
 const themes = [
   { name: 'Light', value: 'light', color: '#F8FAFC' },
   { name: 'Dark', value: 'dark', color: '#0F172A' },
-  { name: 'Blue', value: 'blue', color: '#1E3A8A' },
-  { name: 'Green', value: 'green', color: '#047857' },
+  { name: 'Blue', value: 'blue', color: '#05E6E2' },
+  { name: 'Green', value: 'green', color: '#26E624' },
   { name: 'Purple', value: 'purple', color: '#6B21A8' },
-  { name: 'Orange', value: 'orange', color: '#C2410C' },
+  { name: 'Red', value: 'red', color: '#DC2626' },
 ]
 
 export default function ThemeSelector() {

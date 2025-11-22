@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
-export type Theme = 'light' | 'dark' | 'blue' | 'green' | 'purple' | 'orange'
+export type Theme = 'light' | 'dark' | 'blue' | 'green' | 'purple' | 'red'
 export type ColorScheme = {
   primary: string
   primaryHover: string
@@ -51,8 +51,8 @@ const colorSchemes: Record<Theme, ColorScheme> = {
     info: '#3B82F6',
   },
   blue: {
-    primary: '#0066FF', // Življa, modernija plava
-    primaryHover: '#0052CC', // Tamnija za hover
+    primary: '#05E6E2', // Cijan/nebo plava
+    primaryHover: '#06B6D4', // Tamnija za hover
     primaryLight: '#E0F2FE', // Svetlija plava za akcente
     secondary: '#475569',
     background: '#EFF6FF', // Suptilna plava pozadina
@@ -63,19 +63,19 @@ const colorSchemes: Record<Theme, ColorScheme> = {
     success: '#059669',
     warning: '#D97706',
     error: '#DC2626',
-    info: '#0284C7',
+    info: '#05E6E2',
   },
   green: {
-    primary: '#10B981', // Življa, modernija zelena
-    primaryHover: '#059669', // Tamnija za hover
+    primary: '#26E624', // Jaka zelena (Power BI zelena)
+    primaryHover: '#22C55E', // Tamnija za hover
     primaryLight: '#D1FAE5', // Svjetlija zelena za akcente
     secondary: '#475569',
-    background: '#ECFDF5', // Suptilna zelena pozadina
+    background: '#26E624', // Zelena pozadina
     surface: '#FFFFFF',
     text: '#022C22', // Tamniji tekst za bolji kontrast
     textSecondary: '#374151',
     border: '#A7F3D0', // Zelena granica koja se uklapa
-    success: '#10B981',
+    success: '#26E624',
     warning: '#D97706',
     error: '#DC2626',
     info: '#0891B2',
@@ -95,20 +95,20 @@ const colorSchemes: Record<Theme, ColorScheme> = {
     error: '#DC2626',
     info: '#8B5CF6',
   },
-  orange: {
-    primary: '#F97316', // Življa, modernija narandžasta
-    primaryHover: '#EA580C', // Tamnija za hover
-    primaryLight: '#FFEDD5', // Svjetlija narandžasta za akcente
-    secondary: '#FB923C',
-    background: '#FFF7ED', // Suptilna narandžasta pozadina
+  red: {
+    primary: '#DC2626', // Full jaka crvena boja
+    primaryHover: '#B91C1C', // Vrlo malo tamnija za hover (minimalan gradijent)
+    primaryLight: '#FEE2E2', // Svjetlija crvena za akcente
+    secondary: '#EF4444',
+    background: '#FEF2F2', // Suptilna crvena pozadina
     surface: '#FFFFFF',
-    text: '#7C2D12', // Tamniji tekst za bolji kontrast
+    text: '#7F1D1D', // Tamniji tekst za bolji kontrast
     textSecondary: '#6B7280',
-    border: '#FED7AA', // Narandžasta granica koja se uklapa
+    border: '#FECACA', // Crvena granica koja se uklapa
     success: '#059669',
-    warning: '#F97316',
-    error: '#DC2626',
-    info: '#F97316',
+    warning: '#F59E0B',
+    error: '#DC2626', // Full jaka crvena
+    info: '#DC2626', // Full jaka crvena
   },
 }
 
@@ -125,7 +125,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     // Only access localStorage on client side
     if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme') as Theme
+      let savedTheme = localStorage.getItem('theme') as Theme
+      // Migrate 'orange' to 'red' for all users
+      if (savedTheme === 'orange') {
+        savedTheme = 'red'
+        localStorage.setItem('theme', 'red')
+      }
       if (savedTheme && colorSchemes[savedTheme]) {
         return savedTheme
       }
@@ -135,7 +140,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Load theme from localStorage on mount (fallback check)
-    const savedTheme = localStorage.getItem('theme') as Theme
+    let savedTheme = localStorage.getItem('theme') as Theme
+    // Migrate 'orange' to 'red' for all users
+    if (savedTheme === 'orange') {
+      savedTheme = 'red'
+      localStorage.setItem('theme', 'red')
+    }
     if (savedTheme && colorSchemes[savedTheme] && savedTheme !== theme) {
       setTheme(savedTheme)
     }
@@ -143,7 +153,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Apply initial background immediately to prevent white flash
     const root = document.documentElement
     const initialTheme = savedTheme || 'light'
-    const scheme = colorSchemes[initialTheme]
+    const scheme = colorSchemes[initialTheme as Theme]
     root.style.backgroundColor = scheme.background
     root.style.background = scheme.background
     document.body.style.backgroundColor = scheme.background
@@ -151,7 +161,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // Save theme to localStorage
+    // Save theme to localStorage - ensure 'orange' is never saved
+    if (theme === 'orange' || theme === 'Orange') {
+      localStorage.setItem('theme', 'red')
+      setTheme('red')
+      return
+    }
     localStorage.setItem('theme', theme)
     
     // Apply theme to document root
