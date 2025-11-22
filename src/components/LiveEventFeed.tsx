@@ -18,10 +18,12 @@ interface Event {
 }
 
 interface LiveEventFeedProps {
-  playerId: string
+  playerId?: string
+  userId?: string
+  userRole?: string
 }
 
-export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
+export default function LiveEventFeed({ playerId, userId, userRole }: LiveEventFeedProps) {
   const { colorScheme } = useTheme()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
@@ -87,33 +89,43 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
       if (response.ok) {
         const allEvents = await response.json()
         
-        // CRITICAL: Filter events by selected date AND player participation
-        const playerEvents = allEvents.filter((event: any) => {
+        // Filter events by selected date
+        let filteredEvents = allEvents.filter((event: any) => {
           // First, check if event is for the selected date
           const eventDate = event.date ? new Date(event.date).toISOString().split('T')[0] : null
           if (eventDate !== date) {
             return false // Skip events not for selected date
           }
-          
-          // Then check if player is a participant
-          // Check if event has selectedPlayers array
-          if (event.selectedPlayers && Array.isArray(event.selectedPlayers)) {
-            return event.selectedPlayers.includes(playerId)
-          }
-          // Check if event has participants array
-          if (event.participants && Array.isArray(event.participants)) {
-            return event.participants.some((p: any) => 
-              p.id === playerId || p.playerId === playerId || (typeof p === 'string' && p === playerId)
-            )
-          }
-          // Check event_participants if available
-          if (event.event_participants && Array.isArray(event.event_participants)) {
-            return event.event_participants.some((p: any) => 
-              p.playerId === playerId || p.id === playerId
-            )
-          }
-          return false
+          return true
         })
+        
+        // If playerId is provided, filter by player participation (for players)
+        // If userId/userRole is provided but not PLAYER, show all events (for admin/staff)
+        if (playerId) {
+          filteredEvents = filteredEvents.filter((event: any) => {
+            // Check if player is a participant
+            // Check if event has selectedPlayers array
+            if (event.selectedPlayers && Array.isArray(event.selectedPlayers)) {
+              return event.selectedPlayers.includes(playerId)
+            }
+            // Check if event has participants array
+            if (event.participants && Array.isArray(event.participants)) {
+              return event.participants.some((p: any) => 
+                p.id === playerId || p.playerId === playerId || (typeof p === 'string' && p === playerId)
+              )
+            }
+            // Check event_participants if available
+            if (event.event_participants && Array.isArray(event.event_participants)) {
+              return event.event_participants.some((p: any) => 
+                p.playerId === playerId || p.id === playerId
+              )
+            }
+            return false
+          })
+        }
+        // For admin/staff (userId provided but no playerId), show all events for the date (already filtered above)
+        
+        const playerEvents = filteredEvents
 
         // Map events to include color and icon (same as calendar)
         const mappedEvents = playerEvents.map((event: any) => ({
@@ -148,7 +160,7 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
     }, 60000)
 
     return () => clearInterval(interval)
-  }, [playerId, selectedDate])
+  }, [playerId, userId, userRole, selectedDate])
 
   // Auto-scroll animation
   useEffect(() => {

@@ -13,6 +13,7 @@ import ActivityFeed from '@/components/ActivityFeed'
 import DraggableStatsCards from '@/components/DraggableStatsCards'
 import DraggableActionCardsWrapper from '@/components/DraggableActionCardsWrapper'
 import DraggableSections from '@/components/DraggableSections'
+import LiveEventFeed from '@/components/LiveEventFeed'
 import { PlayerSkeleton, ReportsSkeleton } from '@/components/skeletons'
 
 interface Player {
@@ -1425,6 +1426,15 @@ export default function Dashboard() {
             }
           ]}
         />
+              </div>
+            )
+          },
+          {
+            id: 'today-events',
+            shouldShow: true,
+            element: (
+              <div className="px-0 sm:px-6 mb-3 sm:mb-4">
+                <LiveEventFeed userId={user?.userId || user?.id} userRole={user?.role} />
               </div>
             )
           },
