@@ -516,7 +516,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
   return (
     <PullToRefresh onRefresh={fetchEvents}>
       <div 
-        className="min-h-screen"
+        className="w-full"
         style={{ backgroundColor: colorScheme.background }}
     >
       {/* Enhanced Header with Gradient */}

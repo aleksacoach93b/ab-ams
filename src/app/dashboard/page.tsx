@@ -2028,7 +2028,7 @@ export default function Dashboard() {
             shouldShow: true,
             element: (
               <div className="px-0 sm:px-6">
-        <div className="card-fade-in hover-scale-subtle w-full rounded-3xl shadow-xl p-0 sm:p-4 border-2 transition-all duration-300 hover:shadow-2xl overflow-hidden" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
+        <div className="card-fade-in w-full rounded-3xl shadow-xl p-0 sm:p-4 border-2 transition-all duration-300 overflow-hidden" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
           <h2 className="text-xl font-semibold mb-4 px-4 sm:px-0" style={{ color: colorScheme.text }}>
             Calendar
           </h2>
