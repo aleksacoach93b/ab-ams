@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Calendar, Clock } from 'lucide-react'
+import { Calendar, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
+import CustomIcon from './CustomIcon'
 
 interface Event {
   id: string
@@ -10,6 +11,10 @@ interface Event {
   startTime: string
   endTime: string
   date: string
+  icon?: string
+  iconName?: string
+  type?: string
+  color?: string
 }
 
 interface LiveEventFeedProps {
@@ -20,17 +25,40 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
   const { colorScheme } = useTheme()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    // Default: today
+    return new Date().toISOString().split('T')[0]
+  })
+  const [showDatePicker, setShowDatePicker] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<number>()
 
-  // Fetch today's events for the player
-  const fetchTodayEvents = async () => {
+  // Format date for display
+  const formatDateDisplay = (dateString: string) => {
+    const date = new Date(dateString)
+    const today = new Date()
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    if (dateString === today.toISOString().split('T')[0]) {
+      return 'Today'
+    } else if (dateString === tomorrow.toISOString().split('T')[0]) {
+      return 'Tomorrow'
+    } else if (dateString === yesterday.toISOString().split('T')[0]) {
+      return 'Yesterday'
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }
+  }
+
+  // Fetch events for selected date
+  const fetchEvents = async (date: string) => {
     try {
       const token = localStorage.getItem('token')
       if (!token) return
 
-      const today = new Date().toISOString().split('T')[0]
-      
       // Get user info to pass to API
       const userResponse = await fetch('/api/auth/me', {
         headers: {
@@ -49,7 +77,7 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
       }
       
       // Fetch events with user filter for proper participant filtering
-      const response = await fetch(`/api/events?date=${today}${userId ? `&userId=${userId}` : ''}${userRole ? `&userRole=${userRole}` : ''}`, {
+      const response = await fetch(`/api/events?date=${date}${userId ? `&userId=${userId}` : ''}${userRole ? `&userRole=${userRole}` : ''}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -59,32 +87,26 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
       if (response.ok) {
         const allEvents = await response.json()
         
-        // If API already filtered by participant, use all events
-        // Otherwise, filter events where player is a participant
-        let playerEvents = allEvents
-        
-        // Double-check filtering if needed
-        if (userRole === 'PLAYER') {
-          playerEvents = allEvents.filter((event: any) => {
-            // Check if event has selectedPlayers array
-            if (event.selectedPlayers && Array.isArray(event.selectedPlayers)) {
-              return event.selectedPlayers.includes(playerId)
-            }
-            // Check if event has participants array
-            if (event.participants && Array.isArray(event.participants)) {
-              return event.participants.some((p: any) => 
-                p.id === playerId || p.playerId === playerId || (typeof p === 'string' && p === playerId)
-              )
-            }
-            // Check event_participants if available
-            if (event.event_participants && Array.isArray(event.event_participants)) {
-              return event.event_participants.some((p: any) => 
-                p.playerId === playerId || p.id === playerId
-              )
-            }
-            return false
-          })
-        }
+        // Filter events where player is a participant
+        const playerEvents = allEvents.filter((event: any) => {
+          // Check if event has selectedPlayers array
+          if (event.selectedPlayers && Array.isArray(event.selectedPlayers)) {
+            return event.selectedPlayers.includes(playerId)
+          }
+          // Check if event has participants array
+          if (event.participants && Array.isArray(event.participants)) {
+            return event.participants.some((p: any) => 
+              p.id === playerId || p.playerId === playerId || (typeof p === 'string' && p === playerId)
+            )
+          }
+          // Check event_participants if available
+          if (event.event_participants && Array.isArray(event.event_participants)) {
+            return event.event_participants.some((p: any) => 
+              p.playerId === playerId || p.id === playerId
+            )
+          }
+          return false
+        })
 
         // Sort by startTime
         const sortedEvents = playerEvents.sort((a: any, b: any) => {
@@ -96,7 +118,7 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
         setEvents(sortedEvents)
       }
     } catch (error) {
-      console.error('Error fetching today events:', error)
+      console.error('Error fetching events:', error)
     } finally {
       setLoading(false)
     }
@@ -104,15 +126,15 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
 
   // Initial fetch and periodic refresh
   useEffect(() => {
-    fetchTodayEvents()
+    fetchEvents(selectedDate)
     
     // Refresh every 60 seconds
     const interval = setInterval(() => {
-      fetchTodayEvents()
+      fetchEvents(selectedDate)
     }, 60000)
 
     return () => clearInterval(interval)
-  }, [playerId])
+  }, [playerId, selectedDate])
 
   // Auto-scroll animation
   useEffect(() => {
@@ -139,7 +161,7 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
       }
 
       let startTime: number | null = null
-      const duration = 50000 // 50 seconds for full scroll (slower, smoother)
+      const duration = 120000 // 120 seconds (2 minutes) for full scroll - MUCH SLOWER
       const distance = totalWidth / 2 // Since we duplicate events, scroll half the distance
 
       const animate = (timestamp: number) => {
@@ -167,6 +189,37 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
     }
   }, [events, loading])
 
+  // Get event icon component
+  const getEventIcon = (event: Event) => {
+    const iconName = event.icon || event.iconName || 'Calendar'
+    const iconColor = event.color || colorScheme.primary
+    return <CustomIcon name={iconName} className="h-5 w-5" style={{ color: iconColor }} />
+  }
+
+  // Handle date change
+  const handleDateChange = (newDate: string) => {
+    setSelectedDate(newDate)
+    setShowDatePicker(false)
+    setLoading(true)
+  }
+
+  // Navigate dates
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const date = new Date(selectedDate)
+    if (direction === 'prev') {
+      date.setDate(date.getDate() - 1)
+    } else {
+      date.setDate(date.getDate() + 1)
+    }
+    handleDateChange(date.toISOString().split('T')[0])
+  }
+
+  // Reset to today
+  const resetToToday = () => {
+    const today = new Date().toISOString().split('T')[0]
+    handleDateChange(today)
+  }
+
   if (loading) {
     return null // Don't show anything while loading
   }
@@ -178,6 +231,8 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
   // Duplicate events for seamless loop
   const duplicatedEvents = [...events, ...events]
 
+  const isToday = selectedDate === new Date().toISOString().split('T')[0]
+
   return (
     <div 
       className="mx-4 mb-4 rounded-xl overflow-hidden shadow-lg"
@@ -187,15 +242,15 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
         boxShadow: `0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)`
       }}
     >
-      {/* Header */}
+      {/* Header with Date Picker */}
       <div 
-        className="px-4 py-3 flex items-center justify-between border-b"
+        className="px-4 py-3 flex items-center justify-between border-b relative"
         style={{ 
           borderColor: colorScheme.border,
           backgroundColor: colorScheme.primary + '15'
         }}
       >
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-1">
           <div 
             className="w-2 h-2 rounded-full animate-pulse"
             style={{ backgroundColor: colorScheme.primary }}
@@ -204,13 +259,97 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
             className="text-sm font-semibold"
             style={{ color: colorScheme.text }}
           >
-            Today's Events
+            {isToday ? "Today's Events" : `${formatDateDisplay(selectedDate)}'s Events`}
           </span>
         </div>
-        <Calendar 
-          className="h-4 w-4" 
-          style={{ color: colorScheme.textSecondary }} 
-        />
+        
+        {/* Date Navigation */}
+        <div className="flex items-center space-x-2">
+          {/* Previous Day */}
+          <button
+            onClick={() => navigateDate('prev')}
+            className="p-1 rounded-md transition-colors hover:bg-opacity-20"
+            style={{ 
+              color: colorScheme.textSecondary,
+              backgroundColor: 'transparent'
+            }}
+            title="Previous day"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          {/* Date Picker Button */}
+          <button
+            onClick={() => setShowDatePicker(!showDatePicker)}
+            className="px-2 py-1 rounded-md text-xs font-medium transition-colors hover:bg-opacity-20 flex items-center space-x-1"
+            style={{ 
+              color: colorScheme.text,
+              backgroundColor: colorScheme.primary + '20'
+            }}
+            title="Select date"
+          >
+            <Calendar className="h-3 w-3" />
+            <span>{formatDateDisplay(selectedDate)}</span>
+          </button>
+
+          {/* Next Day */}
+          <button
+            onClick={() => navigateDate('next')}
+            className="p-1 rounded-md transition-colors hover:bg-opacity-20"
+            style={{ 
+              color: colorScheme.textSecondary,
+              backgroundColor: 'transparent'
+            }}
+            title="Next day"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+
+          {/* Reset to Today (if not today) */}
+          {!isToday && (
+            <button
+              onClick={resetToToday}
+              className="px-2 py-1 rounded-md text-xs font-medium transition-colors hover:bg-opacity-20"
+              style={{ 
+                color: colorScheme.primary,
+                backgroundColor: colorScheme.primary + '20'
+              }}
+              title="Reset to today"
+            >
+              Today
+            </button>
+          )}
+        </div>
+
+        {/* Date Picker Dropdown */}
+        {showDatePicker && (
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setShowDatePicker(false)}
+            />
+            <div
+              className="absolute right-4 top-full mt-2 z-20 rounded-lg shadow-lg border p-3"
+              style={{
+                backgroundColor: colorScheme.surface,
+                borderColor: colorScheme.border
+              }}
+            >
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => handleDateChange(e.target.value)}
+                max={new Date().toISOString().split('T')[0]} // Can't select future dates
+                className="w-full px-3 py-2 rounded-md border text-sm"
+                style={{
+                  backgroundColor: colorScheme.background,
+                  borderColor: colorScheme.border,
+                  color: colorScheme.text
+                }}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Scrolling Events */}
@@ -247,15 +386,12 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
                 minWidth: '280px'
               }}
             >
-              {/* Event Icon */}
+              {/* Event Icon - Using CustomIcon */}
               <div
                 className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: colorScheme.primary + '20' }}
+                style={{ backgroundColor: (event.color || colorScheme.primary) + '20' }}
               >
-                <Calendar 
-                  className="h-5 w-5" 
-                  style={{ color: colorScheme.primary }} 
-                />
+                {getEventIcon(event)}
               </div>
 
               {/* Event Info */}
@@ -286,4 +422,3 @@ export default function LiveEventFeed({ playerId }: LiveEventFeedProps) {
     </div>
   )
 }
-
