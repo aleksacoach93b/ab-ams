@@ -25,11 +25,11 @@ const colorSchemes: Record<Theme, ColorScheme> = {
     primaryHover: '#1D4ED8', // Tamnija za hover
     primaryLight: '#DBEAFE',
     secondary: '#475569',
-    background: '#FFFFFF', // Čistija bela pozadina
-    surface: '#F8FAFC', // Suptilna siva za kartice
+    background: '#F5F5F5', // Svetlo siva (skoro bela) pozadina
+    surface: '#FFFFFF', // Bela za kartice
     text: '#0F172A', // Tamniji tekst za bolji kontrast
     textSecondary: '#475569',
-    border: '#CBD5E1', // Jača granica
+    border: '#E5E7EB', // Svetlija granica
     success: '#059669',
     warning: '#D97706',
     error: '#DC2626',
@@ -66,16 +66,16 @@ const colorSchemes: Record<Theme, ColorScheme> = {
     info: '#05E6E2',
   },
   green: {
-    primary: '#26E624', // Jaka zelena (Power BI zelena)
-    primaryHover: '#22C55E', // Tamnija za hover
+    primary: '#10B981', // Svetlija, lepša zelena
+    primaryHover: '#059669', // Tamnija za hover
     primaryLight: '#D1FAE5', // Svjetlija zelena za akcente
     secondary: '#475569',
-    background: '#26E624', // Zelena pozadina
+    background: '#ECFDF5', // Svetla zelena pozadina (suptilna)
     surface: '#FFFFFF',
     text: '#022C22', // Tamniji tekst za bolji kontrast
     textSecondary: '#374151',
     border: '#A7F3D0', // Zelena granica koja se uklapa
-    success: '#26E624',
+    success: '#10B981',
     warning: '#D97706',
     error: '#DC2626',
     info: '#0891B2',

@@ -8,7 +8,7 @@ const themes = [
   { name: 'Light', value: 'light', color: '#F8FAFC' },
   { name: 'Dark', value: 'dark', color: '#0F172A' },
   { name: 'Blue', value: 'blue', color: '#05E6E2' },
-  { name: 'Green', value: 'green', color: '#26E624' },
+  { name: 'Green', value: 'green', color: '#10B981' },
   { name: 'Purple', value: 'purple', color: '#6B21A8' },
   { name: 'Red', value: 'red', color: '#DC2626' },
 ]
