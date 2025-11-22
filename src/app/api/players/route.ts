@@ -136,7 +136,10 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(transformedPlayers)
+    // Add caching headers for better performance (2 minutes cache)
+    const response = NextResponse.json(transformedPlayers)
+    response.headers.set('Cache-Control', 'private, max-age=120, stale-while-revalidate=30')
+    return response
   } catch (error) {
     console.error('Error fetching players:', error)
     return NextResponse.json(

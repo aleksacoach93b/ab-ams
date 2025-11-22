@@ -389,7 +389,10 @@ export async function GET(request: NextRequest) {
       type: e.type
     })))
 
-    return NextResponse.json(transformedEvents)
+    // Add caching headers for better performance (5 minutes cache)
+    const response = NextResponse.json(transformedEvents)
+    response.headers.set('Cache-Control', 'private, max-age=300, stale-while-revalidate=60')
+    return response
   } catch (error) {
     console.error('Error fetching events:', error)
     return NextResponse.json(
