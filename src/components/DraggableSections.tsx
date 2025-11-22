@@ -60,19 +60,19 @@ const SortableSection: React.FC<SortableSectionProps> = ({ id, children, colorSc
       style={style}
       className="relative group"
     >
-      {/* Drag Handle - always visible, positioned on the left */}
+      {/* Drag Handle - Desktop: left side, Mobile: inside top-right corner */}
       <div
         {...attributes}
         {...listeners}
-        className="absolute -left-6 sm:-left-8 top-4 z-10 opacity-60 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-2 rounded-md hover:bg-opacity-30 flex items-center justify-center"
+        className="absolute -left-6 sm:-left-8 top-4 sm:top-4 right-2 sm:right-auto z-10 opacity-40 sm:opacity-60 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1 sm:p-2 rounded-md hover:bg-opacity-30 flex items-center justify-center"
         style={{ 
           color: colorScheme.textSecondary,
-          backgroundColor: `${colorScheme.border}30`,
-          boxShadow: `0 2px 4px ${colorScheme.border}20`
+          backgroundColor: `${colorScheme.border}20`,
+          boxShadow: `0 1px 2px ${colorScheme.border}15`
         }}
         title="Drag to reorder"
       >
-        <GripVertical className="h-5 w-5" />
+        <GripVertical className="h-3 w-3 sm:h-5 sm:w-5" />
       </div>
       {children}
     </div>
@@ -171,7 +171,7 @@ const DraggableSections: React.FC<DraggableSectionsProps> = ({ sections, storage
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2 sm:space-y-6" style={{ paddingLeft: '2rem' }}>
+        <div className="space-y-2 sm:space-y-6 sm:pl-8">
           {orderedSections.map((section) => (
             <SortableSection key={section.id} id={section.id} colorScheme={colorScheme}>
               {section.element}
