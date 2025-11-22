@@ -247,7 +247,7 @@ export default function MobilePlayerList({ onAddPlayer }: MobilePlayerListProps)
             {players.map((player) => (
               <div 
                 key={player.id} 
-                className="rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl group"
+                className="card-fade-in hover-scale rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl group"
                 style={{
                   backgroundColor: colorScheme.surface,
                   borderWidth: '4px',

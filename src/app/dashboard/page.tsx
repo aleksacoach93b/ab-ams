@@ -1204,7 +1204,7 @@ export default function Dashboard() {
             element: (
               <div className="px-0 sm:px-6 mb-3 sm:mb-4">
         <DraggableStatsCards storageKey="dashboard-stats-cards-order">
-          <div className="p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
+          <div className="card-fade-in hover-scale-subtle p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
             <div className="flex items-center justify-between flex-1">
               <div className="flex items-center min-w-0 flex-1">
                 <Users className="h-5 w-5 sm:h-6 sm:w-6 mr-2 flex-shrink-0" style={{ color: colorScheme.primary }} />
@@ -1235,7 +1235,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
+          <div className="card-fade-in hover-scale-subtle p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
             <div className="flex items-center justify-between flex-1">
               <div className="flex items-center min-w-0 flex-1">
                 <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 mr-2 flex-shrink-0" style={{ color: '#10B981' }} />
@@ -1266,7 +1266,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
+          <div className="card-fade-in hover-scale-subtle p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
             <div className="flex items-center justify-between flex-1">
               <div className="flex items-center min-w-0 flex-1">
                 <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 mr-2 flex-shrink-0" style={{ color: '#EF4444' }} />
@@ -1297,7 +1297,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
+          <div className="card-fade-in hover-scale-subtle p-3 sm:p-4 rounded-lg border-2 h-full flex flex-col" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
             <div className="flex items-center justify-between flex-1">
               <div className="flex items-center min-w-0 flex-1">
                 <Percent className="h-5 w-5 sm:h-6 sm:w-6 mr-2 flex-shrink-0" style={{ color: getAvailabilityColor(availabilityPercentage) }} />
@@ -1346,7 +1346,7 @@ export default function Dashboard() {
               shouldShow: ((user?.role === 'COACH' || user?.role === 'ADMIN') || (user?.role === 'STAFF' && staffPermissions?.canViewReports)) || false,
               element: (
                 <div 
-                  className="p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
+                  className="card-fade-in hover-scale p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
                   style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}
                   onClick={() => {
                     if (user?.role === 'STAFF') {
@@ -1368,7 +1368,7 @@ export default function Dashboard() {
               shouldShow: ((user?.role === 'COACH' || user?.role === 'ADMIN') || (user?.role === 'STAFF' && staffPermissions?.canViewReports)) || false,
               element: (
                 <div 
-                  className="p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
+                  className="card-fade-in hover-scale p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
                   style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}
                   onClick={() => {
                     if (user?.role === 'STAFF') {
@@ -1390,7 +1390,7 @@ export default function Dashboard() {
               shouldShow: (user?.role === 'COACH' || user?.role === 'ADMIN') || false,
               element: (
                 <div 
-                  className="p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
+                  className="card-fade-in hover-scale p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
                   style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}
                   onClick={() => {
                     window.location.href = '/dashboard/player-reports'
@@ -1408,7 +1408,7 @@ export default function Dashboard() {
               shouldShow: true,
               element: (
                 <div 
-                  className="p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
+                  className="card-fade-in hover-scale p-3 sm:p-4 md:p-6 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-shadow w-full h-full" 
                   style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}
                   onClick={() => {
                     setShowActivityFeedModal(true)
@@ -1431,7 +1431,7 @@ export default function Dashboard() {
             shouldShow: true,
             element: (
               <div className="px-0 sm:px-6">
-        <div className="rounded-lg border-2 p-6" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
+        <div className="card-fade-in rounded-lg border-2 p-6" style={{ backgroundColor: colorScheme.surface, borderColor: `${colorScheme.border}E6` }}>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold" style={{ color: colorScheme.text }}>
               Players Overview
@@ -1576,7 +1576,7 @@ export default function Dashboard() {
               return (
                 <div 
                   key={player.id} 
-                  className={`player-card group relative rounded-lg border-2 p-4 sm:p-4 transition-all duration-300 hover:scale-105 cursor-pointer ${
+                  className={`player-card card-fade-in hover-scale group relative rounded-lg border-2 p-4 sm:p-4 transition-all duration-300 hover:scale-105 cursor-pointer ${
                     selectedPlayers.includes(player.id) ? 'ring-2 ring-opacity-40 scale-105 animate-pulse' : 'hover:border-opacity-80'
                   }`}
                   style={{ 
@@ -2016,7 +2016,7 @@ export default function Dashboard() {
             shouldShow: true,
             element: (
               <div className="px-0 sm:px-6">
-        <div className="w-full rounded-3xl shadow-xl p-0 sm:p-4 border-2 transition-all duration-300 hover:shadow-2xl overflow-hidden" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
+        <div className="card-fade-in hover-scale-subtle w-full rounded-3xl shadow-xl p-0 sm:p-4 border-2 transition-all duration-300 hover:shadow-2xl overflow-hidden" style={{ backgroundColor: colorScheme.surface, borderColor: colorScheme.border }}>
           <h2 className="text-xl font-semibold mb-4 px-4 sm:px-0" style={{ color: colorScheme.text }}>
             Calendar
           </h2>
@@ -2053,7 +2053,7 @@ export default function Dashboard() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
+            <div className="smooth-scroll p-6 overflow-y-auto max-h-[60vh]">
               <StaffNotesList />
             </div>
           </div>
@@ -2079,7 +2079,7 @@ export default function Dashboard() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
+            <div className="smooth-scroll p-6 overflow-y-auto max-h-[60vh]">
               <StaffReportsList />
             </div>
           </div>
@@ -2119,7 +2119,7 @@ export default function Dashboard() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
+            <div className="smooth-scroll p-6 overflow-y-auto max-h-[60vh]">
               <ActivityFeed limit={50} showHeader={false} showViewAll={false} compact={false} />
             </div>
           </div>

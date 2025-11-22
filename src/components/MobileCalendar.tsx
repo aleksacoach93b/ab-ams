@@ -785,7 +785,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
             {todayEvents.map((event, index) => (
               <div
                 key={event.id}
-                className="p-3 rounded-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-md"
+                className="card-fade-in hover-scale p-3 rounded-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-md"
                 style={{ 
                   background: `linear-gradient(135deg, ${colorScheme.surface}, ${colorScheme.background})`,
                   border: `2px solid ${colorScheme.border}`,

@@ -341,7 +341,7 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
             </div>
 
             {/* Notifications List */}
-            <div className="max-h-60 sm:max-h-80 overflow-y-auto">
+            <div className="smooth-scroll max-h-60 sm:max-h-80 overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="p-4 sm:p-8 text-center">
                   <Bell className="h-12 w-12 mx-auto mb-3" style={{ color: colorScheme.textSecondary }} />
@@ -352,7 +352,7 @@ export default function RealTimeNotifications({ userId, userRole }: RealTimeNoti
               ) : (
                 notifications.map((notification) => (
                   <div key={notification.id} 
-                       className={`p-4 border-b transition-all duration-200 hover:bg-opacity-50 ${
+                       className={`card-fade-in hover-scale-subtle p-4 border-b transition-all duration-200 hover:bg-opacity-50 ${
                          !notification.isRead ? 'bg-opacity-50' : ''
                        }`}
                        style={{ 
