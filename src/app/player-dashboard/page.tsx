@@ -11,6 +11,7 @@ import TeamChat from '@/components/TeamChat'
 import RealTimeNotifications from '@/components/RealTimeNotifications'
 import ChatNotifications from '@/components/ChatNotifications'
 import PDFThumbnail from '@/components/PDFThumbnail'
+import LiveEventFeed from '@/components/LiveEventFeed'
 
 interface Event {
   id: string
@@ -904,6 +905,12 @@ export default function PlayerDashboard() {
               </div>
             )}
 
+            {/* Live Event Feed - Above action cards, only show if wellness completed or still checking */}
+            {(wellnessCompletedToday === true || wellnessCompletedToday === null) && currentPlayer?.id && (
+              <div className="mb-4">
+                <LiveEventFeed playerId={currentPlayer.id} />
+              </div>
+            )}
                 
             {/* Modern Media, Notes, Wellness, RPE, and Reports Cards - Only show if wellness completed or still checking */}
             {(wellnessCompletedToday === true || wellnessCompletedToday === null) && (
