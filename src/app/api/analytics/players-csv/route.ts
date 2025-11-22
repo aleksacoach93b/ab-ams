@@ -499,22 +499,17 @@ export async function GET(request: NextRequest) {
 
       // Generate data for each day
       // CRITICAL: We MUST iterate through days chronologically and use ONLY saved data for each day
-      // Forward fill means: if no data for a day, use the LAST KNOWN status from PREVIOUS days
+      // Forward fill means: if no data for a day, use the LAST KNOWN status from PREVIOUS HISTORICAL days
       // We NEVER use current status to fill historical days - only historical data can fill forward
-      // BUT: If player has NO historical data at all, we initialize with current status for forward fill
-      // This ensures ALL players and ALL days are always shown
-      let lastKnownStatus: string | null = null // Will be set from first historical data we encounter
-      let lastKnownMatchDayTag: string | null = null // Track last known matchDayTag for forward fill
-      let lastKnownReason = '' // Track last known reason for forward fill
-      let lastKnownNotes: string | null = null // Track last known notes for forward fill
+      // CRITICAL: If player has NO historical data at all, we do NOT initialize with current status for forward fill
+      // Instead, we use current status ONLY for today's day, not for historical days
+      let lastKnownStatus: string | null = null // Will be set from first HISTORICAL data we encounter (NOT from current status)
+      let lastKnownMatchDayTag: string | null = null // Track last known matchDayTag from HISTORICAL data (NOT from current)
+      let lastKnownReason = '' // Track last known reason from HISTORICAL data
+      let lastKnownNotes: string | null = null // Track last known notes from HISTORICAL data
       
-      // If player has NO historical data at all, initialize with current status and matchDayTag for forward fill
-      // This is ONLY used for forward fill, NOT for changing historical data (since there is none)
-      if (allPlayerDates.length === 0) {
-        const currentStatus = statusMap[playerData?.availabilityStatus || player.status] || playerData?.availabilityStatus || player.status || 'Fully Available'
-        lastKnownStatus = currentStatus
-        lastKnownMatchDayTag = playerData?.matchDayTag || player.matchDayTag || null
-      }
+      // DO NOT initialize with current status - we only use historical data for forward fill
+      // Current status/matchDayTag will be used ONLY for today's day, not for historical days
       
       for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
         const dateStr = d.toISOString().split('T')[0]
@@ -594,22 +589,25 @@ export async function GET(request: NextRequest) {
         } else {
           // No saved data for this day
           // CRITICAL: For today, ALWAYS use LIVE data from players table (flexible, can change)
-          // For historical days, forward fill from previous days
+          // For historical days, forward fill ONLY from previous HISTORICAL days (NOT from current status)
           if (isToday) {
             // Today: Use LIVE status and matchDayTag from players table
             statusForThisDay = statusMap[playerData?.availabilityStatus || player.status] || playerData?.availabilityStatus || player.status || 'Fully Available'
             matchDayTagForThisDay = playerData?.matchDayTag || player.matchDayTag || null
             console.log(`📊 [TODAY] Using LIVE status and matchDayTag for player ${playerId} (no analytics): ${statusForThisDay}, ${matchDayTagForThisDay || 'N/A'}`)
           } else {
-            // Historical day: Forward fill from previous days
-            // Use forward fill if we have lastKnownStatus (either from historical data or initialized)
+            // Historical day: Forward fill ONLY from previous HISTORICAL days
+            // CRITICAL: Do NOT use current status/matchDayTag for historical days
+            // Only use forward fill if we have lastKnownStatus from HISTORICAL data
             if (lastKnownStatus !== null) {
+              // We have historical data from previous days - use it for forward fill
               statusForThisDay = lastKnownStatus
               matchDayTagForThisDay = lastKnownMatchDayTag
             } else {
-              // This should never happen now, but fallback to Fully Available
+              // No historical data at all for this player - use default for historical days
+              // DO NOT use current status - historical days must remain independent of current status
               statusForThisDay = 'Fully Available'
-              matchDayTagForThisDay = lastKnownMatchDayTag || null
+              matchDayTagForThisDay = null // No matchDayTag for historical days without saved data
             }
           }
           
