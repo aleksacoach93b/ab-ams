@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Calendar, Users, TrendingUp, Clock, User, Activity, AlertTriangle, FileText, FolderOpen, Percent, StickyNote, X, Eye, Download, ArrowLeft, ArrowRight, FolderPlus, Upload, Pencil, Trash2, File as FileIcon } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/contexts/ToastContext'
 import MobileCalendar from '@/components/MobileCalendar'
 import EventAnalytics from '@/components/EventAnalytics'
 import PlayerStatusNotesModal from '@/components/PlayerStatusNotesModal'
@@ -558,6 +559,7 @@ function StaffReportsList() {
 
 export default function Dashboard() {
   const { colorScheme, theme } = useTheme()
+  const { showSuccess, showError, showWarning } = useToast()
   const { user } = useAuth()
   const [players, setPlayers] = useState<Player[]>([])
   const [events, setEvents] = useState<Event[]>([])
@@ -914,7 +916,7 @@ export default function Dashboard() {
       if (!statusResponse.ok) {
         const errorData = await statusResponse.json()
         console.error('Failed to update player status:', errorData)
-        alert(`Failed to update player status: ${errorData.message}`)
+        showError(`Failed to update player status: ${errorData.message}`)
         return
       }
 
@@ -958,12 +960,12 @@ export default function Dashboard() {
           console.error('❌ Failed to parse error response:', parseError)
           errorMessage = notesResponse.statusText || 'Internal server error'
         }
-        alert(`Failed to save notes: ${errorMessage}`)
+        showError(`Failed to save notes: ${errorMessage}`)
       }
     } catch (error) {
       console.error('❌ Error saving player notes:', error)
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while saving notes.'
-      alert(`Error: ${errorMessage}`)
+      showError(`Error: ${errorMessage}`)
     } finally {
       setIsSavingNotes(false)
     }
@@ -1014,11 +1016,11 @@ export default function Dashboard() {
       } else {
         const errorData = await response.json()
         console.error('Failed to update tags:', errorData)
-        alert(`Failed to update tags: ${errorData.message}`)
+        showError(`Failed to update tags: ${errorData.message}`)
       }
     } catch (error) {
       console.error('Error updating tags:', error)
-      alert('An error occurred while updating tags.')
+      showError('An error occurred while updating tags.')
     } finally {
       setIsUpdatingTags(false)
     }
@@ -1046,11 +1048,11 @@ export default function Dashboard() {
       } else {
         const errorData = await response.json()
         console.error('Failed to update tag:', errorData)
-        alert(`Failed to update tag: ${errorData.message}`)
+        showError(`Failed to update tag: ${errorData.message}`)
       }
     } catch (error) {
       console.error('Error updating tag:', error)
-      alert('An error occurred while updating tag.')
+      showError('An error occurred while updating tag.')
     }
   }
 

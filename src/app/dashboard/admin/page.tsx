@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { Settings, Users, Shield, Clock, MapPin, User, AlertTriangle, Eye, Download, FileText, TrendingUp, BarChart3, MessageCircle, Link as LinkIcon, Copy, ExternalLink, X } from 'lucide-react'
 import Link from 'next/link'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useToast } from '@/contexts/ToastContext'
+import ProgressBar from '@/components/ProgressBar'
 import TeamChat from '@/components/TeamChat'
 
 interface LoginLog {
@@ -118,6 +120,9 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics-links'>('overview')
   const [showCSVModal, setShowCSVModal] = useState(false)
   const [csvType, setCsvType] = useState<'events' | 'players'>('events')
+  const [csvExportProgress, setCsvExportProgress] = useState(0)
+  const [isExportingCSV, setIsExportingCSV] = useState(false)
+  const { showSuccess, showError, showInfo } = useToast()
 
   useEffect(() => {
     fetchLoginData()
@@ -850,16 +855,58 @@ export default function AdminPage() {
                 </button>
                 
                 <button
-                  onClick={() => window.open(`/api/analytics/${csvType}-csv`, '_blank')}
-                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md font-medium transition-colors"
+                  onClick={async () => {
+                    setIsExportingCSV(true)
+                    setCsvExportProgress(0)
+                    showInfo('Generating CSV export...')
+                    
+                    // Simulate progress
+                    const progressInterval = setInterval(() => {
+                      setCsvExportProgress(prev => {
+                        if (prev >= 90) return prev
+                        return prev + 15
+                      })
+                    }, 300)
+                    
+                    try {
+                      const csvUrl = `/api/analytics/${csvType}-csv`
+                      window.open(csvUrl, '_blank')
+                      
+                      setTimeout(() => {
+                        clearInterval(progressInterval)
+                        setCsvExportProgress(100)
+                        showSuccess('CSV export opened in new tab!')
+                        setTimeout(() => {
+                          setIsExportingCSV(false)
+                          setCsvExportProgress(0)
+                        }, 1000)
+                      }, 2000)
+                    } catch (error: any) {
+                      clearInterval(progressInterval)
+                      showError('Failed to open CSV export')
+                      setIsExportingCSV(false)
+                      setCsvExportProgress(0)
+                    }
+                  }}
+                  disabled={isExportingCSV}
+                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ 
                     backgroundColor: colorScheme.primary,
                     color: colorScheme.primaryText || 'white'
                   }}
                 >
                   <ExternalLink className="h-4 w-4" />
-                  <span>Open Link</span>
+                  <span>{isExportingCSV ? 'Exporting...' : 'Open Link'}</span>
                 </button>
+                {isExportingCSV && (
+                  <div className="mt-3">
+                    <ProgressBar 
+                      progress={csvExportProgress} 
+                      label="Generating CSV..."
+                      showPercentage={true}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Power BI Instructions */}

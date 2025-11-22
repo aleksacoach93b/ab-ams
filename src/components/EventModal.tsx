@@ -10,7 +10,9 @@ import MatchDayTagSelector from './MatchDayTagSelector'
 import DatePicker from './DatePicker'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/contexts/ToastContext'
 import PDFThumbnail from '@/components/PDFThumbnail'
+import ProgressBar from '@/components/ProgressBar'
 
 interface Event {
   id: string
@@ -99,6 +101,7 @@ const getEventIconComponent = (iconName: string, color?: string) => {
 export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, user, staffPermissions }: EventModalProps) {
   const { colorScheme, theme } = useTheme()
   const { token } = useAuth()
+  const { showSuccess, showError, showWarning } = useToast()
   
   // Permission checking functions
   const canEditEvents = () => {
@@ -140,6 +143,7 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
   const [selectedStaff, setSelectedStaff] = useState<string[]>([])
   const [mediaFiles, setMediaFiles] = useState<EventMedia[]>([])
   const [uploadingMedia, setUploadingMedia] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [showMediaUpload, setShowMediaUpload] = useState(false)
   const [previewMedia, setPreviewMedia] = useState<EventMedia | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -264,13 +268,14 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
     console.log('📅 Event:', event)
     
     if (!selectedFile || !event) {
-      alert('Please select a file first!')
+      showWarning('Please select a file first!')
       return
     }
 
     console.log('🚀 Starting upload for event:', event.id, 'File:', selectedFile.name)
     
     setUploadingMedia(true)
+    setUploadProgress(0)
     try {
       const formData = new FormData()
       formData.append('file', selectedFile)
@@ -290,11 +295,21 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
         size: selectedFile.size
       })
 
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) return prev
+          return prev + 10
+        })
+      }, 200)
+
       const response = await fetch(`/api/events/${event.id}/media`, {
         method: 'POST',
         headers,
         body: formData,
       })
+
+      clearInterval(progressInterval)
 
       console.log('📥 Upload response status:', response.status)
 
@@ -317,16 +332,19 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
         }
         
         console.log('✅ Upload completed successfully')
+        showSuccess('Media uploaded successfully!')
+        setUploadProgress(100)
       } else {
         const errorData = await response.json()
         console.error('❌ Upload failed:', errorData)
-        alert(`Failed to upload media: ${errorData.message || 'Unknown error'}`)
+        showError(`Failed to upload media: ${errorData.message || 'Unknown error'}`)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('💥 Error uploading media:', error)
-      alert(`Error uploading media: ${error.message}`)
+      showError(`Error uploading media: ${error.message || 'Unknown error'}`)
     } finally {
       setUploadingMedia(false)
+      setTimeout(() => setUploadProgress(0), 500)
     }
   }
 
@@ -350,11 +368,11 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
       } else {
         const error = await response.json()
         console.error('❌ Media deletion failed:', error)
-        alert(error.message || 'Failed to delete media')
+        showError(error.message || 'Failed to delete media')
       }
     } catch (error) {
       console.error('Error deleting media:', error)
-      alert('Error deleting media')
+      showError('Error deleting media')
     }
   }
 
@@ -382,13 +400,13 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
   const handleSave = async () => {
     if (!formData) {
       console.error('No form data available')
-      alert('No event data to save.')
+      showWarning('No event data to save.')
       return
     }
 
     // Validate Match Day Tag is required
     if (!formData.matchDayTag || formData.matchDayTag.trim() === '') {
-      alert('Match Day Tag is required. Please select a Match Day Tag before saving.')
+      showWarning('Match Day Tag is required. Please select a Match Day Tag before saving.')
       // Scroll to Match Day Tag section
       const matchDayTagSection = document.querySelector('[data-match-day-tag-section]')
       if (matchDayTagSection) {
@@ -442,12 +460,12 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
           console.error('❌ Failed to parse error response:', parseError)
           errorMessage = response.statusText || 'Internal server error'
         }
-        alert(`Failed to update event: ${errorMessage}`)
+        showError(`Failed to update event: ${errorMessage}`)
       }
     } catch (error) {
       console.error('💥 Error updating event:', error)
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while updating the event.'
-      alert(`Error: ${errorMessage}`)
+      showError(`Error: ${errorMessage}`)
     } finally {
       setIsLoading(false)
     }
@@ -470,11 +488,11 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
         window.dispatchEvent(new CustomEvent('eventDeleted'))
       } else {
         console.error('Failed to delete event')
-        alert('Failed to delete event.')
+        showError('Failed to delete event.')
       }
     } catch (error) {
       console.error('Error deleting event:', error)
-      alert('An error occurred while deleting the event.')
+      showError('An error occurred while deleting the event.')
     } finally {
       setIsLoading(false)
     }
@@ -1326,6 +1344,15 @@ export default function EventModal({ event, isOpen, onClose, onEdit, onDelete, u
                   <ul className="text-xs mt-1" style={{ color: colorScheme.textSecondary }}>
                     <li className="truncate">• {selectedFile.name}</li>
                   </ul>
+                </div>
+              )}
+              {uploadingMedia && (
+                <div className="mt-4">
+                  <ProgressBar 
+                    progress={uploadProgress} 
+                    label="Uploading..."
+                    showPercentage={true}
+                  />
                 </div>
               )}
               <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-4">
