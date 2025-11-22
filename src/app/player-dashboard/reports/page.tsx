@@ -95,13 +95,37 @@ export default function PlayerReportsPage() {
   const [previewFile, setPreviewFile] = useState<Report | null>(null)
 
   useEffect(() => {
+    // Optimized: Use cached data if available (30 seconds cache)
+    const cacheKey = 'player-reports-data'
+    const cacheTime = 30000 // 30 seconds
+    const cached = sessionStorage.getItem(cacheKey)
+    const now = Date.now()
+    
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached)
+        if (now - timestamp < cacheTime) {
+          setFolders(data.folders || [])
+          setPlayers(data.players || [])
+          setLoading(false)
+          // Still fetch in background for fresh data
+          fetchData(true)
+          fetchReports()
+          return
+        }
+      } catch (e) {
+        // Cache invalid, continue with normal fetch
+      }
+    }
+    
     fetchData()
-    // Initially fetch root level reports (no folder assigned)
     fetchReports()
   }, [])
 
-  const fetchData = async () => {
+  const fetchData = async (background = false) => {
     try {
+      if (!background) setLoading(true)
+      
       const token = localStorage.getItem('token')
       if (!token) {
         console.error('No authentication token found')
@@ -113,32 +137,74 @@ export default function PlayerReportsPage() {
         ? `/api/player-reports/folders?parentId=${parentId}`
         : '/api/player-reports/folders'
 
-      const [foldersResponse, playersResponse] = await Promise.all([
+      // Only fetch players if not cached (they don't change often)
+      const playersCacheKey = 'player-reports-players'
+      const playersCached = sessionStorage.getItem(playersCacheKey)
+      let playersData = []
+      
+      if (playersCached) {
+        try {
+          const { data, timestamp } = JSON.parse(playersCached)
+          if (Date.now() - timestamp < 300000) { // 5 minutes cache for players
+            playersData = data
+          }
+        } catch (e) {}
+      }
+      
+      const promises: Promise<any>[] = [
         fetch(foldersUrl, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
-        }),
-        fetch('/api/players', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
         })
-      ])
+      ]
+      
+      if (playersData.length === 0) {
+        promises.push(
+          fetch('/api/players', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+        )
+      }
+
+      const responses = await Promise.all(promises)
+      const foldersResponse = responses[0]
+      const playersResponse = responses[1]
 
       if (foldersResponse.ok) {
         const foldersData = await foldersResponse.json()
         setFolders(foldersData)
+        
+        // Cache data
+        const cacheData = {
+          folders: foldersData,
+          players: playersData.length > 0 ? playersData : (playersResponse && playersResponse.ok ? await playersResponse.json() : [])
+        }
+        sessionStorage.setItem('player-reports-data', JSON.stringify({
+          data: cacheData,
+          timestamp: Date.now()
+        }))
       }
 
-      if (playersResponse.ok) {
-        const playersData = await playersResponse.json()
-        setPlayers(Array.isArray(playersData) ? playersData : [])
+      if (playersResponse && playersResponse.ok) {
+        const freshPlayersData = await playersResponse.json()
+        const playersArray = Array.isArray(freshPlayersData) ? freshPlayersData : []
+        setPlayers(playersArray)
+        
+        // Cache players separately (longer cache)
+        sessionStorage.setItem(playersCacheKey, JSON.stringify({
+          data: playersArray,
+          timestamp: Date.now()
+        }))
+      } else if (playersData.length > 0) {
+        setPlayers(playersData)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
-      setLoading(false)
+      if (!background) setLoading(false)
     }
   }
 
@@ -154,6 +220,36 @@ export default function PlayerReportsPage() {
         ? `/api/player-reports?folderId=${folderId}`
         : '/api/player-reports'
 
+      // Cache key based on folderId
+      const cacheKey = `player-reports-${folderId || 'root'}`
+      const cached = sessionStorage.getItem(cacheKey)
+      const now = Date.now()
+      
+      if (cached) {
+        try {
+          const { data, timestamp } = JSON.parse(cached)
+          if (now - timestamp < 30000) { // 30 seconds cache
+            setReports(data.reports || [])
+            // Still fetch in background
+            fetch(url, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }).then(async (response) => {
+              if (response.ok) {
+                const freshData = await response.json()
+                setReports(freshData.reports || [])
+                sessionStorage.setItem(cacheKey, JSON.stringify({
+                  data: freshData,
+                  timestamp: Date.now()
+                }))
+              }
+            }).catch(() => {})
+            return
+          }
+        } catch (e) {}
+      }
+
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -163,6 +259,12 @@ export default function PlayerReportsPage() {
       if (response.ok) {
         const data = await response.json()
         setReports(data.reports || [])
+        
+        // Cache reports
+        sessionStorage.setItem(cacheKey, JSON.stringify({
+          data,
+          timestamp: Date.now()
+        }))
       }
     } catch (error) {
       console.error('Error fetching reports:', error)
@@ -396,9 +498,9 @@ export default function PlayerReportsPage() {
                 onClick={() => window.history.back()}
                 className="p-2 rounded-lg hover:opacity-80 transition-colors border"
                 style={{ 
-                  backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#1f2937' : colorScheme.surface,
+                  backgroundColor: colorScheme.surface,
                   borderColor: colorScheme.border,
-                  color: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#ffffff' : colorScheme.text
+                  color: colorScheme.text
                 }}
               >
                 <ArrowLeft className="h-5 w-5" />
@@ -516,9 +618,9 @@ export default function PlayerReportsPage() {
                             }}
                             className="p-2 rounded hover:opacity-80 transition-colors border"
                             style={{ 
-                              backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                              backgroundColor: colorScheme.primary + '20',
                               borderColor: colorScheme.border,
-                              color: '#ffffff'
+                              color: colorScheme.primary
                             }}
                             title="Manage Visibility"
                           >
@@ -531,9 +633,9 @@ export default function PlayerReportsPage() {
                             }}
                             className="p-2 rounded hover:opacity-80 transition-colors border"
                             style={{ 
-                              backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                              backgroundColor: colorScheme.primary + '20',
                               borderColor: colorScheme.border,
-                              color: '#ffffff'
+                              color: colorScheme.primary
                             }}
                             title="Rename"
                           >
@@ -572,9 +674,9 @@ export default function PlayerReportsPage() {
                     onClick={navigateUp}
                     className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:opacity-80 transition-colors border"
                     style={{ 
-                      backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                      backgroundColor: colorScheme.surface,
                       borderColor: colorScheme.border,
-                      color: '#ffffff'
+                      color: colorScheme.text
                     }}
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -616,9 +718,9 @@ export default function PlayerReportsPage() {
                           onClick={() => handleFileAction('view', report)}
                           className="p-3 rounded-lg hover:opacity-80 transition-colors border"
                           style={{ 
-                            backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                            backgroundColor: colorScheme.primary + '20',
                             borderColor: colorScheme.border,
-                            color: '#ffffff'
+                            color: colorScheme.primary
                           }}
                           title="View"
                         >
@@ -628,9 +730,9 @@ export default function PlayerReportsPage() {
                           onClick={() => handleFileAction('download', report)}
                           className="p-3 rounded-lg hover:opacity-80 transition-colors border"
                           style={{ 
-                            backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                            backgroundColor: colorScheme.primary + '20',
                             borderColor: colorScheme.border,
-                            color: '#ffffff'
+                            color: colorScheme.primary
                           }}
                           title="Download"
                         >
@@ -717,12 +819,34 @@ export default function PlayerReportsPage() {
           />
         )}
 
-        {/* Preview Modal */}
+        {/* Preview Modal - Full screen for better viewing */}
         {showPreviewModal && previewFile && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="rounded-lg max-w-4xl max-h-[90vh] overflow-hidden" style={{ backgroundColor: colorScheme.surface, border: `1px solid ${colorScheme.border}` }}>
-              <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${colorScheme.border}` }}>
-                <h3 style={{ color: colorScheme.text }} className="text-lg font-semibold truncate flex-1 mr-4">{previewFile.fileName}</h3>
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4"
+            onClick={() => setShowPreviewModal(false)}
+          >
+            <div 
+              className="rounded-lg w-full h-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl"
+              style={{ 
+                backgroundColor: colorScheme.surface, 
+                border: `2px solid ${colorScheme.border}` 
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header - Fixed */}
+              <div 
+                className="flex items-center justify-between p-3 sm:p-4 flex-shrink-0" 
+                style={{ 
+                  borderBottom: `1px solid ${colorScheme.border}`,
+                  backgroundColor: colorScheme.surface
+                }}
+              >
+                <h3 
+                  style={{ color: colorScheme.text }} 
+                  className="text-base sm:text-lg font-semibold truncate flex-1 mr-4"
+                >
+                  {previewFile.fileName}
+                </h3>
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => handleDownload(previewFile)}
@@ -741,31 +865,39 @@ export default function PlayerReportsPage() {
                     onClick={() => setShowPreviewModal(false)}
                     className="flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors border"
                     style={{
-                      backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
+                      backgroundColor: colorScheme.surface,
                       borderColor: colorScheme.border,
-                      color: '#ffffff'
+                      color: colorScheme.text
                     }}
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    <span className="text-sm">Back</span>
+                    <span className="text-sm hidden sm:inline">Close</span>
                   </button>
                 </div>
               </div>
-              <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+              
+              {/* Content - Scrollable */}
+              <div 
+                className="flex-1 overflow-auto p-2 sm:p-4"
+                style={{ backgroundColor: colorScheme.background }}
+              >
                 {previewFile.fileType.includes('pdf') ? (
-                  <div className="w-full" style={{ minHeight: '600px' }}>
+                  <div className="w-full h-full flex items-center justify-center">
                     <iframe
                       src={(() => {
                         const baseUrl = previewFile.fileUrl.startsWith('http') 
                           ? previewFile.fileUrl 
                           : `${window.location.origin}${previewFile.fileUrl}`
-                        return `${baseUrl}#toolbar=1&navpanes=1&scrollbar=1`
+                        // Add token if available for authenticated access
+                        const token = localStorage.getItem('token')
+                        const separator = baseUrl.includes('?') ? '&' : '?'
+                        return `${baseUrl}${separator}token=${token}#toolbar=1&navpanes=1&scrollbar=1&zoom=page-width`
                       })()}
-                      className="w-full h-full border-0 rounded-lg"
+                      className="w-full border-0 rounded-lg"
                       style={{
                         width: '100%',
-                        height: '800px',
-                        minHeight: '600px',
+                        minHeight: 'calc(95vh - 120px)',
+                        height: 'calc(95vh - 120px)',
                         border: 'none',
                         borderRadius: '8px'
                       }}
@@ -773,17 +905,20 @@ export default function PlayerReportsPage() {
                     />
                   </div>
                 ) : previewFile.fileType.includes('image') ? (
-                  <img
-                    src={previewFile.fileUrl}
-                    alt={previewFile.fileName}
-                    className="max-w-full h-auto"
-                  />
+                  <div className="flex items-center justify-center w-full h-full">
+                    <img
+                      src={previewFile.fileUrl}
+                      alt={previewFile.fileName}
+                      className="max-w-full max-h-[calc(95vh-120px)] h-auto object-contain rounded-lg"
+                    />
+                  </div>
                 ) : (
                   <div className="text-center py-8">
-                    <p style={{ color: colorScheme.textSecondary }} className="mb-4">Preview not available for this file type</p>
-                    <a
-                      href={previewFile.fileUrl}
-                      download={previewFile.fileName}
+                    <p style={{ color: colorScheme.textSecondary }} className="mb-4">
+                      Preview not available for this file type
+                    </p>
+                    <button
+                      onClick={() => handleDownload(previewFile)}
                       className="inline-flex items-center px-4 py-2 rounded-lg transition-colors"
                       style={{
                         backgroundColor: colorScheme.primary,
@@ -798,7 +933,7 @@ export default function PlayerReportsPage() {
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Download File
-                    </a>
+                    </button>
                   </div>
                 )}
               </div>
@@ -893,11 +1028,11 @@ function CreateFolderForm({ parentFolder, onClose, onSuccess, colorScheme }: any
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg transition-colors"
+              className="px-4 py-2 rounded-lg transition-colors border"
               style={{
-                backgroundColor: colorScheme.surface === '#ffffff' || colorScheme.surface === 'white' ? '#374151' : '#1f2937',
-                color: '#ffffff',
-                border: `1px solid ${colorScheme.border}`
+                backgroundColor: colorScheme.surface,
+                color: colorScheme.text,
+                borderColor: colorScheme.border
               }}
             >
               Cancel
@@ -1145,6 +1280,7 @@ function VisibilityManager({ item, players, onCancel, onSuccess, colorScheme }: 
                 <label 
                   htmlFor={`player-${player.id}`}
                   className="text-sm font-medium"
+                  style={{ color: colorScheme.text }}
                 >
                   {player.name}
                 </label>
@@ -1152,7 +1288,10 @@ function VisibilityManager({ item, players, onCancel, onSuccess, colorScheme }: 
             ))}
           </div>
           {players.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-4">
+            <p 
+              className="text-sm text-center py-4"
+              style={{ color: colorScheme.textSecondary }}
+            >
               No players found
             </p>
           )}
@@ -1160,13 +1299,22 @@ function VisibilityManager({ item, players, onCancel, onSuccess, colorScheme }: 
         <div className="flex justify-end space-x-3 mt-6">
           <button
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="px-4 py-2 rounded-lg transition-colors border"
+            style={{
+              backgroundColor: colorScheme.surface,
+              color: colorScheme.text,
+              borderColor: colorScheme.border
+            }}
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 rounded-lg transition-colors"
+            style={{
+              backgroundColor: colorScheme.primary,
+              color: '#FFFFFF'
+            }}
           >
             Save Access
           </button>
@@ -1200,32 +1348,62 @@ function RenameFolderForm({ folder, onClose, onSuccess, colorScheme }: any) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <h3 className="text-lg font-semibold mb-4">Rename Folder</h3>
+      <div 
+        className="rounded-lg max-w-md w-full p-6"
+        style={{ 
+          backgroundColor: colorScheme.surface, 
+          border: `1px solid ${colorScheme.border}` 
+        }}
+      >
+        <h3 
+          className="text-lg font-semibold mb-4"
+          style={{ color: colorScheme.text }}
+        >
+          Rename Folder
+        </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Folder Name</label>
+            <label 
+              className="block text-sm font-medium mb-2"
+              style={{ color: colorScheme.text }}
+            >
+              Folder Name
+            </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
               placeholder="Enter folder name"
               required
+              style={{
+                backgroundColor: colorScheme.background,
+                color: colorScheme.text,
+                border: `1px solid ${colorScheme.border}`
+              }}
             />
           </div>
           <div className="flex justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 rounded-lg transition-colors border"
+              style={{
+                backgroundColor: colorScheme.surface,
+                color: colorScheme.text,
+                borderColor: colorScheme.border
+              }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !name.trim() || name.trim() === folder.name}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-lg disabled:opacity-50 transition-colors"
+              style={{
+                backgroundColor: colorScheme.primary,
+                color: '#FFFFFF'
+              }}
             >
               {loading ? 'Renaming...' : 'Rename Folder'}
             </button>
