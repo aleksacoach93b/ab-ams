@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import RichTextEditor from '@/components/RichTextEditor'
 import PDFThumbnail from '@/components/PDFThumbnail'
 import ReadOnlyCalendar from '@/components/ReadOnlyCalendar'
+import LiveEventFeed from '@/components/LiveEventFeed'
 
 interface Player {
   id: string
@@ -698,6 +699,11 @@ export default function PlayerProfilePage() {
       {/* Main Content - Only show if wellness completed or user is not a player */}
       {!(user?.role === 'PLAYER' && playerId === user.id && wellnessCompletedToday === false) && (
         <>
+      {/* Live Event Feed - Above tabs, only on mobile */}
+      <div className="block md:hidden">
+        <LiveEventFeed playerId={playerId} />
+      </div>
+      
       {/* Tabs */}
       <div 
         className="border-b"
