@@ -14,6 +14,8 @@ import DraggableStatsCards from '@/components/DraggableStatsCards'
 import DraggableActionCardsWrapper from '@/components/DraggableActionCardsWrapper'
 import DraggableSections from '@/components/DraggableSections'
 import LiveEventFeed from '@/components/LiveEventFeed'
+import RealTimeNotifications from '@/components/RealTimeNotifications'
+import ThemeSelector from '@/components/ThemeSelector'
 import { PlayerSkeleton, ReportsSkeleton } from '@/components/skeletons'
 
 interface Player {
@@ -1164,39 +1166,47 @@ export default function Dashboard() {
         WebkitOverflowScrolling: 'touch'
       }}
     >
-      {/* Header - Compact Design */}
+      {/* Header - Compact Design with Notifications and Theme */}
       <div className="px-0 sm:px-6 mb-2 sm:mb-4">
-        <div className="flex items-center justify-start">
-          <div 
-            className="relative inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl border transition-all duration-300 hover:shadow-md"
-            style={{ 
-              backgroundColor: `${colorScheme.primary}08`,
-              borderColor: `${colorScheme.primary}25`,
-              boxShadow: `0 2px 8px ${colorScheme.primary}10`
-            }}
-          >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center justify-start flex-1">
             <div 
-              className="relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg font-bold text-sm sm:text-base shadow-lg"
+              className="relative inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl border transition-all duration-300 hover:shadow-md"
               style={{ 
-                background: `linear-gradient(135deg, ${colorScheme.primary}, ${colorScheme.primary}DD)`,
-                color: '#FFFFFF',
-                boxShadow: `0 4px 12px ${colorScheme.primary}40, 0 2px 4px ${colorScheme.primary}20, inset 0 1px 0 rgba(255,255,255,0.2)`
+                backgroundColor: `${colorScheme.primary}08`,
+                borderColor: `${colorScheme.primary}25`,
+                boxShadow: `0 2px 8px ${colorScheme.primary}10`
               }}
             >
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-white/20 to-transparent opacity-50"></div>
-              <span className="relative z-10 drop-shadow-sm">AB</span>
-            </div>
-            <div className="flex flex-col">
-              <h1 
-                className="text-base sm:text-lg font-semibold leading-tight"
+              <div 
+                className="relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg font-bold text-sm sm:text-base shadow-lg"
                 style={{ 
-                  color: colorScheme.text,
-                  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                  background: `linear-gradient(135deg, ${colorScheme.primary}, ${colorScheme.primary}DD)`,
+                  color: '#FFFFFF',
+                  boxShadow: `0 4px 12px ${colorScheme.primary}40, 0 2px 4px ${colorScheme.primary}20, inset 0 1px 0 rgba(255,255,255,0.2)`
                 }}
               >
-                Athlete Management System
-              </h1>
+                <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-white/20 to-transparent opacity-50"></div>
+                <span className="relative z-10 drop-shadow-sm">AB</span>
+              </div>
+              <div className="flex flex-col">
+                <h1 
+                  className="text-base sm:text-lg font-semibold leading-tight"
+                  style={{ 
+                    color: colorScheme.text,
+                    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                  }}
+                >
+                  Athlete Management System
+                </h1>
+              </div>
             </div>
+          </div>
+          
+          {/* Notifications and Theme Icons - Always visible at top */}
+          <div className="flex items-center space-x-2">
+            <RealTimeNotifications userId={user?.id || user?.userId} userRole={user?.role} />
+            <ThemeSelector />
           </div>
         </div>
       </div>

@@ -19,7 +19,6 @@ import CustomIcon from './CustomIcon'
 import EventModal from './EventModal'
 import { useTheme } from '@/contexts/ThemeContext'
 import { CalendarSkeleton } from '@/components/skeletons'
-import PullToRefresh from '@/components/PullToRefresh'
 
 interface EventMedia {
   id: string
@@ -514,16 +513,16 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
   }
 
   return (
-    <PullToRefresh onRefresh={fetchEvents}>
-      <div 
-        className="w-full"
-        style={{ 
-          backgroundColor: colorScheme.background,
-          overflowX: 'hidden',
-          overscrollBehaviorX: 'none',
-          touchAction: 'pan-y',
-          WebkitOverflowScrolling: 'touch'
-        }}
+    <div 
+      className="w-full"
+      style={{ 
+        backgroundColor: colorScheme.background,
+        overflowX: 'hidden',
+        overscrollBehaviorX: 'none',
+        overscrollBehaviorY: 'auto',
+        touchAction: 'pan-y',
+        WebkitOverflowScrolling: 'touch'
+      }}
     >
       {/* Enhanced Header with Gradient */}
       <div 
@@ -884,7 +883,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
         user={user}
         staffPermissions={staffPermissions}
       />
+      </div>
     </div>
-    </PullToRefresh>
   )
 }

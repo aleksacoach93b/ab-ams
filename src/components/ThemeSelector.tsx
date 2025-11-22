@@ -311,7 +311,7 @@ export default function ThemeSelector() {
 
   return (
     <div 
-      className="fixed bottom-4 right-16 z-[10001] sm:relative sm:bottom-auto sm:right-auto"
+      className="relative z-[10001]"
       style={{
         // Always visible - like notification icon
         display: 'block',
