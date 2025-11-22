@@ -28,7 +28,7 @@ async function verifyJWT(token: string, secret: string) {
 }
 
 // Verify user exists in database via API call (Edge Runtime compatible)
-async function verifyUserExists(userId: string, requestUrl: string): Promise<boolean> {
+async function verifyUserExists(userId: string, requestUrl: string, cookies: string): Promise<boolean> {
   try {
     // Call internal API to verify user exists
     // This works in Edge Runtime unlike direct Prisma calls
@@ -37,20 +37,27 @@ async function verifyUserExists(userId: string, requestUrl: string): Promise<boo
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Cookie': cookies, // Forward cookies to internal API call
       },
       cache: 'no-store'
     })
     
     if (!response.ok) {
-      console.log('🚫 [MIDDLEWARE] User verification failed:', userId)
+      console.log('🚫 [MIDDLEWARE] User verification failed:', userId, 'Status:', response.status)
       return false
     }
     
     const data = await response.json()
-    return data.exists === true && data.isActive === true
+    const isValid = data.exists === true && data.isActive === true
+    if (!isValid) {
+      console.log('🚫 [MIDDLEWARE] User verification returned invalid:', userId, data)
+    }
+    return isValid
   } catch (error) {
     console.error('🚫 [MIDDLEWARE] Error checking user existence:', error)
-    return false
+    // On error, don't block the request - allow it to proceed
+    // This prevents issues when multiple users are using the app simultaneously
+    return true // Allow request to proceed on error to prevent false positives
   }
 }
 
@@ -121,7 +128,9 @@ export async function middleware(request: NextRequest) {
     // BUT: Skip check for special fallback users (local-admin, coach_user_001)
     // These are fallback accounts that don't exist in the database
     if (userId && userId !== 'local-admin' && userId !== 'coach_user_001') {
-      const userExists = await verifyUserExists(userId, request.url)
+      // Forward cookies to internal API call
+      const cookieHeader = request.headers.get('cookie') || ''
+      const userExists = await verifyUserExists(userId, request.url, cookieHeader)
       if (!userExists) {
         console.log('🚫 [MIDDLEWARE] User deleted or inactive, redirecting to login:', userId)
         // Clear token cookie

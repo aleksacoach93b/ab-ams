@@ -305,7 +305,7 @@ export async function POST(request: NextRequest) {
     const userId = `staff_user_${Date.now()}`
 
     // Create user first
-    const user = await prisma.user.create({
+    const user = await prisma.users.create({
       data: {
         id: userId,
         email: normalizedEmail,
