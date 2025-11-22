@@ -521,7 +521,7 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
     >
       {/* Enhanced Header with Gradient */}
       <div 
-        className="sticky top-0 px-0 sm:px-6 py-4 z-20 shadow-lg"
+        className="px-0 sm:px-6 py-4 shadow-lg"
         style={{ 
           backgroundColor: colorScheme.surface,
           borderBottom: `1px solid ${colorScheme.border}`
