@@ -26,8 +26,8 @@ const createPrismaClient = () => {
   // Increase connection limit for high concurrency (50+ users)
   if (runtimeUrl && runtimeUrl.includes('pooler.supabase.com')) {
     runtimeUrl = runtimeUrl.includes('?') 
-      ? `${runtimeUrl}&pgbouncer=true&connection_limit=10&pool_timeout=10`
-      : `${runtimeUrl}?pgbouncer=true&connection_limit=10&pool_timeout=10`
+      ? `${runtimeUrl}&pgbouncer=true&connection_limit=20&pool_timeout=15`
+      : `${runtimeUrl}?pgbouncer=true&connection_limit=20&pool_timeout=15`
   }
   
   console.log('🔗 Database URL configured:', '✅ Set')

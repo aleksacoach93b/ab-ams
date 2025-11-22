@@ -208,6 +208,11 @@ model events {
   event_participants    event_participants[]
   coaches               coaches?             @relation(fields: [coachId], references: [id])
   teams                 teams?               @relation(fields: [teamId], references: [id])
+
+  @@index([startTime])
+  @@index([coachId])
+  @@index([teamId])
+  @@index([type])
 }
 
 model file_analytics {
