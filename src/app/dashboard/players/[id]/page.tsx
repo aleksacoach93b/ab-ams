@@ -609,28 +609,29 @@ export default function PlayerProfilePage() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             
-            {/* Player Avatar */}
-            <div className="flex items-center space-x-3">
+            {/* Player Avatar - Larger */}
+            <div className="flex items-center space-x-4">
               {player.avatar ? (
                 <img
                   src={player.avatar}
                   alt={`${player.firstName} ${player.lastName}`}
-                  className="w-10 h-10 rounded-full object-cover border-2"
-                  style={{ borderColor: colorScheme.border }}
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-3 shadow-lg"
+                  style={{ borderColor: colorScheme.border, borderWidth: '3px' }}
                 />
               ) : (
                 <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center border-2"
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center border-3 shadow-lg"
                   style={{ 
                     backgroundColor: colorScheme.background,
-                    borderColor: colorScheme.border
+                    borderColor: colorScheme.border,
+                    borderWidth: '3px'
                   }}
                 >
-                  <User className="h-5 w-5" style={{ color: colorScheme.textSecondary }} />
+                  <User className="h-10 w-10 sm:h-12 sm:w-12" style={{ color: colorScheme.textSecondary }} />
                 </div>
               )}
               <h1 
-                className="text-xl font-bold"
+                className="text-xl sm:text-2xl font-bold"
                 style={{ color: colorScheme.text }}
               >
                 {player.firstName} {player.lastName}
@@ -907,7 +908,7 @@ export default function PlayerProfilePage() {
           </div>
         ) : (
           <div className={viewMode === 'grid' 
-            ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4'
+            ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4'
             : 'space-y-3'
           }>
             {filteredMedia.map((file) => (

@@ -37,6 +37,7 @@ interface MediaFile {
   description?: string
   url: string
   thumbnailUrl?: string
+  tags?: string[] // Tags added by admin
 }
 
 interface PlayerNote {
@@ -359,8 +360,8 @@ export default function PlayerDashboard() {
         </p>
       </div>
 
-      {/* Media Files Grid with Previews */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {/* Media Files Grid with Previews - 2 columns on mobile */}
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
         {mediaFiles.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <Folder className="h-16 w-16 mx-auto mb-4" style={{ color: colorScheme.textSecondary }} />
@@ -497,9 +498,26 @@ export default function PlayerDashboard() {
                       </span>
                     </div>
                     {file.description && (
-                      <p className="text-xs truncate text-gray-600 italic" style={{ color: colorScheme.textSecondary }}>
+                      <p className="text-xs truncate text-gray-600 italic mb-2" style={{ color: colorScheme.textSecondary }}>
                         {file.description}
                       </p>
+                    )}
+                    {/* Tags - Show if admin added tags */}
+                    {file.tags && Array.isArray(file.tags) && file.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {file.tags.map((tag: string) => (
+                          <span
+                            key={tag}
+                            className="px-2 py-0.5 text-xs rounded-full font-medium"
+                            style={{ 
+                              backgroundColor: colorScheme.primary + '20',
+                              color: colorScheme.primary
+                            }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -649,30 +667,31 @@ export default function PlayerDashboard() {
       <header className="shadow-sm" style={{ backgroundColor: colorScheme.surface }}>
         {/* Player Name - Top Row */}
         <div className="flex items-center justify-center px-4 py-3">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
             {currentPlayer?.imageUrl ? (
               <img
                 src={currentPlayer.imageUrl}
                 alt={currentPlayer?.name || 'Player'}
-                className="w-8 h-8 rounded-full object-cover border-2"
-                style={{ borderColor: colorScheme.border }}
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-3 shadow-lg"
+                style={{ borderColor: colorScheme.border, borderWidth: '3px' }}
               />
             ) : (
               <div 
-                className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white border-2 text-sm"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center font-semibold text-white border-3 shadow-lg text-lg sm:text-xl"
                 style={{ 
                   backgroundColor: colorScheme.primary,
-                  borderColor: colorScheme.border
+                  borderColor: colorScheme.border,
+                  borderWidth: '3px'
                 }}
               >
                 {currentPlayer?.name ? currentPlayer.name.split(' ').map((n: string) => n[0]).join('') : 'U'}
               </div>
             )}
             <div className="text-center">
-              <p className="text-lg font-bold" style={{ color: colorScheme.text }}>
+              <p className="text-lg sm:text-xl font-bold" style={{ color: colorScheme.text }}>
                 {currentPlayer?.name || 'Player'}
               </p>
-              <p className="text-xs" style={{ color: colorScheme.textSecondary }}>
+              <p className="text-xs sm:text-sm" style={{ color: colorScheme.textSecondary }}>
                 Player
               </p>
             </div>
