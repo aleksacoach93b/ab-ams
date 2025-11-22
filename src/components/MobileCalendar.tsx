@@ -872,7 +872,6 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
         )}
       </div>
 
-
       {/* Event Modal */}
       <EventModal
         event={selectedEvent}
@@ -883,7 +882,6 @@ export default function MobileCalendar({ onEventClick, onAddEvent, user, staffPe
         user={user}
         staffPermissions={staffPermissions}
       />
-      </div>
     </div>
   )
 }
